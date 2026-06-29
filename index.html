@@ -254,7 +254,7 @@
                 <i data-id="6" data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
                 STORMWATCH <span data-id="7" class="data-val">//</span> ATL BEACH
             </div>
-            <div data-id="8" class="text-[.55rem] text-gray-500 mt-0.5" style="font-family:'Courier New',monospace">30.3354°N 81.3990°W · NWS JAX · KJAX Radar</div>
+            <div data-id="8" class="text-[.55rem] text-gray-500 mt-0.5" style="font-family:'Courier New',monospace">30.34°N 81.40°W · NWS JAX · KJAX Radar</div>
         </div>
         <div data-id="9" class="flex flex-col items-center">
             <div data-id="10" id="live-clock-j4p1" class="text-lg font-bold text-white tabular-nums" style="font-family:'Courier New',monospace">--:--:--</div>
@@ -977,7 +977,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const CONFIG = { lat: 30.3354, lon: -81.3990, office: 'JAX', gridX: 75, gridY: 66, radar: 'KJAX' };
+const CONFIG = { lat: 30.34, lon: -81.40, office: 'JAX', gridX: 75, gridY: 66, radar: 'KJAX' };
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let spcGeoJSON = {}; // stores raw GeoJSON per layer key
@@ -2220,7 +2220,7 @@ function generateBriefing() {
   } else {
     txt += '  \u26a0 UNAVAILABLE \u2014 could not reach NWS, check weather.gov\n';
   }
-  txt += '\nData: NWS api.weather.gov \u00b7 IEM mesonet \u00b7 SPC spc.noaa.gov\nKJAX NEXRAD \u00b7 30.3354\u00b0N 81.3990\u00b0W\n';
+  txt += '\nData: NWS api.weather.gov \u00b7 IEM mesonet \u00b7 SPC spc.noaa.gov\nKJAX NEXRAD \u00b7 30.34\u00b0N 81.40\u00b0W\n';
   const el = document.getElementById('briefing-text-w6y9');
   if (el) el.value = txt;
 }
@@ -3339,7 +3339,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
     <div style="font-size:.5rem;color:#555;margin-top:8px">
-      Find your NWS grid: <a href="https://api.weather.gov/points/30.3354,-81.3990" target="_blank" style="color:#06b6d4">api.weather.gov/points/LAT,LON</a>
+      Find your NWS grid: <a href="https://api.weather.gov/points/30.34,-81.40" target="_blank" style="color:#06b6d4">api.weather.gov/points/LAT,LON</a>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button onclick="saveSettings()" style="flex:1;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);border-radius:6px;color:#00d9ff;font-family:'Courier New',monospace;font-size:.65rem;padding:7px;cursor:pointer">SAVE &amp; APPLY</button>
