@@ -1,0 +1,3372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>StormWatch ATL BEACH — Live Storm Tracking Dashboard</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#0d1117" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="icon" href="icon-192.png" />
+    <script src="https://cdn.jsdelivr.net/npm/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg:#0d1117;--card:#161b22;--border:#30363d;--cyan:#00d9ff;--amber:#ffa500;
+        --danger:#ff4444;--text:#c9d1d9;--text-dim:#8b949e;
+      }
+      *{box-sizing:border-box}
+      body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;margin:0;min-height:100vh;overflow-x:hidden;overflow-anchor:none}
+      @media(max-width:768px){
+        .dash-grid{grid-template-columns:1fr !important}
+        header{flex-wrap:wrap;gap:6px;padding:8px 10px}
+        .tab-btn{font-size:.55rem !important;padding:4px 8px !important}
+        #panel-spc-meso{display:none}
+        .panel-body{padding:8px 10px}
+        #lightning-windy-panel iframe{height:220px}
+      }
+      html{scroll-behavior:smooth}
+      ::-webkit-scrollbar{width:4px;height:4px}
+      ::-webkit-scrollbar-track{background:transparent}
+      ::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+      .data-val{font-family:'Courier New',monospace;color:var(--cyan);font-weight:bold}
+      .time-val{font-family:'Courier New',monospace;color:var(--amber)}
+      .panel{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+      .panel-header{padding:10px 14px;border-bottom:1px solid var(--border);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#e6edf3;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+      .panel-body{padding:12px 14px}
+      .status-pill{display:inline-flex;align-items:center;gap:4px;font-family:'Courier New',monospace;font-size:.6rem;padding:2px 8px;border-radius:12px;border:1px solid;transition:all .3s}
+      .status-pill.checking{border-color:#555;color:#888}
+      .status-pill.live{border-color:#00ff88;color:#00ff88;box-shadow:0 0 6px rgba(0,255,136,.25)}
+      .status-pill.error{border-color:#ff4444;color:#ff4444;box-shadow:0 0 6px rgba(255,68,68,.2)}
+      .status-pill.offline{border-color:#ffa500;color:#ffa500;box-shadow:0 0 6px rgba(255,165,0,.2)}
+      .status-dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse-dot 2s infinite}
+      @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+      .tab-btn{padding:4px 10px;font-family:'Courier New',monospace;font-size:.6rem;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s}
+      .tab-btn.active{background:rgba(0,217,255,.12);color:var(--cyan);border-color:var(--cyan)}
+      .ctrl-btn{padding:5px 12px;font-family:'Courier New',monospace;font-size:.65rem;border:1px solid var(--border);border-radius:6px;background:#21262d;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background .15s}
+      .ctrl-btn:hover{background:#30363d}
+      .ctrl-btn.primary{background:rgba(0,217,255,.1);border-color:rgba(0,217,255,.3);color:var(--cyan)}
+      .alert-card{border-left:3px solid;border-radius:6px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:background .15s}
+      .alert-card:hover{filter:brightness(1.12)}
+      .alert-card .alert-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+      .alert-card.expanded .alert-body{max-height:600px}
+      .alert-card .chevron-icon{transition:transform .25s}
+      .alert-card.expanded .chevron-icon{transform:rotate(180deg)}
+      .gauge-bar{height:4px;border-radius:2px;background:#21262d;overflow:hidden;margin-top:4px}
+      .gauge-fill{height:100%;border-radius:2px;transition:width .5s}
+      .tooltip-wrap{position:relative}
+      .tooltip-wrap .tip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1c2128;border:1px solid #30363d;color:#c9d1d9;font-size:.65rem;padding:6px 10px;border-radius:6px;z-index:50;pointer-events:none;max-width:240px;white-space:normal;line-height:1.4}
+      .tooltip-wrap:hover .tip{display:block}
+      .day-card{flex:1;min-width:0;background:#1c2128;border:1px solid var(--border);border-radius:6px;padding:10px;cursor:pointer;transition:border-color .15s}
+      .day-card.active{border-color:var(--cyan);background:rgba(0,217,255,.04)}
+      .risk-none,.risk-tstm{background:#2d6a2d;color:#b0f0b0}
+      .risk-mrgl{background:#2d7a2d;color:#c0ffc0}
+      .risk-slgt{background:#b8b800;color:#1a1a00}
+      .risk-enh{background:#c87000;color:#fff}
+      .risk-mdt{background:#cc3300;color:#fff}
+      .risk-high{background:#990099;color:#fff}
+      @keyframes atl-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.5);opacity:.4}}
+      .atl-pulse{animation:atl-pulse 1.5s infinite}
+      @keyframes tor-pulse{0%,100%{stroke-opacity:1;fill-opacity:.15}50%{stroke-opacity:.4;fill-opacity:.35}}
+      .tor-pulse{animation:tor-pulse 1.2s infinite}
+      @keyframes tor-banner-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+      .tor-banner-active{animation:tor-banner-pulse 1.2s infinite;background:rgba(255,34,34,.15);color:#ff4444;font-weight:700}
+      #toast-container{position:fixed;bottom:16px;right:16px;z-index:2000;display:flex;flex-direction:column;gap:8px;max-width:340px}
+      @keyframes toast-in{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+      .toast{font-family:'Courier New',monospace;font-size:.65rem;line-height:1.5;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.4);animation:toast-in .25s ease-out}
+      .toast.toast-info{border-color:rgba(0,217,255,.4)}
+      .toast.toast-warn{border-color:rgba(255,165,0,.5)}
+      .toast.toast-danger{border-color:rgba(255,68,68,.6);background:rgba(255,34,34,.12)}
+      #siren-modal-backdrop{position:fixed;inset:0;background:rgba(20,0,0,.85);z-index:3000;align-items:center;justify-content:center}
+      @keyframes siren-border-pulse{0%,100%{box-shadow:0 0 0 4px rgba(255,34,34,.9), 0 0 60px rgba(255,34,34,.6)}50%{box-shadow:0 0 0 8px rgba(255,34,34,.5), 0 0 90px rgba(255,34,34,.4)}}
+      #siren-modal-box{background:#1a0606;border:2px solid #ff2222;border-radius:14px;padding:32px 28px;width:92%;max-width:460px;text-align:center;animation:siren-border-pulse 1s infinite}
+      @keyframes siren-icon-shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg)}40%{transform:rotate(8deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}}
+      #siren-modal-icon{font-size:3rem;display:inline-block;animation:siren-icon-shake .6s infinite}
+      #siren-modal-event{font-family:'Courier New',monospace;font-size:1.1rem;font-weight:700;color:#ff4444;letter-spacing:.05em;margin-top:8px}
+      #siren-modal-headline{font-family:'Courier New',monospace;font-size:.7rem;color:#e6edf3;margin-top:12px;line-height:1.5}
+      #siren-modal-meta{font-family:'Courier New',monospace;font-size:.6rem;color:#ffa0a0;margin-top:10px}
+      #siren-modal-actions{list-style:none;margin:16px 0 0;padding:10px 12px;text-align:left;background:rgba(255,255,255,.04);border:1px solid rgba(255,68,68,.3);border-radius:8px;font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;line-height:1.6}
+      #siren-modal-actions:empty{display:none;margin:0;padding:0;border:none}
+      #siren-modal-actions li{padding-left:1.3em;position:relative;margin-bottom:4px}
+      #siren-modal-actions li:last-child{margin-bottom:0}
+      #siren-modal-actions li::before{content:'▸';position:absolute;left:0;color:#ff4444}
+      #siren-modal-ack{margin-top:22px;width:100%;padding:12px;border-radius:8px;border:none;background:#ff2222;color:#fff;font-family:'Courier New',monospace;font-size:.8rem;font-weight:700;letter-spacing:.05em;cursor:pointer;transition:background .15s}
+      #siren-modal-ack:hover{background:#cc0000}
+      #siren-modal-queue{font-family:'Courier New',monospace;font-size:.55rem;color:#8b949e;margin-top:10px}
+      .dash-grid{display:grid;gap:14px;grid-template-columns:22fr 44fr 34fr;align-items:start}
+      @media(max-width:900px){.dash-grid{grid-template-columns:1fr!important}}
+      .leaflet-container{background:#0a1628!important}
+      .spc-tip { background:#1c2128; border:1px solid #30363d; color:#00d9ff; font-family:'Courier New',monospace; font-size:.6rem; padding:2px 6px; border-radius:4px; box-shadow:none; }
+      .panel-loading{position:relative}
+      .panel-loading::after{content:'⟳ Loading...';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,17,23,.7);font-family:'Courier New',monospace;font-size:.75rem;color:var(--cyan);z-index:5;border-radius:8px}
+      .cached-badge{display:inline-flex;align-items:center;gap:3px;font-family:'Courier New',monospace;font-size:.55rem;padding:2px 6px;border-radius:4px;background:rgba(255,165,0,.12);color:#ffa500;border:1px solid rgba(255,165,0,.25)}
+      .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center}
+      .modal-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;width:90%;max-width:420px;max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+
+    /* ── TAILWIND REPLACEMENT ─ only classes used in this file ───────────────── */
+    .flex          { display:flex }
+    .inline-flex   { display:inline-flex }
+    .inline-block  { display:inline-block }
+    .block         { display:block }
+    .grid          { display:grid }
+    .hidden        { display:none !important }
+    .relative      { position:relative }
+
+    .flex-col      { flex-direction:column }
+    .flex-wrap     { flex-wrap:wrap }
+    .flex-1        { flex:1 1 0% }
+    .items-center  { align-items:center }
+    .items-start   { align-items:flex-start }
+    .justify-center   { justify-content:center }
+    .justify-between  { justify-content:space-between }
+    .shrink-0      { flex-shrink:0 }
+    .min-w-0       { min-width:0 }
+
+    .grid-cols-2   { grid-template-columns:repeat(2,minmax(0,1fr)) }
+    .grid-cols-4   { grid-template-columns:repeat(4,minmax(0,1fr)) }
+    @media(min-width:768px){
+      .md\:grid-cols-4 { grid-template-columns:repeat(4,minmax(0,1fr)) }
+    }
+    @media(min-width:1024px){
+      .lg\:p-4 { padding:1rem }
+    }
+
+    .gap-1    { gap:.25rem }
+    .gap-1\.5 { gap:.375rem }
+    .gap-2    { gap:.5rem }
+    .gap-3    { gap:.75rem }
+
+    .p-0   { padding:0 }
+    .p-3   { padding:.75rem }
+    .px-1  { padding-left:.25rem; padding-right:.25rem }
+    .px-2  { padding-left:.5rem;  padding-right:.5rem }
+    .px-3  { padding-left:.75rem; padding-right:.75rem }
+    .px-4  { padding-left:1rem;   padding-right:1rem }
+    .py-0\.5 { padding-top:.125rem; padding-bottom:.125rem }
+    .py-1    { padding-top:.25rem;  padding-bottom:.25rem }
+    .py-1\.5 { padding-top:.375rem; padding-bottom:.375rem }
+    .py-2    { padding-top:.5rem;   padding-bottom:.5rem }
+    .py-2\.5 { padding-top:.625rem; padding-bottom:.625rem }
+    .py-4    { padding-top:1rem;    padding-bottom:1rem }
+    .pt-2  { padding-top:.5rem }
+    .pt-3  { padding-top:.75rem }
+    .pr-2  { padding-right:.5rem }
+    .pl-2  { padding-left:.5rem }
+
+    .mt-0\.5 { margin-top:.125rem }
+    .mt-1  { margin-top:.25rem }
+    .mt-2  { margin-top:.5rem }
+    .mt-3  { margin-top:.75rem }
+    .mb-1  { margin-bottom:.25rem }
+    .mb-2  { margin-bottom:.5rem }
+    .mb-3  { margin-bottom:.75rem }
+    .mt-1  { margin-top:.25rem }
+
+    .w-full { width:100% }
+    .w-2\.5 { width:.625rem }
+    .w-3    { width:.75rem }
+    .w-3\.5 { width:.875rem }
+    .w-4    { width:1rem }
+    .h-2\.5 { height:.625rem }
+    .h-3    { height:.75rem }
+    .h-3\.5 { height:.875rem }
+    .h-4    { height:1rem }
+
+    .text-\[\.45rem\] { font-size:.45rem }
+    .text-\[\.5rem\]  { font-size:.5rem }
+    .text-\[\.55rem\] { font-size:.55rem }
+    .text-\[\.58rem\] { font-size:.58rem }
+    .text-\[\.6rem\]  { font-size:.6rem }
+    .text-\[\.62rem\] { font-size:.62rem }
+    .text-\[\.65rem\] { font-size:.65rem }
+    .text-\[\.7rem\]  { font-size:.7rem }
+    .text-sm     { font-size:.875rem; line-height:1.25rem }
+    .text-base   { font-size:1rem;   line-height:1.5rem }
+    .text-lg     { font-size:1.125rem; line-height:1.75rem }
+    .font-medium   { font-weight:500 }
+    .font-semibold { font-weight:600 }
+    .font-bold     { font-weight:700 }
+    .font-mono     { font-family:'Courier New',monospace }
+    .tracking-wide   { letter-spacing:.025em }
+    .tabular-nums    { font-variant-numeric:tabular-nums }
+    .leading-relaxed { line-height:1.625 }
+    .text-left   { text-align:left }
+    .text-center { text-align:center }
+    .resize-none { resize:none }
+
+    .text-white      { color:#fff }
+    .text-gray-300   { color:#d1d5db }
+    .text-gray-400   { color:#9ca3af }
+    .text-gray-500   { color:#6b7280 }
+    .text-gray-600   { color:#4b5563 }
+    .text-gray-700   { color:#374151 }
+    .text-yellow-300 { color:#fde047 }
+    .text-yellow-400 { color:#facc15 }
+    .text-cyan-400   { color:#22d3ee }
+    .text-cyan-500   { color:#06b6d4 }
+    .text-blue-400   { color:#60a5fa }
+    .text-green-400  { color:#4ade80 }
+    .text-danger     { color:var(--danger) }
+    .hover\:underline:hover { text-decoration:underline }
+
+    .rounded      { border-radius:.25rem }
+    .rounded-sm   { border-radius:.125rem }
+    .rounded-lg   { border-radius:.5rem }
+    .rounded-full { border-radius:9999px }
+    .overflow-hidden  { overflow:hidden }
+    .overflow-x-auto  { overflow-x:auto }
+    .overflow-y-auto  { overflow-y:auto }
+
+    .space-y-0 > * + *   { margin-top:0 }
+    .space-y-1 > * + *   { margin-top:.25rem }
+    .space-y-1\.5 > * + * { margin-top:.375rem }
+    .space-y-2 > * + *   { margin-top:.5rem }
+
+    .bg-storm-bg { background:var(--bg) }
+
+    .risk-banner{display:flex;align-items:center;gap:10px;padding:10px 16px;font-family:'Courier New',monospace;font-size:.75rem;font-weight:700;letter-spacing:.02em;border-bottom:2px solid transparent}
+    .risk-banner #risk-banner-icon{font-size:1.1rem}
+    .risk-unknown{background:#21262d;color:#8b949e;border-bottom-color:#30363d}
+    .risk-clear{background:rgba(34,197,94,.1);color:#3fb950;border-bottom-color:#3fb950}
+    .risk-monitor{background:rgba(250,204,21,.1);color:#facc15;border-bottom-color:#facc15}
+    .risk-warning{background:rgba(255,165,0,.15);color:#ffa500;border-bottom-color:#ffa500}
+    @keyframes risk-danger-pulse{0%,100%{background:rgba(255,34,34,.18)}50%{background:rgba(255,34,34,.35)}}
+    .risk-danger{color:#ff4444;border-bottom-color:#ff2222;animation:risk-danger-pulse 1.2s infinite}
+    </style>
+</head>
+<body data-id="0" class="bg-storm-bg">
+    <app-icon data-id="1" hidden data-icon="cloud-lightning" data-palette="Dark"></app-icon>
+
+    <!-- INFO BANNER -->
+    <div data-id="2" id="info-banner-x9k2" class="text-center py-1.5 px-4 text-[.6rem] font-medium" style="background:#1a1a3e;border-bottom:1px solid #2a2a5e;color:#9090cc">
+        🌐 LIVE MODE — NWS alerts and forecast load directly from api.weather.gov. Open in Firefox or Chrome for live data. SPC text requires a proxy.
+    </div>
+
+    <!-- HEADER -->
+    <header data-id="3" id="header-bar-m3v8" class="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style="border-bottom:1px solid rgba(0,217,255,.2);background:#0d1117">
+        <div data-id="4" class="flex flex-col min-w-0">
+            <div data-id="5" class="text-sm font-bold text-white tracking-wide flex items-center gap-2 flex-wrap">
+                <i data-id="6" data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
+                STORMWATCH <span data-id="7" class="data-val">//</span> ATL BEACH
+            </div>
+            <div data-id="8" class="text-[.55rem] text-gray-500 mt-0.5" style="font-family:'Courier New',monospace">30.3354°N 81.3990°W · NWS JAX · KJAX Radar</div>
+        </div>
+        <div data-id="9" class="flex flex-col items-center">
+            <div data-id="10" id="live-clock-j4p1" class="text-lg font-bold text-white tabular-nums" style="font-family:'Courier New',monospace">--:--:--</div>
+            <div data-id="11" class="flex items-center gap-2 text-[.55rem] text-gray-500" style="font-family:'Courier New',monospace">
+                <span data-id="12" id="live-date-r8k3">--</span>
+                <span data-id="13" class="data-val">EDT</span>
+            </div>
+        </div>
+        <!-- TAB SWITCHER -->
+        <div class="flex items-center gap-1.5">
+            <button id="tab-severe" class="tab-btn active" onclick="switchTab('severe')" style="font-size:.65rem;padding:5px 12px">
+                ⚡ SEVERE
+            </button>
+            <button id="tab-hurricane" class="tab-btn" onclick="switchTab('hurricane')" style="font-size:.65rem;padding:5px 12px">
+                🌀 HURRICANE
+            </button>
+        </div>
+        <div data-id="14" class="flex items-center gap-1.5 flex-wrap">
+            <span data-id="15" id="pill-spc-w2q9" class="status-pill checking"><span data-id="16" class="status-dot"></span>SPC: CHECKING</span>
+            <span data-id="17" id="pill-nws-a7e1" class="status-pill checking"><span data-id="18" class="status-dot"></span>NWS: CHECKING</span>
+            <span data-id="19" id="pill-radar-b5f3" class="status-pill checking"><span data-id="20" class="status-dot"></span>RADAR: CHECKING</span>
+            <span data-id="21" id="pill-iem-c4d6" class="status-pill checking"><span data-id="22" class="status-dot"></span>IEM: CHECKING</span>
+            <span id="pill-nhc" class="status-pill checking"><span class="status-dot"></span>NHC: CHECKING</span>
+            <span id="pill-two" class="status-pill checking"><span class="status-dot"></span>TWO: CHECKING</span>
+            <span id="pill-tide" class="status-pill checking"><span class="status-dot"></span>TIDE: CHECKING</span>
+            <span id="pill-buoy" class="status-pill checking"><span class="status-dot"></span>BUOY: CHECKING</span>
+            <span id="pill-qpe"  class="status-pill checking"><span class="status-dot"></span>QPE: CHECKING</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button id="notif-btn" class="notif-btn" title="Enable push notifications for new alerts">🔔 ALERTS</button>
+            <button class="notif-btn" onclick="document.getElementById('settings-modal').style.display='flex'" title="Settings">⚙ SETTINGS</button>
+        </div>
+    </header>
+
+    <!-- RISK BANNER — single at-a-glance status combining alerts, SPC outlook, and tropical activity -->
+    <div id="risk-banner" class="risk-banner risk-unknown">
+        <span id="risk-banner-icon">❔</span>
+        <span id="risk-banner-text">Checking current conditions…</span>
+    </div>
+
+    <!-- MAIN -->
+    <main data-id="23" class="p-3 lg:p-4">
+        <div data-id="24" class="dash-grid">
+
+            <!-- ========== LEFT COLUMN ========== -->
+            <div data-id="25" class="flex flex-col gap-3 min-w-0">
+
+                <!-- PANEL A: SPC CONVECTIVE OUTLOOK -->
+                <div data-id="26" class="panel" id="panel-spc-outlook-y6t2">
+                    <div data-id="27" class="panel-header">
+                        <span data-id="28" class="flex items-center gap-1"><i data-id="29" data-lucide="cloud" class="w-3.5 h-3.5"></i> SPC CONVECTIVE OUTLOOK</span>
+                        <span data-id="30" id="spc-updated-ts-k3m1" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div data-id="31" class="panel-body">
+                        <div data-id="32" class="flex gap-2" id="day-cards-container-h8n4"></div>
+                        <div data-id="33" class="mt-3">
+                            <div data-id="34" class="text-[.5rem] text-gray-600 mb-1" style="font-family:'Courier New',monospace">CATEGORICAL SCALE — ATL BEACH</div>
+                            <div data-id="35" class="flex rounded overflow-hidden h-3 text-[.45rem] font-bold relative" style="font-family:'Courier New',monospace" id="scale-bar-v5j7">
+                                <div data-id="36" class="risk-none flex-1 flex items-center justify-center">NONE</div>
+                                <div data-id="37" class="risk-tstm flex-1 flex items-center justify-center">TSTM</div>
+                                <div data-id="38" class="risk-mrgl flex-1 flex items-center justify-center">MRGL</div>
+                                <div data-id="39" class="risk-slgt flex-1 flex items-center justify-center">SLGT</div>
+                                <div data-id="40" class="risk-enh flex-1 flex items-center justify-center">ENH</div>
+                                <div data-id="41" class="risk-mdt flex-1 flex items-center justify-center">MDT</div>
+                                <div data-id="42" class="risk-high flex-1 flex items-center justify-center">HIGH</div>
+                            </div>
+                            <div data-id="43" id="scale-arrow-w2p8" class="relative h-3" style="font-family:'Courier New',monospace"></div>
+                        </div>
+                        <!-- SPC OUTLOOK MAP -->
+                        <div class="mt-3">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">OUTLOOK MAP — CLICK LAYER</div>
+                                <div id="spc-map-tabs" style="display:flex;gap:3px">
+                                    <button class="tab-btn active" data-spc-layer="day1cat" style="font-size:.5rem;padding:2px 6px">CAT</button>
+                                    <button class="tab-btn" data-spc-layer="torn" style="font-size:.5rem;padding:2px 6px">TORN</button>
+                                    <button class="tab-btn" data-spc-layer="hail" style="font-size:.5rem;padding:2px 6px">HAIL</button>
+                                    <button class="tab-btn" data-spc-layer="wind" style="font-size:.5rem;padding:2px 6px">WIND</button>
+                                </div>
+                            </div>
+                            <div id="spcOutlookMap" style="height:220px;border-radius:6px;overflow:hidden;z-index:1"></div>
+                            <div id="spc-map-legend" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BLITZORTUNG LIGHTNING PANEL — shown/hidden by ⚡ LTNG button -->
+                <div id="lightning-windy-panel" style="display:none;border:1px solid #30363d;border-radius:8px;overflow:hidden;background:#161b22">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #30363d;background:#0d1117">
+                        <span style="font-family:'Courier New',monospace;font-size:.6rem;color:#00d9ff">⚡ LIVE LIGHTNING — BLITZORTUNG.ORG</span>
+                        <span style="font-family:'Courier New',monospace;font-size:.5rem;color:#555">real-time strike network</span>
+                    </div>
+                    <iframe
+                        src="https://map.blitzortung.org/#12.07/30.34213/-81.39996"
+                        style="width:100%;height:300px;border:none;display:block"
+                        allow="fullscreen"
+                        loading="lazy">
+                    </iframe>
+                    <div style="padding:4px 10px;font-family:'Courier New',monospace;font-size:.5rem;color:#555;border-top:1px solid #30363d">
+                        Markers = sensor stations; strikes appear as colored dots near Atlantic Beach. May show a cookie prompt on first load — that's blitzortung.org's, not ours · <a href="https://map.blitzortung.org/" target="_blank" rel="noopener" style="color:#06b6d4">blitzortung.org</a>
+                    </div>
+                </div>
+
+                <!-- PANEL B: SPC MESOANALYSIS -->
+                <div data-id="44" class="panel flex-1 flex flex-col" id="panel-spc-meso">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="layers" class="w-3.5 h-3.5 text-yellow-400"></i> SPC MESOANALYSIS</span>
+                        <div id="meso-tabs" style="display:flex;gap:3px;flex-wrap:wrap">
+                            <button class="tab-btn active" data-meso="sbcape" style="font-size:.5rem;padding:2px 5px">CAPE</button>
+                            <button class="tab-btn" data-meso="eshr"   style="font-size:.5rem;padding:2px 5px">SHEAR</button>
+                            <button class="tab-btn" data-meso="srh1"   style="font-size:.5rem;padding:2px 5px">SRH</button>
+                            <button class="tab-btn" data-meso="scp"    style="font-size:.5rem;padding:2px 5px">SCP</button>
+                            <button class="tab-btn" data-meso="stpc"   style="font-size:.5rem;padding:2px 5px">STP</button>
+                            <button class="tab-btn" data-meso="pwtr"   style="font-size:.5rem;padding:2px 5px">PW</button>
+                        </div>
+                    </div>
+                    <div class="panel-body flex-1 p-0" style="position:relative">
+                        <!-- Crop SPC page chrome: wrapper clips to map area only -->
+                        <div style="height:230px;overflow:hidden;position:relative">
+                            <iframe id="meso-iframe"
+                                src="https://www.spc.noaa.gov/exper/mesoanalysis/new/viewsector.php?sector=2&parm=sbcape"
+                                style="width:130%;height:550px;border:none;position:absolute;top:-95px;left:-15%;transform-origin:top left"
+                                scrolling="no"
+                                title="SPC Mesoanalysis"></iframe>
+                        </div>
+                        <div style="padding:5px 10px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);flex-wrap:wrap;gap:4px">
+                            <span id="meso-label" style="font-family:'Courier New',monospace;font-size:.55rem;color:#8b949e">CAPE — Surface-Based · SE Sector 19</span>
+                            <a id="meso-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/new/viewsector.php?sector=2&parm=sbcape"
+                               target="_blank" rel="noopener"
+                               style="font-family:'Courier New',monospace;font-size:.5rem;color:#06b6d4">Open full page →</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== CENTER COLUMN ========== -->
+            <div data-id="60" class="flex flex-col gap-3 min-w-0">
+
+                <!-- PANEL C: RADAR -->
+                <div data-id="61" class="panel" id="panel-radar-g2h5">
+                    <div data-id="62" class="panel-header">
+                        <span data-id="63" class="flex items-center gap-1"><i data-id="64" data-lucide="radio" class="w-3.5 h-3.5 text-danger"></i> <span data-id="65" id="radar-title-n8m3">KJAX NEXRAD — BASE REFLECTIVITY</span></span>
+                        <div data-id="66" class="flex gap-1 flex-wrap" id="radar-tabs-p4k6">
+                            <button data-id="67" class="tab-btn active" data-product="N0Q" title="Base reflectivity — precipitation intensity (dBZ)">N0Q Refl</button>
+                            <button data-id="69" class="tab-btn" data-product="EET" title="Echo tops — estimated height of storm tops (kft)">EET Tops</button>
+                            <button id="btn-lightning" class="tab-btn" onclick="toggleLightning()" title="Real-time lightning strikes (blitzortung.org)">⚡ LTNG</button>
+                            <button id="btn-qpe" class="tab-btn" onclick="toggleQPE()" title="MRMS 1-hr QPE rainfall accumulation">🌧 QPE</button>
+                            <button id="btn-tornado" class="tab-btn active" onclick="toggleTornadoLayer()" title="Active tornado warning polygons + motion vector">🌀 TOR</button>
+                        </div>
+                    </div>
+                    <div data-id="71" class="panel-body p-0">
+                        <div id="tornado-status-bar" style="padding:6px 12px;font-family:'Courier New',monospace;font-size:.62rem;text-align:center;border-bottom:1px solid var(--border)">✓ No tornado warnings near Atlantic Beach</div>
+                        <div data-id="72" id="radarMap" style="height:380px;z-index:1"></div>
+                        <div data-id="73" class="px-3 py-2 flex items-center justify-between flex-wrap gap-2" style="border-top:1px solid var(--border);background:rgba(13,17,23,.5)">
+                            <div data-id="74" class="flex items-center gap-1">
+                                <div data-id="75" class="w-3 h-3 rounded-sm" style="background:#22c55e"></div><span data-id="76" class="text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">&lt;20</span>
+                                <div data-id="77" class="w-3 h-3 rounded-sm" style="background:#eab308"></div><span data-id="78" class="text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">25</span>
+                                <div data-id="79" class="w-3 h-3 rounded-sm" style="background:#f97316"></div><span data-id="80" class="text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">35</span>
+                                <div data-id="81" class="w-3 h-3 rounded-sm" style="background:#ef4444"></div><span data-id="82" class="text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">45</span>
+                                <div data-id="83" class="w-3 h-3 rounded-sm" style="background:#a855f7"></div><span data-id="84" class="text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">&gt;55 dBZ</span>
+                            </div>
+                            <span data-id="85" id="radar-updated-ts-d9e1" class="time-val text-[.55rem]"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL D: SEVERE PARAMETERS -->
+                <div data-id="86" class="panel" id="panel-params-s3w7">
+                    <div data-id="87" class="panel-header">
+                        <span data-id="88" class="flex items-center gap-1"><i data-id="89" data-lucide="zap" class="w-3.5 h-3.5 text-yellow-400"></i> SEVERE PARAMETERS — JAX SOUNDING</span>
+                    </div>
+                    <div data-id="90" class="panel-body">
+                        <div data-id="91" class="text-[.55rem] text-gray-600 mb-3">Parameters from SPC Mesoanalysis — updates hourly on active severe days. Values shown are representative of current pattern.</div>
+                        <div data-id="92" class="grid grid-cols-2 md:grid-cols-4 gap-2" id="param-grid-u6b4"></div>
+                        <div data-id="93" class="mt-3 pt-3" style="border-top:1px solid var(--border)">
+                            <div data-id="94" class="text-[.55rem] text-gray-600 mb-2" style="font-family:'Courier New',monospace">THREAT MATRIX — ATLANTIC BEACH</div>
+                            <div data-id="95" class="overflow-x-auto">
+                                <table data-id="96" class="w-full text-[.6rem]" style="font-family:'Courier New',monospace">
+                                    <thead data-id="97"><tr data-id="98" class="text-gray-500">
+                                        <th data-id="99" class="text-left py-1 pr-2">HAZARD</th><th data-id="100" class="text-center py-1 px-2">TORNADO</th><th data-id="101" class="text-center py-1 px-2">HAIL</th><th data-id="102" class="text-center py-1 px-2">WIND</th><th data-id="103" class="text-center py-1 px-2">FLOODING</th>
+                                    </tr></thead>
+                                    <tbody data-id="104"><tr data-id="105">
+                                        <td data-id="106" class="text-gray-500 py-1 pr-2">PROB</td>
+                                        <td data-id="107" class="text-center py-1 px-2"><span data-id="108" class="px-2 py-0.5 rounded text-[.55rem] font-bold" style="background:rgba(250,204,21,.15);color:#facc15">15%</span></td>
+                                        <td data-id="109" class="text-center py-1 px-2"><span data-id="110" class="px-2 py-0.5 rounded text-[.55rem] font-bold" style="background:rgba(249,115,22,.15);color:#f97316">35%</span></td>
+                                        <td data-id="111" class="text-center py-1 px-2"><span data-id="112" class="px-2 py-0.5 rounded text-[.55rem] font-bold" style="background:rgba(249,115,22,.15);color:#f97316">45%</span></td>
+                                        <td data-id="113" class="text-center py-1 px-2"><span data-id="114" class="px-2 py-0.5 rounded text-[.55rem] font-bold" style="background:rgba(34,197,94,.15);color:#22c55e">20%</span></td>
+                                    </tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== RIGHT COLUMN ========== -->
+            <div data-id="115" class="flex flex-col gap-3 min-w-0">
+
+                <!-- PANEL E: FORECAST -->
+                <div data-id="154" class="panel flex-1 flex flex-col" id="panel-alerts-k7m2">
+                    <div data-id="155" class="panel-header">
+                        <span data-id="156" class="flex items-center gap-1"><i data-id="157" data-lucide="alert-triangle" class="w-3.5 h-3.5 text-danger"></i> ACTIVE ALERTS</span>
+                        <span data-id="158" id="alerts-count-badge-j5n8" class="data-val text-[.55rem]"></span>
+                    </div>
+                    <div data-id="159" id="alerts-meta-f3g6" class="px-3 pt-2 text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace"></div>
+                    <div data-id="160" class="panel-body flex-1 overflow-y-auto space-y-0" style="max-height:240px" id="alerts-feed-e2d4"></div>
+                    <div data-id="161" class="px-3 py-2" style="border-top:1px solid var(--border)">
+                        <a data-id="162" id="link-all-alerts-p9r1" href="https://www.weather.gov/jax/" target="_blank" rel="noopener" class="block w-full text-center text-[.6rem] text-cyan-500 hover:underline" style="font-family:'Courier New',monospace">View all NWS alerts →</a>
+                    </div>
+                </div>
+                <div data-id="163" class="panel" id="panel-briefing-t8u3">
+                    <div data-id="164" class="panel-header">
+                        <span data-id="165" class="flex items-center gap-1"><i data-id="166" data-lucide="newspaper" class="w-3.5 h-3.5"></i> DAILY BRIEFING GENERATOR</span>
+                    </div>
+                    <div data-id="167" class="panel-body">
+                        <textarea data-id="168" id="briefing-text-w6y9" readonly class="w-full rounded font-mono text-[.58rem] leading-relaxed p-3 resize-none" style="background:rgba(13,17,23,.5);border:1px solid var(--border);color:var(--cyan);height:220px;font-family:'Courier New',monospace"></textarea>
+                        <div data-id="169" class="flex gap-2 mt-2 flex-wrap">
+                            <button data-id="170" id="copy-briefing-x1z4" class="ctrl-btn primary"><i data-id="171" data-lucide="clipboard-copy" class="w-3 h-3"></i> COPY</button>
+                            <button data-id="172" id="regen-briefing-m5n7" class="ctrl-btn"><i data-id="173" data-lucide="refresh-cw" class="w-3 h-3"></i> REGENERATE</button>
+                            <button data-id="174" id="email-briefing-q3r6" class="ctrl-btn"><i data-id="175" data-lucide="mail" class="w-3 h-3"></i> EMAIL</button>
+                        </div>
+                        <div data-id="176" id="copy-flash-s8t1" class="hidden mt-2 text-[.6rem] text-green-400 flex items-center gap-1" style="font-family:'Courier New',monospace">
+                            <i data-id="177" data-lucide="check" class="w-3 h-3"></i> Copied to clipboard!
+                        </div>
+                    </div>
+                </div>
+                <div data-id="116" class="panel" id="panel-forecast-a1c5">
+                    <div data-id="117" class="panel-header">
+                        <span data-id="118" class="flex items-center gap-1"><i data-id="119" data-lucide="sun" class="w-3.5 h-3.5 text-yellow-300"></i> NWS 7-DAY FORECAST — ATLANTIC BEACH</span>
+                        <span data-id="120" id="forecast-badge-z3x7"></span>
+                    </div>
+                    <div data-id="121" class="text-[.5rem] text-gray-600 px-3 pt-2" style="font-family:'Courier New',monospace">Source: api.weather.gov · Office: JAX · Grid: 75,66</div>
+                    <div data-id="122" class="panel-body pt-2">
+                        <div data-id="123" class="overflow-x-auto">
+                            <table data-id="124" class="w-full text-[.6rem]" style="font-family:'Courier New',monospace">
+                                <thead data-id="125"><tr data-id="126" class="text-gray-600" style="border-bottom:1px solid var(--border)">
+                                    <th data-id="127" class="text-left py-1.5 pr-2">PERIOD</th><th data-id="128" class="text-center py-1.5 px-1"></th><th data-id="129" class="text-center py-1.5 px-1">TEMP</th><th data-id="130" class="text-center py-1.5 px-1">POP</th><th data-id="131" class="text-center py-1.5 px-1">WIND</th><th data-id="132" class="text-left py-1.5 pl-2">FORECAST</th>
+                                </tr></thead>
+                                <tbody data-id="133" id="forecast-body-r4t8"></tbody>
+                            </table>
+                        </div>
+                        <div data-id="134" id="forecast-updated-ts-v2b6" class="text-[.5rem] text-gray-600 mt-2" style="font-family:'Courier New',monospace"></div>
+                        <!-- Live Buoy 41112 -->
+                        <div class="mt-3 pt-3" style="border-top:1px solid var(--border)">
+                            <div class="text-[.55rem] text-gray-500 mb-2 flex items-center justify-between" style="font-family:'Courier New',monospace">
+                                <span class="flex items-center gap-1"><i data-lucide="anchor" class="w-3 h-3"></i> BUOY 41112 — ST. AUGUSTINE (LIVE)</span>
+                                <span id="buoy-ts" class="time-val text-[.5rem]"></span>
+                            </div>
+                            <div id="buoy-grid" class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <div class="text-center"><div class="data-val text-sm" id="buoy-wave-ht">--</div><div class="text-[.5rem] text-gray-600">Wave Ht (ft)</div></div>
+                                <div class="text-center"><div class="data-val text-sm" id="buoy-wave-pd">--</div><div class="text-[.5rem] text-gray-600">Period (s)</div></div>
+                                <div class="text-center"><div class="data-val text-sm" id="buoy-water-tmp">--</div><div class="text-[.5rem] text-gray-600">Water °F</div></div>
+                                <div class="text-center"><div class="data-val text-sm" id="buoy-wind">--</div><div class="text-[.5rem] text-gray-600">Wind (kt)</div></div>
+                            </div>
+                            <div id="buoy-rip" class="mt-2 text-[.55rem]" style="font-family:'Courier New',monospace"></div>
+                            <div class="mt-2 flex gap-3">
+                                <a href="https://www.ndbc.noaa.gov/station_page.php?station=41112" target="_blank" rel="noopener" class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline" style="font-family:'Courier New',monospace">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> NDBC 41112 →
+                                </a>
+                                <a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline" style="font-family:'Courier New',monospace">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> NWS JAX →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QPE RAINFALL PANEL -->
+                <div class="panel" id="panel-qpe">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-blue-400"></i> RAINFALL TOTALS — KJAX HOURLY OBS</span>
+                        <span id="qpe-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">1-HOUR</div>
+                                <div class="data-val" id="qpe-1hr" style="font-size:1.1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">inches</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">6-HOUR</div>
+                                <div class="data-val" id="qpe-6hr" style="font-size:1.1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">inches</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">24-HOUR</div>
+                                <div class="data-val" id="qpe-24hr" style="font-size:1.1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">inches</div>
+                            </div>
+                        </div>
+                        <div id="qpe-flood-bar" style="display:none;padding:6px 10px;border-radius:5px;font-family:'Courier New',monospace;font-size:.6rem;font-weight:700;margin-bottom:8px;text-align:center"></div>
+                        <div id="qpe-context" class="text-[.55rem] text-gray-600" style="font-family:'Courier New',monospace;line-height:1.6"></div>
+                        <div class="mt-2">
+                            <a href="https://mrms.nssl.noaa.gov/" target="_blank" rel="noopener"
+                               class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline"
+                               style="font-family:'Courier New',monospace">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> NOAA MRMS →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TIDE GAUGE PANEL -->
+                <div class="panel" id="panel-tide">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="waves" class="w-3.5 h-3.5 text-cyan-400"></i> MAYPORT TIDE GAUGE — NOAA 8720218</span>
+                        <span id="tide-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">CURRENT LEVEL</div>
+                                <div class="data-val" id="tide-level" style="font-size:1.1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">ft MLLW</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">TREND</div>
+                                <div id="tide-trend" style="font-size:1.1rem;font-family:'Courier New',monospace;font-weight:bold;color:#8b949e">--</div>
+                                <div class="text-[.5rem] text-gray-600" id="tide-trend-label">--</div>
+                            </div>
+                        </div>
+                        <svg id="tide-sparkline" class="tide-svg" viewBox="0 0 280 52"></svg>
+                        <div id="tide-predictions" class="mt-2 space-y-1"></div>
+                        <div class="mt-2">
+                            <a href="https://tidesandcurrents.noaa.gov/noaatidepredictions.html?id=8720218" target="_blank" rel="noopener" class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline" style="font-family:'Courier New',monospace">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> Full Tide Predictions — Mayport →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FDOT CAMERAS PANEL -->
+                <!-- LIVE BEACH CAMS PANEL -->
+                <div class="panel" id="panel-webcams">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="video" class="w-3.5 h-3.5 text-green-400"></i> LIVE BEACH CAMS</span>
+                    </div>
+                    <div class="panel-body">
+                        <div style="display:flex;flex-direction:column;gap:8px">
+                            <a href="https://www.youtube.com/watch?v=_x4KSTVD3ug" target="_blank" rel="noopener"
+                               style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
+                                <img src="https://img.youtube.com/vi/_x4KSTVD3ug/mqdefault.jpg" alt="Cam 1 thumbnail"
+                                     style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
+                                <div style="flex:1">
+                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Cam 1</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live on YouTube</div>
+                                </div>
+                            </a>
+                            <a href="https://www.youtube.com/watch?v=JLvCEDGJr-s" target="_blank" rel="noopener"
+                               style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
+                                <img src="https://img.youtube.com/vi/JLvCEDGJr-s/mqdefault.jpg" alt="Cam 2 thumbnail"
+                                     style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
+                                <div style="flex:1">
+                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Cam 2</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live on YouTube</div>
+                                </div>
+                            </a>
+                            <a href="https://www.youtube.com/watch?v=c400PBf6adI" target="_blank" rel="noopener"
+                               style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
+                                <img src="https://img.youtube.com/vi/c400PBf6adI/mqdefault.jpg" alt="Cam 3 thumbnail"
+                                     style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
+                                <div style="flex:1">
+                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Cam 3</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live on YouTube</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UPPER AIR SOUNDING INDICES -->
+                <div class="panel" id="panel-sounding">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="activity" class="w-3.5 h-3.5 text-yellow-400"></i> UPPER AIR — KJAX SOUNDING</span>
+                        <span id="sounding-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">SBCAPE</div>
+                                <div class="data-val" id="snd-cape" style="font-size:1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">J/kg</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">LIFTED IDX</div>
+                                <div class="data-val" id="snd-li" style="font-size:1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">°C</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">PWAT</div>
+                                <div class="data-val" id="snd-pwat" style="font-size:1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">in</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">0-6km SHEAR</div>
+                                <div class="data-val" id="snd-shear" style="font-size:1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">kt</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">0-1km SRH</div>
+                                <div class="data-val" id="snd-srh" style="font-size:1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">m²/s²</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">K-INDEX</div>
+                                <div class="data-val" id="snd-ki" style="font-size:1rem">--</div>
+                                <div class="text-[.5rem] text-gray-600">score</div>
+                            </div>
+                        </div>
+                        <div id="sounding-threat" style="display:none;padding:5px 10px;border-radius:5px;
+                             font-family:'Courier New',monospace;font-size:.58rem;font-weight:700;
+                             margin-bottom:8px;text-align:center"></div>
+                        <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace;line-height:1.7">
+                            CAPE &gt;1000: supercell potential &middot; LI &lt;-4: extreme instability<br>
+                            SRH &gt;150: tornado possible &middot; K &gt;35: convective outbreak<br>
+                            Launch: 00Z (8PM EDT) &amp; 12Z (8AM EDT) daily
+                        </div>
+                        <div class="mt-2">
+                            <a href="https://www.spc.noaa.gov/exper/soundings/" target="_blank" rel="noopener"
+                               class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline"
+                               style="font-family:'Courier New',monospace">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> SPC Sounding Archive &#8594;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STORM SURGE PANEL -->
+                <div class="panel" id="panel-surge">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="waves" class="w-3.5 h-3.5" style="color:#ff4444"></i> STORM SURGE — ATLANTIC BEACH</span>
+                        <span style="font-family:'Courier New',monospace;font-size:.5rem;color:#ff8888">Zone A Barrier Island</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div style="background:#1a1a2e;border:1px solid #aabbff44;border-radius:6px;padding:7px;text-align:center">
+                                <div style="font-family:'Courier New',monospace;font-size:.45rem;color:#555;margin-bottom:2px">CAT 1-2</div>
+                                <div style="font-family:'Courier New',monospace;font-size:.9rem;font-weight:700;color:#aabbff">4-8 ft</div>
+                                <div style="font-family:'Courier New',monospace;font-size:.45rem;color:#555">MLLW</div>
+                            </div>
+                            <div style="background:#2d1a00;border:1px solid #ffa50044;border-radius:6px;padding:7px;text-align:center">
+                                <div style="font-family:'Courier New',monospace;font-size:.45rem;color:#555;margin-bottom:2px">CAT 3</div>
+                                <div style="font-family:'Courier New',monospace;font-size:.9rem;font-weight:700;color:#ffa500">9-12 ft</div>
+                                <div style="font-family:'Courier New',monospace;font-size:.45rem;color:#555">MLLW</div>
+                            </div>
+                            <div style="background:#2d0000;border:1px solid #ff444444;border-radius:6px;padding:7px;text-align:center">
+                                <div style="font-family:'Courier New',monospace;font-size:.45rem;color:#555;margin-bottom:2px">CAT 4-5</div>
+                                <div style="font-family:'Courier New',monospace;font-size:.9rem;font-weight:700;color:#ff4444">13-18+ ft</div>
+                                <div style="font-family:'Courier New',monospace;font-size:.45rem;color:#555">MLLW</div>
+                            </div>
+                        </div>
+                        <div style="font-family:'Courier New',monospace;font-size:.53rem;color:#8b949e;line-height:1.8">
+                            <div style="color:#ff4444;font-weight:700;margin-bottom:4px">&#9888; ATLANTIC BEACH SURGE FACTS</div>
+                            <div>&#8226; Barrier island — surge from BOTH ocean and ICW</div>
+                            <div>&#8226; St. Johns River backs up during onshore winds</div>
+                            <div>&#8226; A1A floods at ~3 ft surge — evac route cut</div>
+                            <div>&#8226; Zone A: mandatory evacuation for Cat 1+</div>
+                            <div>&#8226; Fuller Warren bridge closes at 40mph sustained</div>
+                        </div>
+                        <div style="display:flex;gap:6px;margin-top:8px">
+                            <a href="https://www.nhc.noaa.gov/surge/slosh.php" target="_blank" rel="noopener"
+                               style="flex:1;display:block;padding:5px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);border-radius:5px;color:#ff8888;text-decoration:none;font-family:'Courier New',monospace;font-size:.52rem;text-align:center">SLOSH Model &#8594;</a>
+                            <a href="https://floridadisaster.org/planprepare/hurricanes/" target="_blank" rel="noopener"
+                               style="flex:1;display:block;padding:5px;background:#21262d;border:1px solid #30363d;border-radius:5px;color:#8b949e;text-decoration:none;font-family:'Courier New',monospace;font-size:.52rem;text-align:center">FL Evac Zones &#8594;</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ====== HURRICANE VIEW ====== -->
+    <div id="hurricane-view" style="display:none" class="p-3 lg:p-4">
+        <div class="dash-grid" style="grid-template-columns:26fr 44fr 30fr">
+
+            <!-- LEFT: NHC Active Storms + TWO -->
+            <div class="flex flex-col gap-3 min-w-0">
+
+                <!-- NHC Active Storms -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="wind" class="w-3.5 h-3.5 text-cyan-400"></i> NHC ACTIVE STORMS
+                        </span>
+                        <span id="nhc-storm-count" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="nhc-storms-list" class="text-[.62rem] text-gray-400 space-y-2"></div>
+                        <div class="mt-3 pt-3" style="border-top:1px solid var(--border)">
+                            <div class="text-[.5rem] text-gray-600 mb-2" style="font-family:'Courier New',monospace">QUICK LINKS</div>
+                            <div class="flex flex-col gap-1.5">
+                                <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener" class="ctrl-btn primary justify-center text-[.6rem]">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> NHC Main Site →
+                                </a>
+                                <a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" rel="noopener" class="ctrl-btn justify-center text-[.6rem]">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> All Active Cyclones →
+                                </a>
+                                <a href="https://www.tropicaltidbits.com/" target="_blank" rel="noopener" class="ctrl-btn justify-center text-[.6rem]">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> Tropical Tidbits →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TWO -->
+                <div class="panel flex-1 flex flex-col">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-blue-400"></i> TROPICAL WEATHER OUTLOOK
+                        </span>
+                    </div>
+                    <div class="panel-body flex-1">
+                        <div id="two-content" class="text-[.62rem] text-gray-400"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- CENTER: Hurricane Map -->
+            <div class="flex flex-col gap-3 min-w-0">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="map" class="w-3.5 h-3.5 text-cyan-400"></i> ATLANTIC BASIN — HURRICANE TRACKER
+                        </span>
+                        <!-- Layer toggles -->
+                        <div class="flex gap-1 flex-wrap">
+                            <button id="btn-track" class="tab-btn" onclick="toggleHurrLayer('track')">Track</button>
+                            <button id="btn-cone" class="tab-btn" onclick="toggleHurrLayer('cone')">Cone</button>
+                            <button id="btn-wind" class="tab-btn" onclick="toggleHurrLayer('wind')">Wind</button>
+                            <button id="btn-evac" class="tab-btn" onclick="toggleEvacZones()" title="Duval County evacuation zones">🚗 EVAC</button>
+                            <button id="btn-radii" class="tab-btn" onclick="toggleWindRadii()" title="Show 34/50/64kt wind radius rings">💨 RADII</button>
+                        </div>
+                    </div>
+                    <div class="panel-body p-0">
+                        <div id="hurricaneMap" style="height:420px;z-index:1"></div>
+                        <div class="px-3 py-2 flex items-center justify-between flex-wrap gap-2" style="border-top:1px solid var(--border);background:rgba(13,17,23,.5)">
+                            <div class="flex items-center gap-3" style="flex-wrap:wrap">
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#00d9ff"></span> You
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff4444"></span> Hurricane
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ffa500"></span> TS/Invest
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff0000;opacity:.5"></span> Zone A
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff8800;opacity:.5"></span> Zone B
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ffff00;opacity:.5"></span> Zone C+
+                                </span>
+                            </div>
+                            <span id="hurr-map-label" class="time-val text-[.55rem]"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Season Stats -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-yellow-400"></i> 2025 ATLANTIC SEASON STATS
+                        </span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="grid grid-cols-4 gap-2 text-center">
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
+                                <div class="data-val text-base">14</div>
+                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">Named</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
+                                <div class="data-val text-base">7</div>
+                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">Hurricanes</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
+                                <div class="data-val text-base">4</div>
+                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">Major (Cat3+)</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
+                                <div class="data-val text-base" style="color:#ffa500">ABOVE</div>
+                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">vs Normal</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">
+                            ⚠ Season stats are estimates — check <a href="https://www.nhc.noaa.gov/" target="_blank" class="text-cyan-500 hover:underline">nhc.noaa.gov</a> for official counts.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Watches & Warnings + Saffir-Simpson scale -->
+            <div class="flex flex-col gap-3 min-w-0">
+
+                <!-- Watches & Warnings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-danger"></i> TROPICAL WATCHES &amp; WARNINGS
+                        </span>
+                        <span id="ww-ts" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="ww-list" class="text-[.62rem] text-gray-400 space-y-1"></div>
+                    </div>
+                </div>
+
+                <!-- Saffir-Simpson Reference -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-gray-400"></i> SAFFIR-SIMPSON SCALE
+                        </span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="space-y-1.5" style="font-family:'Courier New',monospace;font-size:.6rem">
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#1a3d1a;border:1px solid #2a6a2a">
+                                <span style="color:#3fb950;font-weight:700;min-width:36px">TD</span>
+                                <span style="color:#8b949e">&lt;38 mph winds · No hurricane watch/warning</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#1a2d4a;border:1px solid #0088ff44">
+                                <span style="color:#00ced1;font-weight:700;min-width:36px">TS</span>
+                                <span style="color:#8b949e">39–73 mph · Tropical Storm</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#2d1a1a;border:1px solid #22334477">
+                                <span style="color:#aabbff;font-weight:700;min-width:36px">CAT 1</span>
+                                <span style="color:#8b949e">74–95 mph · Very dangerous winds</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#3d2800;border:1px solid #ffa50044">
+                                <span style="color:#ffd700;font-weight:700;min-width:36px">CAT 2</span>
+                                <span style="color:#8b949e">96–110 mph · Extremely dangerous</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#3d1500;border:1px solid #ff660044">
+                                <span style="color:#ff8800;font-weight:700;min-width:36px">CAT 3</span>
+                                <span style="color:#8b949e">111–129 mph · Devastating damage</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#3d0000;border:1px solid #ff222244">
+                                <span style="color:#ff3333;font-weight:700;min-width:36px">CAT 4</span>
+                                <span style="color:#8b949e">130–156 mph · Catastrophic</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:#2d0033;border:1px solid #cc00cc44">
+                                <span style="color:#ff00ff;font-weight:700;min-width:36px">CAT 5</span>
+                                <span style="color:#8b949e">≥157 mph · Total destruction</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-3" style="border-top:1px solid var(--border)">
+                            <div class="text-[.5rem] text-gray-600 mb-2" style="font-family:'Courier New',monospace">ATLANTIC BEACH STORM SURGE RISK</div>
+                            <div class="grid grid-cols-2 gap-2 text-center">
+                                <div style="background:#1c2128;border:1px solid #30363d;border-radius:5px;padding:6px">
+                                    <div style="font-family:'Courier New',monospace;font-size:.5rem;color:#8b949e;margin-bottom:2px">CAT 1–2</div>
+                                    <div class="data-val" style="font-size:.8rem;color:#ffd700">4–8 ft</div>
+                                </div>
+                                <div style="background:#1c2128;border:1px solid #30363d;border-radius:5px;padding:6px">
+                                    <div style="font-family:'Courier New',monospace;font-size:.5rem;color:#8b949e;margin-bottom:2px">CAT 3–5</div>
+                                    <div class="data-val" style="font-size:.8rem;color:#ff4444">9–18+ ft</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NHC Outlook links -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="globe" class="w-3.5 h-3.5 text-cyan-400"></i> RESOURCES
+                        </span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="flex flex-col gap-1.5">
+                            <a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" rel="noopener" class="ctrl-btn primary justify-center text-[.6rem]">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> TWO — Atlantic Basin →
+                            </a>
+                            <a href="https://www.nhc.noaa.gov/gtwo.php?basin=epac" target="_blank" rel="noopener" class="ctrl-btn justify-center text-[.6rem]">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> TWO — East Pacific →
+                            </a>
+                            <a href="https://www.nhc.noaa.gov/surge/slosh.php" target="_blank" rel="noopener" class="ctrl-btn justify-center text-[.6rem]">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> SLOSH Storm Surge Model →
+                            </a>
+                            <a href="https://floridadisaster.org/planprepare/hurricanes/" target="_blank" rel="noopener" class="ctrl-btn justify-center text-[.6rem]">
+                                <i data-lucide="external-link" class="w-3 h-3"></i> FL Evacuation Zones →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!-- ====== END HURRICANE VIEW ====== -->
+
+    <footer data-id="178" id="footer-bar-d2e5" class="py-4 text-center mt-2" style="border-top:1px solid var(--border)">
+        <p data-id="179" class="text-[.6rem] text-gray-600" style="font-family:'Courier New',monospace">StormWatch // ATL BEACH · Data: NWS api.weather.gov · IEM mesonet.agron.iastate.edu · SPC spc.noaa.gov · Radar: KJAX · Built for Daniel</p>
+        <p data-id="180" class="text-[.55rem] text-gray-700 mt-1">Made by Copilot</p>
+    </footer>
+
+    <script>
+'use strict';
+
+// Set this as early as possible (before any async content loads and changes page
+// height) — browsers can otherwise re-apply scroll restoration as height grows.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+
+// ─── PWA SERVICE WORKER — caches the app shell so a cold load works offline ──
+// Service workers require a secure context (https, or http://localhost) — they're
+// blocked entirely on file:// pages, so this silently no-ops there.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW registration failed:', e));
+  });
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CONFIG = { lat: 30.3354, lon: -81.3990, office: 'JAX', gridX: 75, gridY: 66, radar: 'KJAX' };
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let spcGeoJSON = {}; // stores raw GeoJSON per layer key
+let activeSpcLayer = 'day1cat';
+let currentAlerts = [], alertsSource = 'mock';
+let currentStorms = [];
+let currentForecast = [], forecastSource = 'mock';
+let currentOutlook = null, outlookSource = 'mock';
+let currentLSRs = [], lsrLayerGroup = null;
+let lightningStrikes = [], lightningWS = null, lightningActive = false, _lightningLayer = null;
+let tideWaterLevel = null, tidePredictions = [];
+let buoyData = null;
+let seenAlertIds = new Set(JSON.parse(localStorage.getItem('sw_seen_alerts') || '[]'));
+let notificationsEnabled = localStorage.getItem('sw_notif') === 'true';
+let lsrHistory = JSON.parse(localStorage.getItem('sw_lsr_history') || '[]');
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// Fetch with hard timeout — prevents pills from sticking on CHECKING forever
+function fetchWithTimeout(url, opts={}, ms=8000) {
+  const ctrl = new AbortController();
+  const tid   = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, {...opts, signal: ctrl.signal})
+    .finally(() => clearTimeout(tid));
+}
+
+function nowEDT() {
+  return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'America/New_York'})+' EDT';
+}
+
+function setPill(id, status, lbl) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const label = lbl || id.split('-')[1].toUpperCase();
+  const txt   = {live:'LIVE',error:'ERROR',offline:'OFFLINE',checking:'CHECKING'}[status] || status.toUpperCase();
+  el.className = 'status-pill ' + status;
+  el.innerHTML = '<span class="status-dot"></span>' + label + ': ' + txt;
+}
+
+// ─── LAST-KNOWN-GOOD CACHE — so a dropped connection shows real (aging) data, not a blank ──
+function saveCache(key, data) {
+  try { localStorage.setItem('sw_cache_' + key, JSON.stringify({data, ts: Date.now()})); } catch(e) {}
+}
+function loadCache(key) {
+  try {
+    const raw = localStorage.getItem('sw_cache_' + key);
+    return raw ? JSON.parse(raw) : null; // {data, ts}
+  } catch(e) { return null; }
+}
+function cacheAgeLabel(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  if (mins < 60) return mins + ' min ago';
+  const hrs = Math.round(mins / 60);
+  return hrs + ' hour' + (hrs > 1 ? 's' : '') + ' ago';
+}
+let alertsCacheTs = null, outlookCacheTs = null, forecastCacheTs = null;
+
+window.addEventListener('offline', () => {
+  showToast('📡 Connection lost — showing last known data where available.', 'warn');
+});
+window.addEventListener('online', () => {
+  showToast('📡 Back online — refreshing...', 'info');
+  fetchAlerts(); fetchForecast(); fetchSPCOutlook();
+});
+
+// ─── CLOCK ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const el = document.getElementById('live-clock-j4p1');
+  const de = document.getElementById('live-date-r8k3');
+  const now = new Date();
+  if (el) el.textContent = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'America/New_York'});
+  if (de) de.textContent = now.toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric',timeZone:'America/New_York'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ─── TAB SWITCHER ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const mainEl = document.querySelector('main');
+  const hurrEl = document.getElementById('hurricane-view');
+  const tabS   = document.getElementById('tab-severe');
+  const tabH   = document.getElementById('tab-hurricane');
+  if (tab === 'severe') {
+    if (mainEl) mainEl.style.display = '';
+    if (hurrEl) hurrEl.style.display = 'none';
+    if (tabS) tabS.classList.add('active');
+    if (tabH) tabH.classList.remove('active');
+  } else {
+    if (mainEl) mainEl.style.display = 'none';
+    if (hurrEl) hurrEl.style.display = '';
+    if (tabS) tabS.classList.remove('active');
+    if (tabH) tabH.classList.add('active');
+    initHurricaneMap();
+  }
+}
+
+// ─── GEO HELPERS — distance/bearing/motion for local severe-weather tracking ──
+function haversineMiles(lat1,lon1,lat2,lon2) {
+  const R = 3958.8, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearingDeg(lat1,lon1,lat2,lon2) {
+  const toRad = d => d * Math.PI / 180, toDeg = r => r * 180 / Math.PI;
+  const y = Math.sin(toRad(lon2-lon1)) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) - Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lon2-lon1));
+  return (toDeg(Math.atan2(y,x)) + 360) % 360;
+}
+
+function bearingToCompass(deg) {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+const COMPASS_TO_DEG = {N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
+
+function parseStormMotion(description) {
+  if (!description) return null;
+  const m = description.match(/MOVING\s+([NSEW]{1,3})\s+AT\s+(\d+)\s*MPH/i);
+  if (!m) return null;
+  const dir = m[1].toUpperCase();
+  const deg = COMPASS_TO_DEG[dir];
+  if (deg === undefined) return null;
+  return { dir, speedMph: parseInt(m[2]), bearingDeg: deg };
+}
+
+function destinationPoint(lat,lon,bearing,miles) {
+  const R = 3958.8, toRad = d => d * Math.PI / 180, toDeg = r => r * 180 / Math.PI;
+  const br = toRad(bearing), d = miles / R;
+  const lat1 = toRad(lat), lon1 = toRad(lon);
+  const lat2 = Math.asin(Math.sin(lat1)*Math.cos(d) + Math.cos(lat1)*Math.sin(d)*Math.cos(br));
+  const lon2 = lon1 + Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(lat1), Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+  return [toDeg(lat2), toDeg(lon2)];
+}
+
+function polygonCentroid(coords) {
+  // coords: GeoJSON ring [[lon,lat], ...] — flat average, fine at this map scale
+  const ring = (coords && coords[0]) || [];
+  if (!ring.length) return null;
+  let sLat = 0, sLon = 0;
+  ring.forEach(([lon,lat]) => { sLat += lat; sLon += lon; });
+  return [sLat/ring.length, sLon/ring.length];
+}
+
+// ─── POINT IN POLYGON — null-safe GeoJSON ray-cast ───────────────────────────
+function pip(point, feature) {
+  if (!feature || !feature.geometry) return false;
+  const geom = feature.geometry;
+  if (!geom.coordinates) return false;
+  const polys = geom.type === 'MultiPolygon' ? geom.coordinates : [geom.coordinates];
+  for (const poly of polys) {
+    if (!poly || !poly[0]) continue;
+    const ring = poly[0];
+    if (!ring || ring.length < 3) continue;
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const pi = ring[i], pj = ring[j];
+      if (!pi || !pj) continue;
+      const xi = pi[0], yi = pi[1], xj = pj[0], yj = pj[1];
+      if (((yi > point[1]) !== (yj > point[1])) &&
+          (point[0] < (xj - xi) * (point[1] - yi) / (yj - yi) + xi))
+        inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
+// ─── SPC — direct spc.noaa.gov GeoJSON (CORS-OK) ─────────────────────────────
+function findRiskGeoJSON(features) {
+  const order = ['TSTM','MRGL','SLGT','ENH','MDT','HIGH'];
+  let bestRisk = 'NONE', bestIdx = -1;
+  for (const f of (features || [])) {
+    if (!f || !f.geometry || !f.geometry.coordinates) continue;
+    if (pip([CONFIG.lon, CONFIG.lat], f)) {
+      const label = ((f.properties && f.properties.LABEL) || '').toUpperCase().trim();
+      const idx = order.indexOf(label);
+      if (idx > bestIdx) { bestIdx = idx; bestRisk = label; }
+    }
+  }
+  return bestRisk;
+}
+
+function probAtPoint(features) {
+  let best = 0;
+  for (const f of (features || [])) {
+    if (!f || !f.geometry || !f.geometry.coordinates) continue;
+    if (pip([CONFIG.lon, CONFIG.lat], f)) {
+      const lbl = (f.properties && f.properties.LABEL) || '0';
+      const val = parseInt(String(lbl).replace('%','')) || 0;
+      if (val > best) best = val;
+    }
+  }
+  return best;
+}
+
+async function fetchSPCGeoJSON(url) {
+  const r = await fetchWithTimeout(url, {}, 10000);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ─── FETCH: SPC OUTLOOK ───────────────────────────────────────────────────────
+async function fetchSPCOutlook() {
+  const BASE = 'https://www.spc.noaa.gov/products/outlook/';
+  const urls = {
+    day1cat: BASE+'day1otlk_cat.nolyr.geojson',
+    day2cat: BASE+'day2otlk_cat.nolyr.geojson',
+    day3cat: BASE+'day3otlk_cat.nolyr.geojson',
+    torn:    BASE+'day1otlk_torn.nolyr.geojson',
+    hail:    BASE+'day1otlk_hail.nolyr.geojson',
+    wind:    BASE+'day1otlk_wind.nolyr.geojson'
+  };
+  try {
+    const outlook = {
+      day1:{risk:'NONE',tornado:0,hail:0,wind:0},
+      day2:{risk:'NONE',tornado:0,hail:0,wind:0},
+      day3:{risk:'NONE',tornado:0,hail:0,wind:0}
+    };
+    const results = await Promise.allSettled(
+      Object.entries(urls).map(([key,url]) => fetchSPCGeoJSON(url).then(data=>({key,data})))
+    );
+    let any = false;
+    results.forEach(r => {
+      if (r.status !== 'fulfilled') return;
+      any = true;
+      const {key, data} = r.value;
+      const ft = data.features || [];
+      spcGeoJSON[key] = ft; // store raw features for map rendering
+      if      (key === 'day1cat') outlook.day1.risk    = findRiskGeoJSON(ft);
+      else if (key === 'day2cat') outlook.day2.risk    = findRiskGeoJSON(ft);
+      else if (key === 'day3cat') outlook.day3.risk    = findRiskGeoJSON(ft);
+      else if (key === 'torn')    outlook.day1.tornado = probAtPoint(ft);
+      else if (key === 'hail')    outlook.day1.hail    = probAtPoint(ft);
+      else if (key === 'wind')    outlook.day1.wind    = probAtPoint(ft);
+    });
+    if (!any) throw new Error('All SPC fetches failed');
+    currentOutlook = outlook; outlookSource = 'live';
+    setPill('pill-spc-w2q9','live','SPC');
+    saveCache('outlook', currentOutlook);
+  } catch(e) {
+    console.warn('SPC:', e);
+    // Don't substitute a fabricated risk category/probabilities for a real failure —
+    // but a real outlook from earlier today is still useful, clearly labeled as aging.
+    const cached = loadCache('outlook');
+    if (cached) {
+      currentOutlook = cached.data; outlookSource = 'cached'; outlookCacheTs = cached.ts;
+      setPill('pill-spc-w2q9','offline','SPC');
+    } else {
+      currentOutlook = null; outlookSource = 'mock';
+      setPill('pill-spc-w2q9','error','SPC');
+    }
+  }
+  renderOutlook();
+  renderSPCOutlookMap(activeSpcLayer);
+  updateRiskBanner();
+}
+
+// ─── FETCH: ALERTS ────────────────────────────────────────────────────────────
+async function fetchAlerts() {
+  const priorityMap = {
+    'Tornado Warning':12,
+    'Hurricane Warning':11,'Storm Surge Warning':11,'Extreme Wind Warning':11,
+    'Severe Thunderstorm Warning':10,'Tropical Storm Warning':10,'Flash Flood Warning':10,
+    'Flood Warning':9,'Coastal Flood Warning':9,
+    'Tornado Watch':8,
+    'Severe Thunderstorm Watch':7,'Hurricane Watch':7,'Storm Surge Watch':7,
+    'Special Marine Warning':6,'Tropical Storm Watch':6,'Flash Flood Watch':6,
+    'Flood Watch':5,'Coastal Flood Watch':5,
+    'Rip Current Statement':4,'Beach Hazard Statement':3
+  };
+  try {
+    const r = await fetchWithTimeout('https://api.weather.gov/alerts/active?point='+CONFIG.lat+','+CONFIG.lon, {}, 10000);
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    currentAlerts = (data.features||[]).map(f => {
+      const p = f.properties;
+      return {id:f.id||p.id,event:p.event,severity:p.severity,
+        headline:p.headline,description:p.description,
+        instruction:p.instruction,onset:p.onset,expires:p.expires,
+        senderName:p.senderName,priority:priorityMap[p.event]||1,
+        geometry:f.geometry};
+    }).sort((a,b)=>b.priority-a.priority);
+    alertsSource = 'live';
+    setPill('pill-nws-a7e1','live','NWS');
+    saveCache('alerts', currentAlerts);
+  } catch(e) {
+    // Never substitute fabricated alerts for a real failure. But real, previously-fetched
+    // alerts are genuinely useful if we're offline — as long as we drop any that have
+    // already expired, so we never show a lapsed warning as if it were still active.
+    const cached = loadCache('alerts');
+    const stillValid = cached ? cached.data.filter(a => !a.expires || new Date(a.expires) > new Date()) : null;
+    if (stillValid && stillValid.length) {
+      currentAlerts = stillValid; alertsSource = 'cached'; alertsCacheTs = cached.ts;
+      setPill('pill-nws-a7e1','offline','NWS');
+    } else if (cached && cached.data.length === 0) {
+      // A cached "confirmed no alerts" is still meaningfully different from "never checked."
+      currentAlerts = []; alertsSource = 'cached'; alertsCacheTs = cached.ts;
+      setPill('pill-nws-a7e1','offline','NWS');
+    } else {
+      currentAlerts = []; alertsSource = 'mock';
+      setPill('pill-nws-a7e1','error','NWS');
+    }
+  }
+  checkAlertNotifications();
+  renderAlerts();
+  renderWatchesWarnings(currentAlerts);
+  renderTornadoLayer();
+  renderTornadoStatus();
+  updateRiskBanner();
+}
+
+// ─── FETCH: FORECAST ──────────────────────────────────────────────────────────
+async function fetchForecast() {
+  try {
+    const r = await fetchWithTimeout('https://api.weather.gov/gridpoints/'+CONFIG.office+'/'+CONFIG.gridX+','+CONFIG.gridY+'/forecast', {}, 10000);
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    currentForecast = (data.properties.periods||[]).slice(0,7).map(p=>({
+      name:p.name,isDaytime:p.isDaytime,temperature:p.temperature,
+      temperatureUnit:p.temperatureUnit,windSpeed:p.windSpeed,
+      shortForecast:p.shortForecast,
+      pop:p.probabilityOfPrecipitation?p.probabilityOfPrecipitation.value:null
+    }));
+    forecastSource = 'live';
+    setPill('pill-nws-a7e1','live','NWS');
+    saveCache('forecast', currentForecast);
+  } catch(e) {
+    // Don't substitute fabricated temperatures for a real failure — but a real forecast
+    // from earlier today is still useful, clearly labeled as aging.
+    const cached = loadCache('forecast');
+    if (cached && cached.data.length) {
+      currentForecast = cached.data; forecastSource = 'cached'; forecastCacheTs = cached.ts;
+    } else {
+      currentForecast = []; forecastSource = 'mock';
+    }
+  }
+  renderForecast();
+}
+
+// ─── FETCH: LSRs ─────────────────────────────────────────────────────────────
+async function fetchLSRs() {
+  try {
+    const r = await fetchWithTimeout('https://mesonet.agron.iastate.edu/geojson/lsr.php?hours=6&wfo=JAX', {}, 10000);
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    currentLSRs = (data.features||[]).map(f=>({
+      lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],
+      type:f.properties.typetext,magnitude:f.properties.magnitude,
+      city:f.properties.city,valid:f.properties.valid
+    }));
+    // Persist new LSRs to history
+    const now_ts = Date.now();
+    currentLSRs.forEach(lsr => {
+      const id = lsr.valid + '_' + lsr.type + '_' + lsr.city;
+      if (!lsrHistory.find(h => h.id === id)) {
+        lsrHistory.unshift({id, ...lsr, fetched: now_ts});
+      }
+    });
+    lsrHistory = lsrHistory.slice(0, 200); // keep last 200
+    try { localStorage.setItem('sw_lsr_history', JSON.stringify(lsrHistory)); } catch(e){}
+    setPill('pill-iem-c4d6','live','IEM');
+  } catch(e) {
+    currentLSRs = [];
+    setPill('pill-iem-c4d6','error','IEM');
+  }
+  renderLSRs();
+  renderLSRHistory();
+}
+
+// ─── FETCH: NHC STORMS via NWS API (TCP products) ────────────────────────────
+// NWS API is fully CORS-friendly. TCP = Tropical Cyclone Public Advisory.
+// If active storms exist, NHC issues TCP products. No TCP = no active storms.
+async function fetchActiveStorms() {
+  let products = [];
+  let fetchOk = false; // distinguish "checked, no storms" from "couldn't check at all"
+
+  try {
+    const r = await fetchWithTimeout(
+      'https://api.weather.gov/products?type=TCP&office=KNHC&limit=20',
+      {headers:{Accept:'application/geo+json'}}, 12000
+    );
+    if (r.ok) {
+      const j = await r.json();
+      products = j['@graph'] || [];
+      fetchOk = true;
+    }
+  } catch(e) {}
+
+  if (!fetchOk) {
+    // Genuine fetch failure — must not look identical to a real, confirmed "no storms" state.
+    renderActiveStormsOffline();
+    setPill('pill-nhc','error','NHC');
+    updateRiskBanner();
+    return;
+  }
+
+  // No storms found — show quiet basin (normal off-season state)
+  if (!products.length) {
+    currentStorms = [];
+    renderActiveStorms([]);
+    setPill('pill-nhc','live','NHC');
+    renderWatchesWarnings(currentAlerts);
+    updateRiskBanner();
+    return;
+  }
+
+  // Deduplicate by storm name prefix
+  const seen = new Set();
+  const unique = products.filter(p => {
+    const key = (p.productName||'').replace(/ADVISORY.*/i,'').trim();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  // Show quick cards from product names immediately
+  const quickStorms = unique.slice(0,6).map(p => quickParseProductName(p.productName||'')).filter(Boolean);
+  renderActiveStorms(quickStorms);
+  setPill('pill-nhc','live','NHC');
+
+  // Fetch full advisory text for details
+  const stormData = [];
+  await Promise.all(unique.slice(0,6).map(async prod => {
+    try {
+      const pr = await fetchWithTimeout(prod['@id'], {headers:{Accept:'application/geo+json'}}, 12000);
+      if (!pr.ok) return;
+      const pj = await pr.json();
+      const parsed = parseTCPText(pj.productText || '', prod.productName || '');
+      if (parsed && parsed.name) stormData.push(parsed);
+    } catch(e) {}
+  }));
+
+  currentStorms = stormData.length ? stormData : quickStorms;
+  if (stormData.length) renderActiveStorms(stormData);
+  renderWatchesWarnings(currentAlerts);
+  updateRiskBanner();
+}
+
+function quickParseProductName(name) {
+  if (!name) return null;
+  const m = name.match(/(HURRICANE|TROPICAL STORM|TROPICAL DEPRESSION|SUBTROPICAL STORM)\s+(\w+)/i);
+  if (!m) return null;
+  let classification = 'TS';
+  if (/HURRICANE/i.test(m[1]))   classification = '1';
+  if (/DEPRESSION/i.test(m[1]))  classification = 'TD';
+  return {name:m[2], type:m[1], classification,
+          windMph:null, windKt:null, pressure:null,
+          lat:null, lon:null, movement:'', trackPoints:[]};
+}
+
+function parseTCPText(text, productName) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  let name = '', type = 'TC';
+  const headerLine = lines.find(l =>
+    /TROPICAL STORM|HURRICANE|TROPICAL DEPRESSION|SUBTROPICAL/i.test(l) && /ADVISORY/i.test(l));
+  if (headerLine) {
+    const m = headerLine.match(/(TROPICAL STORM|HURRICANE|TROPICAL DEPRESSION|SUBTROPICAL STORM)\s+(\w+)/i);
+    if (m) { type = m[1]; name = m[2]; }
+  } else {
+    const pm = productName.match(/ADVISORY\s+\d+[A-Z]?\s+(?:FOR\s+)?(.+)/i);
+    name = pm ? pm[1].trim() : productName.replace(/ADVISORY.*/i,'').trim();
+  }
+  if (!name) return null; // can't do anything without a name
+
+  const windLine  = lines.find(l => /MAX SUSTAINED WINDS/i.test(l));
+  const windMatch = windLine && windLine.match(/(\d+)\s*MPH/i);
+  const windMph   = windMatch ? parseInt(windMatch[1]) : null;
+  const windKt    = windMph ? Math.round(windMph / 1.15078) : null;
+
+  const presLine  = lines.find(l => /MINIMUM CENTRAL PRESSURE|CENTRAL PRESSURE/i.test(l));
+  const presMatch = presLine && presLine.match(/(\d{3,4})\s*MB/i);
+  const pressure  = presMatch ? parseInt(presMatch[1]) : null;
+
+  // Try multiple position line formats
+  let lat = null, lon = null;
+  const posPatterns = [
+    /CENTER LOCATED NEAR\s+([\d.]+)N[,\s]+([\d.]+)W/i,
+    /PRESENT LOCATION\s+([\d.]+)N[,\s]+([\d.]+)W/i,
+    /LOCATION\.\.\.([\d.]+)N[,\s]+([\d.]+)W/i,
+    /NEAR\s+([\d.]+)N[,\s]+([\d.]+)W/i,
+  ];
+  for (const pat of posPatterns) {
+    const full = text.match(pat);
+    if (full) { lat = parseFloat(full[1]); lon = -parseFloat(full[2]); break; }
+  }
+
+  const moveLine = lines.find(l => /MOVING/i.test(l) && /MPH/i.test(l));
+  const movement = moveLine ? moveLine.replace(/.*MOVING\.\.\./i,'').trim().split('.')[0] : '';
+
+  // Forecast track
+  const trackPoints = [];
+  if (lat && lon) trackPoints.push({lat, lon, hr:0, wind:windMph||0});
+  lines.forEach(l => {
+    const m = l.match(/\d+\/\d+Z\s+([\d.]+)N\s+([\d.]+)W\s+(\d+)/);
+    if (m) trackPoints.push({lat:parseFloat(m[1]), lon:-parseFloat(m[2]), hr:trackPoints.length*12, wind:parseFloat(m[3])*1.15});
+  });
+  trackPoints.sort((a,b) => a.hr - b.hr);
+
+  let classification = 'TC';
+  if (/HURRICANE/i.test(type)) {
+    if      (windMph >= 157) classification = '5';
+    else if (windMph >= 130) classification = '4';
+    else if (windMph >= 111) classification = '3';
+    else if (windMph >= 96)  classification = '2';
+    else                     classification = '1';
+  } else if (/TROPICAL STORM/i.test(type)) classification = 'TS';
+  else if   (/DEPRESSION/i.test(type))     classification = 'TD';
+
+  return {name, type, classification, windMph, windKt, pressure, lat, lon, movement, trackPoints, rawText:text};
+}
+
+
+// ── renderActiveStorms / renderActiveStormsOffline ────────────────────────────
+function renderActiveStorms(storms) {
+  const cnt  = document.getElementById('nhc-storm-count');
+  const list = document.getElementById('nhc-storms-list');
+  if (cnt) cnt.textContent = storms.length
+    ? storms.length + ' Active Storm' + (storms.length > 1 ? 's' : '')
+    : 'No active storms';
+  if (!list) return;
+  if (!storms.length) {
+    list.innerHTML =
+      '<div style="text-align:center;padding:16px 8px;font-family:Courier New,monospace">' +
+      '<div style="color:#3fb950;font-size:1.1rem;margin-bottom:4px">&#10003;</div>' +
+      '<div style="color:#3fb950;font-size:.63rem;font-weight:700">No Active Tropical Cyclones</div>' +
+      '<div style="color:#555;font-size:.55rem;margin-top:3px">Atlantic basin quiet</div></div>';
+    return;
+  }
+  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
+    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
+  const catLabel = c => ({'TD':'TROPICAL DEPRESSION','TS':'TROPICAL STORM',
+    '1':'CAT 1','2':'CAT 2','3':'CAT 3','4':'CAT 4','5':'CAT 5'})[String(c)] || String(c);
+  list.innerHTML = storms.map(s => {
+    const col  = catColor(s.classification);
+    const wind = s.windMph ? s.windMph + ' mph (' + (s.windKt||'--') + ' kt)' : '--';
+    const pres = s.pressure ? s.pressure + ' mb' : '--';
+    const lat  = s.lat ? s.lat.toFixed(1) + '&deg;N' : '';
+    const lon  = s.lon ? Math.abs(s.lon).toFixed(1) + '&deg;W' : '';
+    const dist = (s.lat && s.lon) ? calcDistanceMi(CONFIG.lat, CONFIG.lon, s.lat, s.lon) : null;
+    return '<div style="background:#1c2128;border:1px solid '+col+'44;border-radius:6px;padding:8px;margin-bottom:6px">' +
+      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">' +
+      '<span style="padding:2px 7px;background:'+col+'22;color:'+col+';border:1px solid '+col+'66;' +
+        'border-radius:4px;font-family:Courier New,monospace;font-size:.52rem;font-weight:700">'+catLabel(s.classification)+'</span>' +
+      '<span style="color:#e6edf3;font-weight:700;font-size:.68rem">'+(s.name||'UNNAMED')+'</span></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:5px">' +
+      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
+        '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">WINDS</div>' +
+        '<div style="font-family:Courier New,monospace;font-size:.55rem;color:'+col+';font-weight:700">'+wind+'</div></div>' +
+      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
+        '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">PRESSURE</div>' +
+        '<div style="font-family:Courier New,monospace;font-size:.55rem;color:#c9d1d9">'+pres+'</div></div>' +
+      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
+        '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">FROM YOU</div>' +
+        '<div style="font-family:Courier New,monospace;font-size:.55rem;color:'+(dist&&dist<500?'#ff4444':dist&&dist<800?'#ffa500':'#c9d1d9')+'">'+(dist?dist+' mi':'--')+'</div></div></div>' +
+      '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#555;margin-bottom:5px">'+lat+' '+lon+(s.movement?' &bull; '+s.movement:'')+'</div>' +
+      '<div style="display:flex;gap:5px">' +
+      '<a href="https://www.nhc.noaa.gov/" target="_blank" style="flex:1;display:block;padding:3px;background:'+col+'22;border:1px solid '+col+'44;border-radius:4px;color:'+col+';text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Advisory &#8594;</a>' +
+      '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="flex:1;display:block;padding:3px;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#8b949e;text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Track &#8594;</a>' +
+      '</div></div>';
+  }).join('');
+  plotStormsOnMap(storms);
+  storms.forEach(s => { if (s.trackPoints && s.trackPoints.length > 1) drawStormCone(s); });
+}
+
+function renderActiveStormsOffline() {
+  const cnt = document.getElementById('nhc-storm-count');
+  const list = document.getElementById('nhc-storms-list');
+  if (cnt) cnt.textContent = 'Unavailable';
+  if (!list) return;
+  list.innerHTML =
+    '<div style="background:#1c2128;border:1px solid #ffa500;border-radius:6px;padding:10px">' +
+    '<div style="color:#ffa500;font-family:Courier New,monospace;font-size:.6rem;font-weight:700;margin-bottom:8px">&#9888; NHC OFFLINE</div>' +
+    '<a href="https://www.nhc.noaa.gov/" target="_blank" style="display:block;padding:5px 10px;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);border-radius:5px;color:#00d9ff;text-decoration:none;font-family:Courier New,monospace;font-size:.6rem;text-align:center">NHC Active Advisories &#8594;</a></div>';
+}
+
+// ── NHC CONE OF UNCERTAINTY ───────────────────────────────────────────────────
+const NHC_CONE_NM = {0:0, 12:36, 24:53, 36:74, 48:99, 72:154, 96:202, 120:254};
+let _coneLayer = null;
+
+function drawStormCone(storm) {
+  const map = window._hurricaneMap;
+  if (!map || !storm.trackPoints || storm.trackPoints.length < 2) return;
+  if (_coneLayer) { try { map.removeLayer(_coneLayer); } catch(e){} }
+  _coneLayer = L.layerGroup().addTo(map);
+  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
+    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
+  const col = catColor(storm.classification);
+  const leftEdge = [], rightEdge = [];
+  storm.trackPoints.forEach((pt, i) => {
+    const hwDeg = (NHC_CONE_NM[pt.hr] ?? NHC_CONE_NM[120]) / 60; // ?? not || — NHC_CONE_NM[0] is a legit 0, not "missing"
+    let bearing = 0;
+    if (i < storm.trackPoints.length - 1) {
+      const nx = storm.trackPoints[i+1];
+      bearing = Math.atan2(nx.lon - pt.lon, nx.lat - pt.lat);
+    } else if (i > 0) {
+      const pv = storm.trackPoints[i-1];
+      bearing = Math.atan2(pt.lon - pv.lon, pt.lat - pv.lat);
+    }
+    // Perpendicular to travel direction (cos θ, sin θ) is (-sin θ, cos θ) — a 90° rotation.
+    // The previous (sin θ, cos θ) is only perpendicular at cardinal bearings; at diagonals
+    // like 45° (very common for Atlantic storms tracking NE toward Florida) it's parallel
+    // to the track instead, collapsing the cone into a degenerate sliver.
+    const pLat = -Math.sin(bearing) * hwDeg;
+    const pLon = Math.cos(bearing) * hwDeg / Math.cos(pt.lat * Math.PI / 180);
+    leftEdge.push([pt.lat + pLat, pt.lon - pLon]);
+    rightEdge.push([pt.lat - pLat, pt.lon + pLon]);
+  });
+  L.polygon([...leftEdge, ...[...rightEdge].reverse()], {
+    color:col, fillColor:col, fillOpacity:0.12, weight:1.5, dashArray:'4,4'
+  }).bindTooltip('NHC Cone of Uncertainty', {className:'spc-tip'}).addTo(_coneLayer);
+  L.polyline(storm.trackPoints.map(p => [p.lat, p.lon]), {
+    color:col, weight:2.5, dashArray:'8,4'
+  }).addTo(_coneLayer);
+  storm.trackPoints.forEach(pt => {
+    L.circleMarker([pt.lat, pt.lon], {
+      radius: pt.hr===0 ? 7 : 4, color:col,
+      fillColor: pt.hr===0 ? col : '#fff', fillOpacity:0.9, weight:2
+    }).bindTooltip(
+      pt.hr===0 ? '<b>'+storm.name+'</b><br>Current' : pt.hr+'hr'+(pt.wind?' \u2022 '+Math.round(pt.wind)+' mph':''),
+      {className:'spc-tip'}
+    ).addTo(_coneLayer);
+  });
+  map.setView([storm.lat, storm.lon], 5);
+}
+
+function plotStormsOnMap(storms) {
+  const map = window._hurricaneMap;
+  if (!map || !storms.length) return;
+  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
+    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
+  storms.forEach(s => {
+    if (!s.lat || !s.lon) return;
+    const col = catColor(s.classification);
+    L.circleMarker([s.lat, s.lon], {radius:10, color:col, fillColor:col, fillOpacity:.7, weight:2})
+    .bindTooltip('<b>'+(s.name||'Storm')+'</b><br>'+(s.classification||'')+' &bull; '+(s.windMph||'?')+' mph', {className:'spc-tip'})
+    .bindPopup('<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:160px"><b style="color:'+col+'">'+
+      (s.name||'Storm')+'</b><br>Winds: '+(s.windMph||'?')+' mph<br>'+
+      (s.pressure?'Pressure: '+s.pressure+' mb<br>':'') +
+      '<a href="https://www.nhc.noaa.gov/" target="_blank" style="color:#06b6d4">NHC Advisory &#8594;</a></div>')
+    .addTo(map);
+  });
+}
+
+
+
+// ─── FETCH: TWO via NWS API (CORS-friendly) ──────────────────────────────────
+async function fetchTWO() {
+  const el = document.getElementById('two-content');
+  if (!el) return;
+  try {
+    const listR = await fetchWithTimeout(
+      'https://api.weather.gov/products?type=TWO&office=KNHC&limit=10',
+      {headers:{Accept:'application/geo+json'}}, 8000
+    );
+    if (!listR.ok) throw new Error('list ' + listR.status);
+    const listJ = await listR.json();
+    const products = listJ['@graph'] || [];
+    if (!products.length) throw new Error('no products');
+
+    for (const prod of products) {
+      const pr = await fetchWithTimeout(prod['@id'], {headers:{Accept:'application/geo+json'}}, 6000);
+      if (!pr.ok) continue;
+      const pj  = await pr.json();
+      const raw = (pj.productText || '').trim();
+      if (!raw) continue;
+      const lines2  = raw.split('\n');
+      const fbIdx   = lines2.findIndex((l, i) => i > 1 && l.trim() === '');
+      const body    = lines2.slice(fbIdx + 1).join('\n').trim();
+      if (!/TROPICAL WEATHER OUTLOOK/i.test(body.slice(0, 120))) continue;
+
+      const colored = body
+        .replace(/\b(HIGH|90 PERCENT|80 PERCENT|70 PERCENT)\b/g,
+          '<span style="color:#ff4444;font-weight:700">$1</span>')
+        .replace(/\b(MEDIUM|60 PERCENT|50 PERCENT|40 PERCENT)\b/g,
+          '<span style="color:#ffa500;font-weight:700">$1</span>')
+        .replace(/\b(LOW|30 PERCENT|20 PERCENT|10 PERCENT)\b/g,
+          '<span style="color:#ffd700;font-weight:700">$1</span>')
+        .replace(/\b(DISTURBANCE|INVEST|TROPICAL WAVE|TROPICAL DEPRESSION|TROPICAL STORM|HURRICANE)\b/g,
+          '<span style="color:#00d9ff">$1</span>');
+
+      const issued = pj.issuanceTime
+        ? new Date(pj.issuanceTime).toLocaleString('en-US',{
+            month:'short',day:'numeric',hour:'2-digit',
+            minute:'2-digit',hour12:false,timeZone:'America/New_York'
+          }) + ' EDT'
+        : '';
+
+      el.innerHTML =
+        (issued ? '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#555;margin-bottom:6px">Issued: ' + issued + '</div>' : '') +
+        '<pre style="font-family:Courier New,monospace;font-size:.57rem;color:#c9d1d9;' +
+        'white-space:pre-wrap;line-height:1.65;margin:0">' + colored + '</pre>' +
+        '<a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" ' +
+        'style="display:inline-block;margin-top:8px;font-family:Courier New,monospace;' +
+        'font-size:.55rem;color:#06b6d4">Full TWO &#8594; nhc.noaa.gov</a>';
+
+      setPill('pill-two', 'live', 'TWO');
+      return;
+    }
+    throw new Error('no English TWO found');
+  } catch(e) {
+    setPill('pill-two', 'error', 'TWO');
+    el.innerHTML =
+      '<a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" ' +
+      'style="display:block;padding:6px;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);' +
+      'border-radius:5px;color:#00d9ff;text-decoration:none;font-family:Courier New,monospace;font-size:.6rem;text-align:center">' +
+      'NHC TWO &#8594; nhc.noaa.gov</a>';
+  }
+}
+
+// ─── RENDER WATCHES & WARNINGS ────────────────────────────────────────────────
+function renderWatchesWarnings(alerts) {
+  const el = document.getElementById('ww-list');
+  const ts = document.getElementById('ww-ts');
+  if (ts) ts.textContent = nowEDT();
+  if (!el) return;
+  const tropical = (alerts||[]).filter(a => {
+    const ev = (a.event||'').toLowerCase();
+    return ev.includes('hurricane')||ev.includes('tropical')||ev.includes('surge');
+  });
+  if (!tropical.length) {
+    el.innerHTML = '<div style="font-family:Courier New,monospace;font-size:.62rem;color:#3fb950;text-align:center;padding:10px">✓ No active tropical watches or warnings</div>';
+    return;
+  }
+  const wc = {'Hurricane Warning':'#ff0000','Hurricane Watch':'#ff8000','Tropical Storm Warning':'#ffd700','Tropical Storm Watch':'#00ced1','Storm Surge Warning':'#b524f9','Storm Surge Watch':'#db7093'};
+  el.innerHTML = tropical.map(a => {
+    const col = wc[a.event]||'#888';
+    return '<div style="padding:4px 0;border-bottom:1px solid #21262d"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:.58rem;font-weight:700;font-family:Courier New,monospace;background:'+col+'33;color:'+col+'">'+a.event+'</span><div style="font-size:.6rem;color:#c9d1d9;margin-top:2px">'+(a.headline||'')+'</div></div>';
+  }).join('');
+}
+
+// ─── RENDER: ALERTS ───────────────────────────────────────────────────────────
+const alertColorMap = {
+  'Tornado Warning':'#ff2222',
+  'Hurricane Warning':'#ff2222','Storm Surge Warning':'#ff2222','Extreme Wind Warning':'#ff2222',
+  'Severe Thunderstorm Warning':'#ff8800','Tropical Storm Warning':'#ff8800','Flash Flood Warning':'#ff2222',
+  'Flood Warning':'#ff8800','Coastal Flood Warning':'#ff8800',
+  'Tornado Watch':'#ffcc00',
+  'Severe Thunderstorm Watch':'#ffaa00','Hurricane Watch':'#ffcc00','Storm Surge Watch':'#ffcc00',
+  'Special Marine Warning':'#0088ff','Tropical Storm Watch':'#ffaa00','Flash Flood Watch':'#ffaa00',
+  'Flood Watch':'#ffd966','Coastal Flood Watch':'#ffd966',
+  'Rip Current Statement':'#00cccc','Beach Hazard Statement':'#5588aa'
+};
+
+function fmtTime(iso) {
+  if (!iso) return '--';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/New_York'})+' '+
+           d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/New_York'})+' EDT';
+  } catch(e) { return iso; }
+}
+
+function renderAlerts() {
+  const feed  = document.getElementById('alerts-feed-e2d4');
+  const badge = document.getElementById('alerts-count-badge-j5n8');
+  const meta  = document.getElementById('alerts-meta-f3g6');
+  if (!feed) return;
+
+  // Genuine fetch failure — never show fabricated/placeholder alerts as if they were real.
+  // This panel exists to answer "am I in danger?", so an unknown status must look unmistakably
+  // different from both "confirmed clear" and "confirmed active hazard."
+  if (alertsSource === 'mock') {
+    if (badge) badge.textContent = 'UNKNOWN';
+    if (meta)  meta.innerHTML = 'Last checked: '+nowEDT();
+    feed.innerHTML = '<div style="background:rgba(255,165,0,.1);border:1px solid rgba(255,165,0,.4);border-radius:6px;padding:12px;text-align:center;font-size:.65rem;color:#ffa500;font-family:Courier New,monospace">' +
+      '⚠ COULD NOT REACH NWS — alert status unknown.<br>' +
+      '<a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" style="color:#ffa500;text-decoration:underline">Check weather.gov directly →</a></div>';
+    return;
+  }
+
+  if (badge) badge.textContent = currentAlerts.length + ' Active' + (alertsSource === 'cached' ? ' (cached)' : '');
+  if (alertsSource === 'live' && currentAlerts.some(a => /Tornado Warning|Severe Thunderstorm Warning/i.test(a.event||''))) {
+    const p = document.getElementById('alerts-feed-e2d4');
+    if (p) { const panel = p.closest('.panel'); if (panel) panel.scrollIntoView({behavior:'smooth',block:'start'}); }
+  }
+  if (meta) {
+    meta.innerHTML = alertsSource === 'cached'
+      ? '<span class="cached-badge">📡 OFFLINE — showing data from ' + cacheAgeLabel(alertsCacheTs) + '</span>'
+      : 'Last checked: ' + nowEDT();
+  }
+  if (!currentAlerts.length) {
+    feed.innerHTML = '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:12px;text-align:center;font-size:.65rem;color:#22c55e;font-family:Courier New,monospace">✓ No active hazards for Atlantic Beach, FL</div>';
+    return;
+  }
+  feed.innerHTML = currentAlerts.map(a => {
+    const col = alertColorMap[a.event]||'#888888';
+    return '<div class="alert-card" style="border-left-color:'+col+';background:'+col+'0a">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+        '<div><span style="display:inline-block;font-family:Courier New,monospace;font-size:.5rem;font-weight:700;padding:1px 5px;border-radius:3px;margin-bottom:3px;background:'+col+'22;color:'+col+'">'+a.event.toUpperCase()+'</span>' +
+        '<div style="font-family:Courier New,monospace;font-size:.65rem;color:#fff;font-weight:600">'+(a.headline||a.event)+'</div></div>' +
+        '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#8b949e;text-align:right;white-space:nowrap">'+(a.senderName||'')+'</div>' +
+      '</div>' +
+      '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#8b949e;margin-top:4px">'+fmtTime(a.onset)+' → '+fmtTime(a.expires)+'</div>' +
+      '<div style="margin-top:6px;font-size:.6rem;color:#8b949e;line-height:1.5">'+(a.description||'')+'</div>' +
+      (a.instruction?'<div style="margin-top:4px;font-size:.6rem;color:#c9d1d9;font-weight:600">'+a.instruction+'</div>':'') +
+    '</div>';
+  }).join('');
+}
+
+// ─── RENDER: FORECAST ─────────────────────────────────────────────────────────
+function renderForecast() {
+  const tbody = document.getElementById('forecast-body-r4t8');
+  const badge = document.getElementById('forecast-badge-z3x7');
+  const ts    = document.getElementById('forecast-updated-ts-v2b6');
+  if (!tbody) return;
+  if (badge) {
+    badge.innerHTML = forecastSource === 'live'
+      ? '<span class="status-pill live" style="font-size:.5rem"><span class="status-dot"></span>LIVE</span>'
+      : forecastSource === 'cached'
+        ? '<span class="cached-badge">📡 CACHED</span>'
+        : '<span class="cached-badge">⚠ UNAVAILABLE</span>';
+  }
+  if (ts) {
+    ts.textContent = forecastSource === 'cached'
+      ? ('Cached ' + cacheAgeLabel(forecastCacheTs) + ' — offline')
+      : ('Updated: ' + nowEDT());
+  }
+  if (!currentForecast.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:12px 6px;text-align:center;color:#ffa500;font-family:Courier New,monospace;font-size:.6rem">⚠ Could not reach NWS — forecast unavailable. <a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" style="color:#ffa500;text-decoration:underline">weather.gov →</a></td></tr>';
+    return;
+  }
+  tbody.innerHTML = currentForecast.map(p => {
+    const pop = p.pop != null ? p.pop : '--';
+    const popColor = typeof pop==='number' ? (pop>60?'#3b82f6':pop>30?'#818cf8':'#4b5563') : '#4b5563';
+    return '<tr style="border-bottom:1px solid #21262d">' +
+      '<td style="padding:5px 6px 5px 0;white-space:nowrap;color:#8b949e">'+p.name+'</td>' +
+      '<td style="text-align:center;padding:5px 3px">'+(p.isDaytime?'☀️':'🌙')+'</td>' +
+      '<td style="text-align:center;padding:5px 3px;color:#00d9ff;font-weight:700">'+p.temperature+'°'+(p.temperatureUnit||'F')+'</td>' +
+      '<td style="text-align:center;padding:5px 3px;color:'+popColor+'">'+(typeof pop==='number'?pop+'%':'--')+'</td>' +
+      '<td style="text-align:center;padding:5px 3px;color:#8b949e;white-space:nowrap">'+(p.windSpeed||'--')+'</td>' +
+      '<td style="padding:5px 3px 5px 6px;color:#8b949e;font-size:.55rem">'+(p.shortForecast||'')+'</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ─── RENDER: OUTLOOK ──────────────────────────────────────────────────────────
+const riskStyles = {
+  'NONE': {bg:'#1c2128',color:'#8b949e'},
+  'TSTM': {bg:'#3d4d1f',color:'#a3c244'},
+  'MRGL': {bg:'#1a3d1a',color:'#3fb950'},
+  'SLGT': {bg:'#3d3000',color:'#ffa500'},
+  'ENH':  {bg:'#3d1f00',color:'#ff6600'},
+  'MDT':  {bg:'#3d0000',color:'#ff2222'},
+  'HIGH': {bg:'#2d0033',color:'#ff00ff'}
+};
+
+function renderOutlook() {
+  const container = document.getElementById('day-cards-container-h8n4');
+  const ts        = document.getElementById('spc-updated-ts-k3m1');
+  if (!container) return;
+  if (!currentOutlook) {
+    if (ts) ts.innerHTML = '<span class="cached-badge">⚠ UNAVAILABLE</span>';
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:10px;color:#ffa500;font-family:Courier New,monospace;font-size:.6rem">⚠ Could not reach SPC — outlook unavailable. <a href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener" style="color:#ffa500;text-decoration:underline">spc.noaa.gov →</a></div>';
+    return;
+  }
+  if (ts) {
+    ts.innerHTML = outlookSource === 'cached'
+      ? '<span class="cached-badge">📡 Cached ' + cacheAgeLabel(outlookCacheTs) + '</span>'
+      : 'Updated: ' + nowEDT();
+  }
+  const days = [
+    {label:'Day 1',data:currentOutlook.day1,showProb:true},
+    {label:'Day 2',data:currentOutlook.day2,showProb:false},
+    {label:'Day 3',data:currentOutlook.day3,showProb:false}
+  ];
+  container.innerHTML = days.map(d => {
+    const s = riskStyles[d.data.risk] || riskStyles['NONE'];
+    return '<div class="day-card">' +
+      '<div style="font-family:Courier New,monospace;font-size:.55rem;color:#8b949e;margin-bottom:4px">'+d.label+'</div>' +
+      '<span style="display:inline-block;padding:2px 8px;border-radius:3px;font-family:Courier New,monospace;font-size:.62rem;font-weight:700;background:'+s.bg+';color:'+s.color+'">'+d.data.risk+'</span>' +
+      (d.showProb?'<div style="margin-top:6px;font-family:Courier New,monospace;font-size:.5rem;color:#8b949e"><div>🌪 '+d.data.tornado+'%</div><div>🌩 '+d.data.hail+'%</div><div>💨 '+d.data.wind+'%</div></div>':'') +
+    '</div>';
+  }).join('');
+
+  const risks = ['NONE','TSTM','MRGL','SLGT','ENH','MDT','HIGH'];
+  const idx   = risks.indexOf(currentOutlook.day1.risk);
+  const arrow = document.getElementById('scale-arrow-w2p8');
+  if (arrow) {
+    const pct = idx < 0 ? 0 : (idx/(risks.length-1))*100;
+    arrow.innerHTML = '<div style="position:absolute;left:'+pct+'%;transform:translateX(-50%);color:#00d9ff;font-size:.7rem">▲</div>';
+  }
+}
+
+// ─── RENDER: LSRs ─────────────────────────────────────────────────────────────
+function renderLSRs() {
+  if (!window._radarMap) return;
+  if (lsrLayerGroup) lsrLayerGroup.clearLayers();
+  else { lsrLayerGroup = L.layerGroup(); lsrLayerGroup.addTo(window._radarMap); }
+  currentLSRs.forEach(lsr => {
+    const col = (lsr.type||'').toLowerCase().includes('tornado') ? '#ff2222' :
+                (lsr.type||'').toLowerCase().includes('hail')    ? '#00ff88' : '#ffa500';
+    L.circleMarker([lsr.lat,lsr.lon],{radius:6,color:col,fillColor:col,fillOpacity:.7,weight:2})
+      .bindPopup('<b>'+(lsr.type||'LSR')+'</b><br>'+(lsr.city||'')+'<br>'+(lsr.magnitude||'')+'<br><small>'+(lsr.valid||'')+'</small>')
+      .addTo(lsrLayerGroup);
+  });
+}
+
+// ─── TORNADO WARNING POLYGONS + MOTION VECTOR ────────────────────────────────
+let tornadoLayerGroup = null, tornadoLayerVisible = true;
+
+function renderTornadoLayer() {
+  if (!window._radarMap) return;
+  if (tornadoLayerGroup) tornadoLayerGroup.clearLayers();
+  else { tornadoLayerGroup = L.layerGroup(); if (tornadoLayerVisible) tornadoLayerGroup.addTo(window._radarMap); }
+
+  const warnings = (currentAlerts||[]).filter(a => a.event === 'Tornado Warning' && a.geometry && a.geometry.coordinates);
+  warnings.forEach(w => {
+    const coords = w.geometry.coordinates[0].map(([lon,lat]) => [lat,lon]);
+    L.polygon(coords, {color:'#ff2222', weight:2, fillColor:'#ff2222', fillOpacity:.15, className:'tor-pulse'})
+      .bindPopup('<b>🌀 '+w.event+'</b><br>Expires: '+fmtTime(w.expires)+(w.headline?'<br><small>'+w.headline+'</small>':''))
+      .addTo(tornadoLayerGroup);
+
+    const motion = parseStormMotion(w.description);
+    const centroid = polygonCentroid(w.geometry.coordinates);
+    if (motion && centroid) {
+      const tip = destinationPoint(centroid[0], centroid[1], motion.bearingDeg, motion.speedMph * 0.25); // ~15 min projection
+      L.polyline([centroid, tip], {color:'#ff2222', weight:2, dashArray:'4,4'}).addTo(tornadoLayerGroup);
+      L.circleMarker(tip, {radius:3, color:'#ff2222', fillColor:'#ff2222', fillOpacity:1}).addTo(tornadoLayerGroup);
+    }
+  });
+}
+
+function renderTornadoStatus() {
+  const el = document.getElementById('tornado-status-bar');
+  if (!el) return;
+  const warnings = (currentAlerts||[]).filter(a => a.event === 'Tornado Warning' && a.geometry && a.geometry.coordinates);
+  if (!warnings.length) {
+    el.className = '';
+    el.style.color = '#3fb950';
+    el.textContent = '✓ No tornado warnings near Atlantic Beach';
+    return;
+  }
+  const inWarning = warnings.find(w => pip([CONFIG.lon, CONFIG.lat], w));
+  if (inWarning) {
+    el.className = 'tor-banner-active';
+    el.textContent = '🌀 TORNADO WARNING — ATLANTIC BEACH IS IN THE WARNED AREA · Expires ' + fmtTime(inWarning.expires);
+    return;
+  }
+  // Not inside any polygon — report the nearest one
+  let nearest = null, nearestDist = Infinity;
+  warnings.forEach(w => {
+    const c = polygonCentroid(w.geometry.coordinates);
+    if (!c) return;
+    const d = haversineMiles(CONFIG.lat, CONFIG.lon, c[0], c[1]);
+    if (d < nearestDist) { nearestDist = d; nearest = {w, c}; }
+  });
+  if (!nearest) { el.className = ''; el.style.color = '#3fb950'; el.textContent = '✓ No tornado warnings near Atlantic Beach'; return; }
+  const dir = bearingToCompass(bearingDeg(CONFIG.lat, CONFIG.lon, nearest.c[0], nearest.c[1]));
+  const motion = parseStormMotion(nearest.w.description);
+  const motionTxt = motion ? ' · moving ' + bearingToCompass(motion.bearingDeg) + ' at ' + motion.speedMph + ' mph' : '';
+  el.className = '';
+  el.style.color = '#ffa500';
+  el.textContent = '🌀 Tornado Warning ~' + Math.round(nearestDist) + 'mi ' + dir + ' of Atlantic Beach' + motionTxt + ' · until ' + fmtTime(nearest.w.expires);
+}
+
+function toggleTornadoLayer() {
+  const btn = document.getElementById('btn-tornado');
+  tornadoLayerVisible = !tornadoLayerVisible;
+  if (btn) btn.classList.toggle('active', tornadoLayerVisible);
+  if (!window._radarMap || !tornadoLayerGroup) return;
+  if (tornadoLayerVisible) tornadoLayerGroup.addTo(window._radarMap);
+  else window._radarMap.removeLayer(tornadoLayerGroup);
+}
+
+// ─── RISK BANNER — one glance-able status instead of scanning a dozen panels ──
+function setRiskBanner(level, icon, text) {
+  const el = document.getElementById('risk-banner');
+  if (!el) return;
+  el.className = 'risk-banner risk-' + level;
+  const iconEl = document.getElementById('risk-banner-icon');
+  const textEl = document.getElementById('risk-banner-text');
+  if (iconEl) iconEl.textContent = icon;
+  if (textEl) textEl.textContent = text;
+}
+
+function updateRiskBanner() {
+  const el = document.getElementById('risk-banner');
+  if (!el) return;
+
+  // Active Alerts is the most safety-critical signal — if we can't verify it AND have no
+  // real cached fallback, the banner must say so rather than risk implying "all clear."
+  if (alertsSource === 'mock') {
+    setRiskBanner('unknown', '❔', 'STATUS UNKNOWN — could not verify active alerts. Check weather.gov directly.');
+    return;
+  }
+  // Cached alerts are real, just possibly aging while offline — evaluate them normally,
+  // just say so in the message instead of pretending the connection is live.
+  const cacheSuffix = alertsSource === 'cached' ? (' [offline — cached ' + cacheAgeLabel(alertsCacheTs) + ']') : '';
+
+  const activeWarning = currentAlerts.find(a => (a.priority || 0) >= 9);
+  if (activeWarning) {
+    setRiskBanner('danger', '🚨', activeWarning.event.toUpperCase() + (activeWarning.headline ? ' — ' + activeWarning.headline : '') + cacheSuffix);
+    return;
+  }
+
+  // Watches/Special Marine Warning (priority 6-8) are a real step up — orange.
+  // Rip Current/Beach Hazard statements (priority 3-4) are routine in FL summer — yellow only.
+  if (currentAlerts.length) {
+    const names = currentAlerts.map(a => a.event).join(', ');
+    const elevated = currentAlerts.some(a => (a.priority || 0) >= 6);
+    setRiskBanner(elevated ? 'warning' : 'monitor', elevated ? '⚠' : '👀',
+      currentAlerts.length + ' active alert' + (currentAlerts.length > 1 ? 's' : '') + ': ' + names + cacheSuffix);
+    return;
+  }
+
+  if (currentOutlook && ['ENH', 'MDT', 'HIGH'].includes(currentOutlook.day1.risk)) {
+    setRiskBanner('warning', '⚠', 'SPC Day 1 risk: ' + currentOutlook.day1.risk + ' — elevated severe weather threat today');
+    return;
+  }
+
+  // TSTM is the baseline "general thunderstorms possible" category — present on most
+  // Florida summer days. Treating it as elevated would make the banner yellow constantly
+  // and defeat the point of a calm "all clear" signal. Only MRGL and up count as elevated.
+  if (currentOutlook && ['SLGT', 'MRGL'].includes(currentOutlook.day1.risk)) {
+    setRiskBanner('monitor', '👀', 'SPC Day 1 risk: ' + currentOutlook.day1.risk + ' — worth keeping an eye on');
+    return;
+  }
+
+  if (currentStorms.length) {
+    setRiskBanner('monitor', '🌀', currentStorms.length + ' active tropical system' + (currentStorms.length > 1 ? 's' : '') + ' in the Atlantic basin — not necessarily near you, check Hurricane tab');
+    return;
+  }
+
+  setRiskBanner('clear', '✓', 'ALL CLEAR — no active alerts, no elevated severe risk, no nearby tropical threats' + cacheSuffix);
+}
+
+// ─── SPC OUTLOOK MAP ──────────────────────────────────────────────────────────
+const SPC_CAT_STYLE = {
+  'TSTM': {fill:'#c1e9c1',stroke:'#82c882',label:'TSTM'},
+  'MRGL': {fill:'#66c166',stroke:'#3ea03e',label:'MRGL'},
+  'SLGT': {fill:'#f6f67a',stroke:'#c0c000',label:'SLGT'},
+  'ENH':  {fill:'#e8922b',stroke:'#b06010',label:'ENH'},
+  'MDT':  {fill:'#e84040',stroke:'#b01010',label:'MDT'},
+  'HIGH': {fill:'#c000c0',stroke:'#900090',label:'HIGH'}
+};
+const SPC_PROB_STYLE = {
+  '2':  {fill:'#66c166',stroke:'#3ea03e',label:'2%'},
+  '5':  {fill:'#f6f67a',stroke:'#c0c000',label:'5%'},
+  '10': {fill:'#e0e040',stroke:'#a0a000',label:'10%'},
+  '15': {fill:'#e8922b',stroke:'#b06010',label:'15%'},
+  '30': {fill:'#e84040',stroke:'#b01010',label:'30%'},
+  '45': {fill:'#c000c0',stroke:'#900090',label:'45%'},
+  '60': {fill:'#ff80ff',stroke:'#cc00cc',label:'60%'}
+};
+
+let _spcMap = null, _spcGeoLayer = null;
+
+function initSPCMap() {
+  const el = document.getElementById('spcOutlookMap');
+  if (!el || _spcMap) return;
+  _spcMap = L.map('spcOutlookMap', {
+    center: [37, -93], zoom: 3,
+    zoomControl: false, attributionControl: false,
+    scrollWheelZoom: false
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 10
+  }).addTo(_spcMap);
+  L.circleMarker([CONFIG.lat, CONFIG.lon], {
+    radius: 5, color: '#00d9ff', fillColor: '#00d9ff', fillOpacity: 1, weight: 2
+  }).bindTooltip('ATL BEACH', {permanent: false, direction: 'top'}).addTo(_spcMap);
+
+  // Layer tab click handler
+  const tabs = document.getElementById('spc-map-tabs');
+  if (tabs) tabs.addEventListener('click', e => {
+    const btn = e.target.closest('[data-spc-layer]');
+    if (!btn) return;
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeSpcLayer = btn.dataset.spcLayer;
+    renderSPCOutlookMap(activeSpcLayer);
+  });
+}
+
+function renderSPCOutlookMap(layerKey) {
+  if (!_spcMap) { initSPCMap(); }
+  if (!_spcMap) return;
+
+  if (_spcGeoLayer) { _spcMap.removeLayer(_spcGeoLayer); _spcGeoLayer = null; }
+
+  const features = spcGeoJSON[layerKey] || [];
+  const isCat = layerKey.endsWith('cat');
+  const legend = document.getElementById('spc-map-legend');
+  const seenLabels = new Set();
+
+  if (!features.length) {
+    if (legend) legend.innerHTML = '<span style="font-family:Courier New,monospace;font-size:.5rem;color:#555">No data — waiting for SPC fetch</span>';
+    return;
+  }
+
+  _spcGeoLayer = L.geoJSON({type:'FeatureCollection', features}, {
+    style: feat => {
+      const lbl = ((feat.properties && feat.properties.LABEL) || '').toUpperCase().trim();
+      const s = isCat ? (SPC_CAT_STYLE[lbl] || {fill:'#333',stroke:'#555'})
+                      : (SPC_PROB_STYLE[lbl] || {fill:'#333',stroke:'#555'});
+      return { color: s.stroke, fillColor: s.fill, fillOpacity: 0.55, weight: 1 };
+    },
+    onEachFeature: (feat, layer) => {
+      const lbl = ((feat.properties && feat.properties.LABEL) || '').toUpperCase().trim();
+      const styleMap = isCat ? SPC_CAT_STYLE : SPC_PROB_STYLE;
+      const s = styleMap[lbl];
+      if (s) seenLabels.add(lbl);
+      layer.bindTooltip(isCat ? lbl : lbl + '%', {sticky: true, className: 'spc-tip'});
+    }
+  }).addTo(_spcMap);
+
+  // Legend
+  if (legend) {
+    const styleMap = isCat ? SPC_CAT_STYLE : SPC_PROB_STYLE;
+    const order = isCat
+      ? ['TSTM','MRGL','SLGT','ENH','MDT','HIGH']
+      : ['2','5','10','15','30','45','60'];
+    legend.innerHTML = order.filter(k => seenLabels.has(k)).map(k => {
+      const s = styleMap[k];
+      return '<span style="display:inline-flex;align-items:center;gap:3px;font-family:Courier New,monospace;font-size:.45rem;color:#8b949e">' +
+             '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + s.fill + ';border:1px solid ' + s.stroke + '"></span>' +
+             s.label + '</span>';
+    }).join('');
+  }
+}
+
+// ─── RADAR MAP ────────────────────────────────────────────────────────────────
+function initRadarMap() {
+  if (window._radarMap) return;
+  const map = L.map('radarMap',{center:[CONFIG.lat,CONFIG.lon],zoom:7,zoomControl:true,attributionControl:false});
+  window._radarMap = map;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(map);
+  window._radarLayer = L.tileLayer.wms('https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi',{
+    layers:'nexrad-n0q',format:'image/png',transparent:true,opacity:.75,version:'1.1.1'
+  }).addTo(map);
+  L.circleMarker([CONFIG.lat,CONFIG.lon],{radius:8,color:'#00d9ff',fillColor:'#00d9ff',fillOpacity:.9,weight:2})
+    .bindPopup('Atlantic Beach, FL').addTo(map);
+  setPill('pill-radar-b5f3','live','RADAR');
+  const ts = document.getElementById('radar-updated-ts-d9e1');
+  if (ts) ts.textContent = 'Updated: '+nowEDT();
+  setInterval(()=>{
+    if (window._radarLayer) window._radarLayer.setParams({_t:Date.now()});
+    const tse = document.getElementById('radar-updated-ts-d9e1');
+    if (tse) tse.textContent = 'Updated: '+nowEDT();
+  },300000);
+  const tabs = document.getElementById('radar-tabs-p4k6');
+  if (tabs) tabs.addEventListener('click', e=>{
+    const btn = e.target.closest('[data-product]');
+    if (!btn) return;
+    tabs.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const prod = btn.dataset.product;
+    // Each product lives on its own .cgi endpoint at IEM — EET was previously falling
+    // through to n0q.cgi (reflectivity-only), which is why it never rendered anything.
+    const wmsUrl = {
+      N0Q: 'https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi',
+      EET: 'https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/eet.cgi'
+    }[prod] || 'https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi';
+    const layerName = {N0Q:'nexrad-n0q',EET:'nexrad-eet'}[prod]||'nexrad-n0q';
+    if (window._radarLayer) map.removeLayer(window._radarLayer);
+    window._radarLayer = L.tileLayer.wms(wmsUrl,{layers:layerName,format:'image/png',transparent:true,opacity:.75,version:'1.1.1'}).addTo(map);
+    const title = document.getElementById('radar-title-n8m3');
+    if (title) title.textContent = 'KJAX NEXRAD — '+prod;
+  });
+}
+
+// ─── HURRICANE MAP ────────────────────────────────────────────────────────────
+let _hurrMapInit = false;
+function initHurricaneMap() {
+  if (_hurrMapInit) return;
+  _hurrMapInit = true;
+  const el = document.getElementById('hurricaneMap');
+  if (!el) return;
+  const map = L.map('hurricaneMap',{center:[25,-65],zoom:4,zoomControl:true,attributionControl:false});
+  window._hurrMap = map;
+  window._hurricaneMap = map;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:18}).addTo(map);
+  L.circleMarker([CONFIG.lat,CONFIG.lon],{radius:7,color:'#00d9ff',fillColor:'#00d9ff',fillOpacity:.9,weight:2})
+    .bindPopup('Atlantic Beach, FL').addTo(map);
+  const lbl = document.getElementById('hurr-map-label');
+  if (lbl) lbl.textContent = 'Atlantic Basin — open NHC.NOAA.GOV for live storms';
+}
+function toggleHurrLayer(layer) {
+  const btn = document.getElementById('btn-'+layer);
+  if (btn) btn.classList.toggle('active');
+}
+
+// ─── SEVERE PARAMS (static display) ──────────────────────────────────────────
+const PARAMS = [
+  {label:'SBCAPE',value:'850',unit:'J/kg',tip:'Surface-based CAPE. >1000 supports supercells.'},
+  {label:'MLCAPE',value:'620',unit:'J/kg',tip:'Mixed-layer CAPE.'},
+  {label:'SRH 0-1km',value:'180',unit:'m²/s²',tip:'Storm-relative helicity. >150 favorable for rotation.'},
+  {label:'SRH 0-3km',value:'280',unit:'m²/s²',tip:'>300 significant tornado threat.'},
+  {label:'Shear 0-6km',value:'35',unit:'kt',tip:'>30kt supports organized convection.'},
+  {label:'LCL Height',value:'850',unit:'m',tip:'<1000m favorable for tornadoes.'},
+  {label:'Lifted Index',value:'-3',unit:'',tip:'<-2 indicates moderate instability.'},
+  {label:'PWAT',value:'1.85',unit:'"',tip:'Precipitable water. >1.5" heavy rain threat.'}
+];
+function renderParams() {
+  const grid = document.getElementById('param-grid-u6b4');
+  if (!grid) return;
+  grid.innerHTML = PARAMS.map(p =>
+    '<div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">' +
+      '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#8b949e;margin-bottom:2px">'+p.label+'</div>' +
+      '<div class="data-val" style="font-size:.85rem">'+p.value+'</div>' +
+      (p.unit?'<div style="font-family:Courier New,monospace;font-size:.45rem;color:#8b949e">'+p.unit+'</div>':'') +
+    '</div>'
+  ).join('');
+}
+
+// ─── BRIEFING ─────────────────────────────────────────────────────────────────
+function generateBriefing() {
+  // This text gets copied/emailed by the user \u2014 never present fabricated risk data as a real briefing.
+  const now = new Date();
+  let txt = 'STORMWATCH // ATLANTIC BEACH, FL\n';
+  txt += 'Briefing: ' + now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'America/New_York'}) + ' ' + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/New_York'}) + ' EDT\n';
+  txt += '\u2500'.repeat(44) + '\n\nSPC CONVECTIVE OUTLOOK:\n';
+  if (currentOutlook) {
+    const o = currentOutlook;
+    txt += '  Day 1: ' + o.day1.risk + ' (Torn:' + o.day1.tornado + '%  Hail:' + o.day1.hail + '%  Wind:' + o.day1.wind + '%)\n';
+    txt += '  Day 2: ' + o.day2.risk + '   Day 3: ' + o.day3.risk + '\n';
+    if (outlookSource === 'cached') txt += '  (\u26a0 offline \u2014 cached ' + cacheAgeLabel(outlookCacheTs) + ')\n';
+    txt += '\n';
+  } else {
+    txt += '  \u26a0 UNAVAILABLE \u2014 could not reach SPC, check spc.noaa.gov\n\n';
+  }
+  if (alertsSource === 'mock') {
+    txt += 'ACTIVE ALERTS: \u26a0 UNAVAILABLE \u2014 could not reach NWS, check weather.gov\n';
+  } else if (currentAlerts.length) {
+    txt += 'ACTIVE ALERTS (' + currentAlerts.length + ')' + (alertsSource === 'cached' ? ' \u2014 \u26a0 offline, cached ' + cacheAgeLabel(alertsCacheTs) : '') + ':\n';
+    currentAlerts.forEach(a => { txt += '  \u2022 ' + a.event + '\n    ' + (a.headline || '') + '\n'; });
+  } else {
+    txt += 'ACTIVE ALERTS: None' + (alertsSource === 'cached' ? ' (\u26a0 offline \u2014 cached ' + cacheAgeLabel(alertsCacheTs) + ')' : '') + '\n';
+  }
+  txt += '\n7-DAY FORECAST:\n';
+  if (currentForecast.length) {
+    currentForecast.slice(0,5).forEach(p => {
+      txt += '  ' + p.name.padEnd(18) + p.temperature + '\u00b0F  ' + p.shortForecast + '\n';
+    });
+    if (forecastSource === 'cached') txt += '  (\u26a0 offline \u2014 cached ' + cacheAgeLabel(forecastCacheTs) + ')\n';
+  } else {
+    txt += '  \u26a0 UNAVAILABLE \u2014 could not reach NWS, check weather.gov\n';
+  }
+  txt += '\nData: NWS api.weather.gov \u00b7 IEM mesonet \u00b7 SPC spc.noaa.gov\nKJAX NEXRAD \u00b7 30.3354\u00b0N 81.3990\u00b0W\n';
+  const el = document.getElementById('briefing-text-w6y9');
+  if (el) el.value = txt;
+}
+
+// ─── PUSH NOTIFICATIONS ───────────────────────────────────────────────────────
+// \u2500\u2500\u2500 TOAST \u2014 in-page feedback that doesn't depend on the browser's own UI \u2500\u2500\u2500\u2500
+function showToast(html, variant) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + (variant || 'info');
+  el.innerHTML = html;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 7000);
+}
+
+// \u2500\u2500\u2500 SIREN \u2014 Web Audio oscillator sweep, no external audio file needed \u2500\u2500\u2500\u2500\u2500\u2500
+let _sirenCtx = null;
+function playSiren(durationMs) {
+  durationMs = durationMs || 2200;
+  try {
+    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sirenCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const cycles = Math.max(1, Math.round(durationMs / 800));
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(.25, now + .05);
+    for (let i = 0; i < cycles; i++) {
+      const t0 = now + i * .8;
+      osc.frequency.setValueAtTime(600, t0);
+      osc.frequency.linearRampToValueAtTime(1100, t0 + .4);
+      osc.frequency.linearRampToValueAtTime(600, t0 + .8);
+    }
+    gain.gain.setValueAtTime(.25, now + cycles*.8 - .1);
+    gain.gain.linearRampToValueAtTime(0, now + cycles*.8);
+    osc.start(now);
+    osc.stop(now + cycles*.8 + .05);
+  } catch(e) { console.warn('Siren playback failed:', e); }
+}
+
+// ─── DISTINCT ALERT SOUNDS — synthesized per category, no external audio files ──
+function _noiseBuffer(ctx, seconds) {
+  const size = Math.max(1, Math.round(ctx.sampleRate * seconds));
+  const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < size; i++) data[i] = Math.random() * 2 - 1;
+  return buffer;
+}
+
+// Classic civil-defense tornado siren — slow rising/falling wail, not the quick chirp sweep.
+function playTornadoSiren(durationMs) {
+  durationMs = durationMs || 4400;
+  try {
+    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sirenCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const halfCycle = 2; // 2s up, 2s down
+    const cycles = Math.max(1, Math.round(durationMs / (halfCycle*2*1000)));
+    const totalDur = cycles * halfCycle * 2;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(.22, now + .3);
+    osc.frequency.setValueAtTime(380, now);
+    for (let i = 0; i < cycles; i++) {
+      const t0 = now + i * halfCycle * 2;
+      osc.frequency.linearRampToValueAtTime(900, t0 + halfCycle);
+      osc.frequency.linearRampToValueAtTime(380, t0 + halfCycle*2);
+    }
+    gain.gain.setValueAtTime(.22, now + totalDur - .3);
+    gain.gain.linearRampToValueAtTime(0, now + totalDur);
+    osc.start(now);
+    osc.stop(now + totalDur + .05);
+  } catch(e) { console.warn('Tornado siren playback failed:', e); }
+}
+
+// Thunder crack — sharp filtered-noise burst + low rumbling tail.
+function playThunderCrack() {
+  try {
+    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sirenCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+
+    // Multiple rapid crack impulses (real thunder is several quick discharges, not one
+    // smooth burst) — each slightly lower-pitched and quieter than the last.
+    [0, .06, .15].forEach((offset, i) => {
+      const src = ctx.createBufferSource();
+      src.buffer = _noiseBuffer(ctx, .15);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass'; filter.frequency.value = 900 - i*150; filter.Q.value = .8;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(.75 - i*.15, now + offset);
+      gain.gain.exponentialRampToValueAtTime(.001, now + offset + .12);
+      src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      src.start(now + offset); src.stop(now + offset + .15);
+    });
+
+    // Deep sub-bass boom — gives the crack physical weight that filtered noise alone lacks.
+    const boom = ctx.createOscillator();
+    boom.type = 'sine';
+    boom.frequency.setValueAtTime(70, now);
+    boom.frequency.exponentialRampToValueAtTime(35, now + .6);
+    const boomGain = ctx.createGain();
+    boomGain.gain.setValueAtTime(.65, now);
+    boomGain.gain.exponentialRampToValueAtTime(.001, now + .7);
+    boom.connect(boomGain); boomGain.connect(ctx.destination);
+    boom.start(now); boom.stop(now + .7);
+
+    // Rolling rumble tail — longer, with a slow wobble so it rolls instead of just decaying flat.
+    const rumbleSrc = ctx.createBufferSource();
+    rumbleSrc.buffer = _noiseBuffer(ctx, 3.2);
+    const rumbleFilter = ctx.createBiquadFilter();
+    rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 140;
+    const rumbleGain = ctx.createGain();
+    rumbleGain.gain.setValueAtTime(0, now);
+    rumbleGain.gain.linearRampToValueAtTime(.45, now + .25);
+    rumbleGain.gain.exponentialRampToValueAtTime(.001, now + 3.2);
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 5;
+    const wobbleGain = ctx.createGain();
+    wobbleGain.gain.value = .15;
+    wobble.connect(wobbleGain); wobbleGain.connect(rumbleGain.gain);
+    rumbleSrc.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(ctx.destination);
+    rumbleSrc.start(now); rumbleSrc.stop(now + 3.2);
+    wobble.start(now); wobble.stop(now + 3.2);
+  } catch(e) { console.warn('Thunder playback failed:', e); }
+}
+
+// Hurricane/tropical — deep sustained horn with slow tremolo (howling wind feel).
+function playHurricaneHorn(durationMs) {
+  durationMs = durationMs || 3400;
+  try {
+    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sirenCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const dur = durationMs / 1000;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 110;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(.2, now + .4);
+    gain.gain.setValueAtTime(.2, now + dur - .4);
+    gain.gain.linearRampToValueAtTime(0, now + dur);
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 4;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = .08;
+    lfo.connect(lfoGain); lfoGain.connect(gain.gain);
+
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); lfo.start(now);
+    osc.stop(now + dur); lfo.stop(now + dur);
+  } catch(e) { console.warn('Hurricane horn playback failed:', e); }
+}
+
+// Flood — rushing-water noise swell + a rising alert beep on top.
+function playFloodAlert(durationMs) {
+  durationMs = durationMs || 2800;
+  try {
+    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sirenCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const dur = durationMs / 1000;
+
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = _noiseBuffer(ctx, dur);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass'; filter.frequency.value = 500; filter.Q.value = .5;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, now);
+    noiseGain.gain.linearRampToValueAtTime(.3, now + dur*.4);
+    noiseGain.gain.linearRampToValueAtTime(0, now + dur);
+    noiseSrc.connect(filter); filter.connect(noiseGain); noiseGain.connect(ctx.destination);
+    noiseSrc.start(now); noiseSrc.stop(now + dur);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0, now);
+    oscGain.gain.linearRampToValueAtTime(.18, now + .1);
+    oscGain.gain.linearRampToValueAtTime(0, now + .5);
+    osc.frequency.setValueAtTime(500, now);
+    osc.frequency.linearRampToValueAtTime(900, now + .5);
+    osc.connect(oscGain); oscGain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + .5);
+  } catch(e) { console.warn('Flood alert playback failed:', e); }
+}
+
+// Maps a Warning-tier event to its distinct sound — Watches/Statements keep the generic chirp.
+const ALERT_SOUND_MAP = {
+  'Tornado Warning': 'tornado',
+  'Severe Thunderstorm Warning': 'thunder',
+  'Hurricane Warning': 'hurricane',
+  'Tropical Storm Warning': 'hurricane',
+  'Storm Surge Warning': 'hurricane',
+  'Extreme Wind Warning': 'hurricane',
+  'Flash Flood Warning': 'flood',
+  'Flood Warning': 'flood',
+  'Coastal Flood Warning': 'flood'
+};
+
+function playAlertSound(event, durationMs) {
+  const kind = ALERT_SOUND_MAP[event];
+  if (kind === 'tornado')   return playTornadoSiren(durationMs);
+  if (kind === 'thunder')   return playThunderCrack();
+  if (kind === 'hurricane') return playHurricaneHorn(durationMs);
+  if (kind === 'flood')     return playFloodAlert(durationMs);
+  return playSiren(durationMs);
+}
+
+function updateNotifBtn() {
+  const btn = document.getElementById('notif-btn');
+  if (!btn) return;
+  btn.classList.toggle('active', notificationsEnabled);
+  if (!notificationsEnabled) {
+    btn.textContent = '\uD83D\uDD14 ALERTS';
+  } else if ('Notification' in window && Notification.permission === 'denied') {
+    btn.textContent = '\uD83D\uDD14 ALERTS (sound only)';
+  } else {
+    btn.textContent = '\uD83D\uDD14 ALERTS ON';
+  }
+}
+
+async function toggleNotifications() {
+  if (!notificationsEnabled) {
+    notificationsEnabled = true;
+    localStorage.setItem('sw_notif', 'true');
+    updateNotifBtn();
+    playSiren(800); // immediate, unmistakable confirmation \u2014 don't rely on the browser's own popup
+    showToast('<b>\uD83D\uDD14 Alerts enabled.</b><br>You\'ll hear a siren + see a banner here for new Tornado/Severe Warnings.', 'info');
+
+    if (!('Notification' in window)) {
+      showToast('Browser push notifications aren\'t supported here, but the siren and in-page alerts above will still work while this tab is open.', 'warn');
+      return;
+    }
+    if (Notification.permission === 'default') {
+      // Chrome/Firefox often show a small, easy-to-miss icon in the address bar instead of a popup.
+      const hintTimer = setTimeout(() => {
+        if (Notification.permission === 'default') {
+          showToast('\uD83D\uDC49 Didn\'t see a popup? Look for a small bell/notification icon in your browser\'s address bar and click it to also enable push notifications.', 'warn');
+        }
+      }, 3000);
+      const perm = await Notification.requestPermission();
+      clearTimeout(hintTimer);
+      updateNotifBtn();
+      if (perm === 'granted') {
+        new Notification('StormWatch ATL BEACH', {body:'Push notifications enabled too.'});
+      } else if (perm === 'denied') {
+        showToast('\uD83D\uDD15 Browser push notifications are blocked. The siren and in-page alerts will still work \u2014 to also get push notifications, allow them in your browser\'s site settings.', 'warn');
+      }
+    } else if (Notification.permission === 'denied') {
+      showToast('\uD83D\uDD15 Browser push notifications are blocked at the browser level. The siren and in-page alerts will still work while this tab is open.', 'warn');
+    }
+  } else {
+    notificationsEnabled = false;
+    localStorage.setItem('sw_notif', 'false');
+    updateNotifBtn();
+    showToast('Alerts disabled.', 'info');
+  }
+}
+
+function checkAlertNotifications() {
+  if (!notificationsEnabled) return;
+  const high = [
+    'Tornado Warning','Hurricane Warning','Storm Surge Warning','Extreme Wind Warning',
+    'Severe Thunderstorm Warning','Tropical Storm Warning','Flash Flood Warning',
+    'Flood Warning','Coastal Flood Warning',
+    'Tornado Watch','Severe Thunderstorm Watch','Hurricane Watch','Storm Surge Watch',
+    'Special Marine Warning','Tropical Storm Watch','Flash Flood Watch',
+    'Flood Watch','Coastal Flood Watch'
+  ];
+  currentAlerts.forEach(a => {
+    if (!high.includes(a.event)) return;
+    if (seenAlertIds.has(a.id)) return;
+    seenAlertIds.add(a.id);
+    try {
+      const saved = [...seenAlertIds].slice(-100);
+      localStorage.setItem('sw_seen_alerts', JSON.stringify(saved));
+    } catch(e) {}
+    const isTornado = a.event.includes('Tornado');
+    const isWarning = a.event.includes('Warning'); // Warnings get the looping ack modal; Watches just get a toast + single chirp
+    if (isWarning) {
+      queueSirenAlert(a);
+    } else {
+      playSiren(1600);
+      showToast('<b>\u26A0\uFE0F ' + a.event + '</b><br>' + (a.headline || 'New NWS alert issued.'), 'warn');
+    }
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('\u26A0\uFE0F ' + a.event + ' \u2014 ATL BEACH', {
+        body: a.headline || 'New NWS alert issued.',
+        tag: a.id
+      });
+    }
+  });
+}
+
+// \u2500\u2500\u2500 SIREN ACKNOWLEDGMENT MODAL \u2014 loops until the user acknowledges \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+let sirenQueue = [];
+let sirenLoopTimer = null;
+
+// ─── TEST ALARMS — preview sound + modal without touching real alert state ───
+function testAlarm(event) {
+  const fake = {
+    id: 'TEST-' + event.replace(/\s+/g, '') + '-' + Date.now(),
+    event: event,
+    headline: 'TEST ALARM — this is only a preview, not a real alert.',
+    expires: new Date(Date.now() + 5 * 60000).toISOString()
+  };
+  if (event.includes('Warning')) {
+    queueSirenAlert(fake);
+  } else {
+    playAlertSound(event, 1600);
+    showToast('<b>TEST</b> ' + event + '<br>This is only a preview, not a real alert.', 'warn');
+  }
+  if (!notificationsEnabled) {
+    showToast('Note: 🔔 ALERTS is off — real alerts won\'t trigger sounds until you turn it on.', 'info');
+  }
+}
+
+function queueSirenAlert(a) {
+  sirenQueue.push(a);
+  if (sirenQueue.length === 1) showCurrentSirenAlert();
+  else updateSirenQueueLabel();
+}
+
+function updateSirenQueueLabel() {
+  const qEl = document.getElementById('siren-modal-queue');
+  qEl.textContent = sirenQueue.length > 1 ? ('+' + (sirenQueue.length - 1) + ' more alert' + (sirenQueue.length > 2 ? 's' : '') + ' waiting') : '';
+}
+
+const SIREN_MODAL_ICON = {tornado:'\uD83C\uDF00', thunder:'\u26C8\uFE0F', hurricane:'\uD83C\uDF2C\uFE0F', flood:'\uD83C\uDF0A'};
+const SIREN_MODAL_DUR  = {tornado:4400, thunder:3400, hurricane:3400, flood:2800};
+
+// What to actually DO for each category \u2014 the part that turns "you're in danger" into
+// concrete next steps, instead of just naming the threat.
+const SAFETY_ACTIONS = {
+  tornado: [
+    'Get to the lowest floor, smallest interior room (closet/bathroom)',
+    'Stay away from windows',
+    'Cover yourself with blankets, pillows, or a mattress if possible',
+    'If outdoors or in a vehicle, get to a sturdy building now'
+  ],
+  thunder: [
+    'Get indoors now \u2014 lightning can strike well ahead of the storm',
+    'Stay away from windows',
+    'Unplug sensitive electronics',
+    'Avoid corded phones and running water until it passes'
+  ],
+  hurricane: [
+    'Follow evacuation orders for your zone if issued',
+    'Secure or bring in outdoor objects',
+    'Charge devices and fill water containers now',
+    'Know your evacuation route \u2014 A1A floods at ~3ft of surge'
+  ],
+  flood: [
+    'Move to higher ground now',
+    'Never drive through a flooded road',
+    'Avoid walking through moving water',
+    'Stay off bridges over fast-moving water'
+  ]
+};
+const SAFETY_ACTIONS_DEFAULT = ['Stay alert and monitor official sources (weather.gov) for updates.'];
+
+function showCurrentSirenAlert() {
+  const a = sirenQueue[0];
+  if (!a) { hideSirenModal(); return; }
+  const kind = ALERT_SOUND_MAP[a.event]; // undefined for any Warning not in the map \u2014 falls back below
+  document.getElementById('siren-modal-icon').textContent = SIREN_MODAL_ICON[kind] || '\u26A1';
+  document.getElementById('siren-modal-event').textContent = a.event.toUpperCase() + ' \u2014 ATL BEACH';
+  document.getElementById('siren-modal-headline').textContent = a.headline || 'New NWS alert issued.';
+  document.getElementById('siren-modal-meta').textContent = a.expires ? ('Expires: ' + fmtTime(a.expires)) : '';
+  const actions = SAFETY_ACTIONS[kind] || SAFETY_ACTIONS_DEFAULT;
+  document.getElementById('siren-modal-actions').innerHTML = actions.map(t => '<li>' + t + '</li>').join('');
+  updateSirenQueueLabel();
+  document.getElementById('siren-modal-backdrop').style.display = 'flex';
+
+  if (sirenLoopTimer) clearInterval(sirenLoopTimer);
+  const dur = SIREN_MODAL_DUR[kind] || 1600;
+  playAlertSound(a.event, dur);
+  sirenLoopTimer = setInterval(() => playAlertSound(a.event, dur), dur + 400);
+}
+
+function hideSirenModal() {
+  if (sirenLoopTimer) { clearInterval(sirenLoopTimer); sirenLoopTimer = null; }
+  document.getElementById('siren-modal-backdrop').style.display = 'none';
+}
+
+function acknowledgeSiren() {
+  sirenQueue.shift();
+  if (sirenLoopTimer) { clearInterval(sirenLoopTimer); sirenLoopTimer = null; }
+  if (sirenQueue.length) showCurrentSirenAlert();
+  else hideSirenModal();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('siren-modal-backdrop').style.display === 'flex') acknowledgeSiren();
+});
+
+// ─── LIGHTNING (BLITZORTUNG.ORG EMBED) ─────────────────────────────────
+// NLDN strike data is proprietary; NOAA WMS blocks Referer:null (file:// pages).
+// blitzortung.org's public map has no X-Frame-Options/CSP block and embeds cleanly.
+const LIGHTNING_FADE_MS = 8 * 60 * 1000;
+let _ltngPollTimer = null;
+
+function toggleLightning() {
+  const btn   = document.getElementById('btn-lightning');
+  const panel = document.getElementById('lightning-windy-panel');
+  lightningActive = !lightningActive;
+  if (btn)   btn.classList.toggle('active', lightningActive);
+  if (panel) panel.style.display = lightningActive ? 'block' : 'none';
+  if (btn)   btn.textContent = lightningActive ? '⚡ LTNG ON' : '⚡ LTNG';
+}
+
+function setLtngBtnLabel() { /* stub */ }
+function stopLightningWS()  {
+  const p = document.getElementById('lightning-windy-panel');
+  if (p) p.style.display = 'none';
+}
+function renderLightningStrike() { /* stub — not used with Windy embed */ }
+
+// ─── TIDE GAUGE (NOAA CO-OPS 8720218 — MAYPORT) ──────────────────────────────
+async function fetchTide() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = d => d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
+  const yesterday = new Date(now - 86400000);
+  const tomorrow  = new Date(now + 86400000);
+
+  try {
+    // Fetch last 24h of water levels + next tide predictions in parallel
+    const [lvlRes, predRes] = await Promise.all([
+      fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=8720218&product=water_level&datum=MLLW&time_zone=lst_ldt&units=english&format=json&begin_date='+fmt(yesterday)+'&end_date='+fmt(now)),
+      fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=8720218&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&format=json&interval=hilo&begin_date='+fmt(now)+'&end_date='+fmt(tomorrow))
+    ]);
+
+    const lvlJson  = lvlRes.ok  ? await lvlRes.json()  : null;
+    const predJson = predRes.ok ? await predRes.json() : null;
+
+    const levels = lvlJson && lvlJson.data ? lvlJson.data : null;
+    tidePredictions = predJson && predJson.predictions ? predJson.predictions : [];
+
+    if (levels && levels.length > 1) {
+      const latest = parseFloat(levels[levels.length - 1].v);
+      const prev   = parseFloat(levels[levels.length - 2].v);
+      tideWaterLevel = latest;
+      renderTide(levels, latest, prev);
+      setPill('pill-tide','live','TIDE');
+    } else {
+      setPill('pill-tide','offline','TIDE');
+      renderTideFallback();
+    }
+  } catch(e) {
+    setPill('pill-tide','error','TIDE');
+    renderTideFallback();
+  }
+}
+
+function renderTide(levels, latest, prev) {
+  const lvlEl  = document.getElementById('tide-level');
+  const trendEl = document.getElementById('tide-trend');
+  const trendLbl= document.getElementById('tide-trend-label');
+  const metaEl  = document.getElementById('tide-meta');
+  const predEl  = document.getElementById('tide-predictions');
+
+  if (lvlEl) lvlEl.textContent = latest.toFixed(2);
+
+  const rising = latest > prev;
+  const diff = Math.abs(latest - prev).toFixed(2);
+  if (trendEl) { trendEl.textContent = rising ? '\u25B2' : '\u25BC'; trendEl.style.color = rising ? '#00d9ff' : '#ffa500'; }
+  if (trendLbl) trendLbl.textContent = (rising ? 'RISING' : 'FALLING') + ' +' + diff + ' ft/6min';
+  if (metaEl) metaEl.textContent = nowEDT();
+
+  // Sparkline — last 6h of readings (~72 points at 6min intervals)
+  const recent = levels.slice(-72);
+  const vals = recent.map(r => parseFloat(r.v)).filter(v => !isNaN(v));
+  drawTideSparkline(vals);
+
+  // Next high/low predictions
+  if (predEl && tidePredictions.length) {
+    const nowMs = Date.now();
+    const upcoming = tidePredictions.filter(p => new Date(p.t) > new Date(nowMs)).slice(0,4);
+    predEl.innerHTML = upcoming.map(p => {
+      const isHigh = p.type === 'H';
+      const t = new Date(p.t);
+      const timeStr = t.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+      const dayStr  = t.toLocaleDateString('en-US',{weekday:'short'});
+      return '<div class="live-val-row">' +
+        '<span style="font-family:Courier New,monospace;font-size:.58rem;color:' + (isHigh?'#00d9ff':'#ffa500') + '">' +
+        (isHigh?'\u25B2 HIGH':'\u25BC LOW') + '</span>' +
+        '<span style="font-size:.6rem;color:#8b949e">' + dayStr + ' ' + timeStr + '</span>' +
+        '<span class="data-val" style="font-size:.7rem">' + parseFloat(p.v).toFixed(1) + ' ft</span>' +
+        '</div>';
+    }).join('');
+  }
+}
+
+function drawTideSparkline(vals) {
+  const svg = document.getElementById('tide-sparkline');
+  if (!svg || !vals.length) return;
+  const W = 280, H = 52, pad = 4;
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn || 1;
+  const xs = (i) => pad + (i / (vals.length - 1)) * (W - pad*2);
+  const ys = (v) => H - pad - ((v - mn) / range) * (H - pad*2);
+
+  const pts = vals.map((v,i) => xs(i).toFixed(1) + ',' + ys(v).toFixed(1)).join(' ');
+  const fillPts = pts + ' ' + xs(vals.length-1).toFixed(1)+','+(H-pad) + ' ' + pad+','+(H-pad);
+
+  svg.innerHTML =
+    '<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00d9ff" stop-opacity=".4"/><stop offset="100%" stop-color="#00d9ff" stop-opacity="0"/></linearGradient></defs>' +
+    '<polygon points="' + fillPts + '" fill="url(#tg)"/>' +
+    '<polyline points="' + pts + '" fill="none" stroke="#00d9ff" stroke-width="1.5" stroke-linejoin="round"/>' +
+    // Current level dot
+    '<circle cx="' + xs(vals.length-1).toFixed(1) + '" cy="' + ys(vals[vals.length-1]).toFixed(1) + '" r="3" fill="#00d9ff"/>' +
+    // Axis labels
+    '<text x="' + pad + '" y="' + (H-1) + '" font-size="7" fill="#4b5563" font-family="Courier New">6h ago</text>' +
+    '<text x="' + (W-28) + '" y="' + (H-1) + '" font-size="7" fill="#4b5563" font-family="Courier New">now</text>' +
+    '<text x="' + pad + '" y="10" font-size="7" fill="#4b5563" font-family="Courier New">' + mx.toFixed(1) + 'ft</text>';
+}
+
+function renderTideFallback() {
+  const lvlEl = document.getElementById('tide-level');
+  if (lvlEl) lvlEl.textContent = 'N/A';
+  const metaEl = document.getElementById('tide-meta');
+  if (metaEl) metaEl.innerHTML = '<span class="cached-badge">\u26A0 OFFLINE</span>';
+}
+
+// ─── BUOY 41112 (ST. AUGUSTINE) ───────────────────────────────────────────────
+async function fetchBuoy() {
+  // NDBC realtime text feed blocks CORS; use NOAA CO-OPS JSON API for nearby
+  // Station 8720219 = Mayport (has met + water data, CORS-friendly)
+  // We fetch wind, water temp from CO-OPS and wave height from a CORS proxy of NDBC
+  const base = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter';
+  const common = '&station=8720218&time_zone=lst_ldt&units=english&format=json&date=latest';
+  try {
+    const [windRes, wtmpRes] = await Promise.all([
+      fetchWithTimeout(base + '?product=wind' + common, {}, 10000),
+      fetchWithTimeout(base + '?product=water_temperature' + common, {}, 10000)
+    ]);
+
+    const windJson = windRes.ok ? await windRes.json() : null;
+    const wtmpJson = wtmpRes.ok ? await wtmpRes.json() : null;
+
+    const windData = windJson && windJson.data && windJson.data[0];
+    const wtmpData = wtmpJson && wtmpJson.data && wtmpJson.data[0];
+
+    const windKt  = windData  ? parseFloat(windData.s)  : null;   // already in knots
+    const waterF  = wtmpData  ? parseFloat(wtmpData.v)  : null;   // already in °F
+
+    // Wave height: fetch NDBC via a public CORS-anywhere style allorigins proxy
+    let waveHtFt = null, wavePd = null;
+    try {
+      const ndbc = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/41112.txt'), {}, 8000);
+      if (ndbc.ok) {
+        const txt = await ndbc.text();
+        const lines = txt.split('\n').filter(l => l && !l.startsWith('#'));
+        if (lines.length >= 2) {
+          const hdr  = lines[0].trim().split(/\s+/);
+          const dat  = lines[1].trim().split(/\s+/);
+          const get  = k => { const i = hdr.indexOf(k); return i >= 0 ? dat[i] : null; };
+          const wvht = parseFloat(get('WVHT'));
+          const dpd  = parseFloat(get('DPD'));
+          if (!isNaN(wvht)) waveHtFt = (wvht * 3.28084).toFixed(1);
+          if (!isNaN(dpd))  wavePd   = dpd.toFixed(0);
+        }
+      }
+    } catch(e) { /* wave height unavailable — rest still shows */ }
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val !== null && val !== undefined ? val : '--'; };
+    set('buoy-wave-ht',   waveHtFt || '--');
+    set('buoy-wave-pd',   wavePd   || '--');
+    set('buoy-water-tmp', waterF   !== null ? waterF.toFixed(0) : '--');
+    set('buoy-wind',      windKt   !== null ? windKt.toFixed(0) : '--');
+
+    // Rip current risk heuristic
+    const ripEl = document.getElementById('buoy-rip');
+    if (ripEl) {
+      const ht  = waveHtFt ? parseFloat(waveHtFt) : 0;
+      const kts = windKt   || 0;
+      let risk = 'LOW', col = '#00ff88';
+      if (ht > 3 || kts > 15) { risk = 'MODERATE'; col = '#ffa500'; }
+      if (ht > 5 || kts > 25) { risk = 'HIGH';     col = '#ff4444'; }
+      ripEl.innerHTML = 'Rip Current Risk: <span style="color:'+col+';font-weight:700">'+risk+'</span>';
+    }
+
+    const tsEl = document.getElementById('buoy-ts');
+    if (tsEl) tsEl.textContent = nowEDT();
+    setPill('pill-buoy', 'live', 'BUOY');
+
+  } catch(e) {
+    setPill('pill-buoy', 'error', 'BUOY');
+    ['buoy-wave-ht','buoy-wave-pd','buoy-water-tmp','buoy-wind'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = 'N/A';
+    });
+    const ripEl = document.getElementById('buoy-rip');
+    if (ripEl) ripEl.innerHTML = '<span class="cached-badge">⚠ OFFLINE</span>';
+  }
+}
+
+// ─── LSR HISTORY LOG ──────────────────────────────────────────────────────────
+function renderLSRHistory() {
+  const el = document.getElementById('lsr-history-body');
+  if (!el) return;
+  if (!lsrHistory.length) { el.innerHTML = '<div style="font-family:Courier New,monospace;font-size:.58rem;color:#555;padding:8px">No LSRs stored yet.</div>'; return; }
+  const typeColor = t => {
+    t = (t||'').toLowerCase();
+    if (t.includes('tornado')) return '#ff2222';
+    if (t.includes('hail'))    return '#00ff88';
+    if (t.includes('wind'))    return '#ffa500';
+    return '#8b949e';
+  };
+  el.innerHTML = lsrHistory.slice(0,60).map(r =>
+    '<div style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(48,54,61,.4);font-family:Courier New,monospace;font-size:.55rem">' +
+    '<span style="color:' + typeColor(r.type) + ';min-width:80px;flex-shrink:0">' + (r.type||'UNK').toUpperCase() + '</span>' +
+    '<span style="color:#8b949e;min-width:56px;flex-shrink:0">' + (r.magnitude||'') + '</span>' +
+    '<span style="color:#c9d1d9;flex:1">' + (r.city||'') + '</span>' +
+    '<span style="color:#555;min-width:90px;text-align:right">' + (r.valid ? r.valid.slice(0,16).replace('T',' ') : '') + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+function clearLSRHistory() {
+  if (!confirm('Clear all stored LSR history?')) return;
+  lsrHistory = [];
+  try { localStorage.removeItem('sw_lsr_history'); } catch(e) {}
+  renderLSRHistory();
+}
+
+// ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
+function saveSettings() {
+  const lat = parseFloat(document.getElementById('s-lat').value);
+  const lon = parseFloat(document.getElementById('s-lon').value);
+  const off = document.getElementById('s-office').value.trim().toUpperCase();
+  const gx  = parseInt(document.getElementById('s-gridx').value);
+  const gy  = parseInt(document.getElementById('s-gridy').value);
+  if (!isNaN(lat))  { CONFIG.lat    = lat;  localStorage.setItem('sw_lat',    lat);  }
+  if (!isNaN(lon))  { CONFIG.lon    = lon;  localStorage.setItem('sw_lon',    lon);  }
+  if (off)          { CONFIG.office = off;  localStorage.setItem('sw_office', off);  }
+  if (!isNaN(gx))   { CONFIG.gridX  = gx;   localStorage.setItem('sw_gridx',  gx);   }
+  if (!isNaN(gy))   { CONFIG.gridY  = gy;   localStorage.setItem('sw_gridy',  gy);   }
+  closeSettings();
+  // Re-fetch with new location
+  fetchAlerts(); fetchForecast();
+}
+
+function closeSettings() {
+  const m = document.getElementById('settings-modal');
+  if (m) m.style.display = 'none';
+}
+
+function loadSavedConfig() {
+  // Load any previously saved settings
+  const get = (k, def) => { const v = localStorage.getItem(k); return v !== null ? v : def; };
+  CONFIG.lat    = parseFloat(get('sw_lat',    CONFIG.lat));
+  CONFIG.lon    = parseFloat(get('sw_lon',    CONFIG.lon));
+  CONFIG.office = get('sw_office', CONFIG.office);
+  CONFIG.gridX  = parseInt(get('sw_gridx',   CONFIG.gridX));
+  CONFIG.gridY  = parseInt(get('sw_gridy',   CONFIG.gridY));
+}
+
+// ─── SPC MESOANALYSIS ─────────────────────────────────────────────────────────────────────────────
+const MESO_LAYERS = {
+  sbcape:{ label:'CAPE — Surface-Based (J/kg)',             param:'sbcape'},
+  eshr:  { label:'Effective Bulk Wind Shear (kt)',               param:'eshr'  },
+  srh1:  { label:'0-1km Storm-Relative Helicity (m²/s²)', param:'srh1'  },
+  scp:   { label:'Supercell Composite Parameter',                param:'scp'   },
+  stpc:  { label:'Significant Tornado Parameter (eff.)',         param:'stpc'  },
+  pwtr:  { label:'Precipitable Water (in)',                      param:'pwtr'  },
+};
+const MESO_SECTOR = '2';  // SE US sector (FL/GA/SC/AL/MS)
+let activeMesoLayer = 'sbcape';
+
+function initMesoAnalysis() {
+  const tabs = document.getElementById('meso-tabs');
+  if (!tabs) return;
+  tabs.addEventListener('click', e => {
+    const btn = e.target.closest('[data-meso]');
+    if (!btn) return;
+    tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeMesoLayer = btn.dataset.meso;
+    renderMesoImage();
+  });
+  renderMesoImage();
+}
+
+function renderMesoImage() {
+  const iframe = document.getElementById('meso-iframe');
+  const lbl    = document.getElementById('meso-label');
+  const link   = document.getElementById('meso-link');
+  if (!iframe) return;
+  const info = MESO_LAYERS[activeMesoLayer];
+  if (!info) return;
+  // Load the full SPC mesoanalysis page in the iframe — no hotlink issues on HTML pages
+  const url = 'https://www.spc.noaa.gov/exper/mesoanalysis/new/viewsector.php?sector='
+              + MESO_SECTOR + '&parm=' + info.param;
+  iframe.src = url;
+  if (lbl)  lbl.textContent = info.label + ' · SE Sector 2 (FL/GA)';
+  if (link) { link.href = url; link.textContent = 'Open full page →'; }
+}
+
+// ─── MRMS QPE RAINFALL NUMBERS ────────────────────────────────────────────────
+// NOAA MRMS QPE via Iowa Environmental Mesonet point query — CORS-friendly
+async function fetchQPE() {
+  const el1hr    = document.getElementById('qpe-1hr');
+  const el6hr    = document.getElementById('qpe-6hr');
+  const el24hr   = document.getElementById('qpe-24hr');
+  const metaEl   = document.getElementById('qpe-meta');
+  const floodBar = document.getElementById('qpe-flood-bar');
+  const ctxEl    = document.getElementById('qpe-context');
+  if (!el1hr) return;
+
+  try {
+    // NWS API KJAX observations — fully CORS-friendly, returns hourly precip in mm
+    const r = await fetchWithTimeout(
+      'https://api.weather.gov/stations/KJAX/observations?limit=25',
+      {headers:{Accept:'application/geo+json'}}, 10000
+    );
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const obs = (j.features || []).filter(f => f.properties && f.properties.timestamp);
+    if (!obs.length) throw new Error('no observations');
+
+    const latest = obs[0].properties;
+    const mmToIn = mm => (mm !== null && mm !== undefined && !isNaN(mm) && mm >= 0) ? mm / 25.4 : 0;
+
+    // 1hr — precipitationLastHour (mm)
+    const p1in = mmToIn(latest.precipitationLastHour?.value);
+
+    // 6hr — use precipitationLast6Hours if present, else sum 6 hourly obs
+    let p6in;
+    const p6direct = latest.precipitationLast6Hours?.value;
+    if (p6direct !== null && p6direct !== undefined) {
+      p6in = mmToIn(p6direct);
+    } else {
+      p6in = obs.slice(0, 6).reduce((s, f) => s + mmToIn(f.properties.precipitationLastHour?.value), 0);
+    }
+
+    // 24hr — sum last 24 hourly observations
+    const p24in = obs.slice(0, Math.min(24, obs.length))
+      .reduce((s, f) => s + mmToIn(f.properties.precipitationLastHour?.value), 0);
+
+    const fmt = v => v.toFixed(2);
+    const rainColor = v => v >= 2.0 ? '#ff4444' : v >= 1.0 ? '#ffa500' : v >= 0.25 ? '#ffd700' : v > 0 ? '#00d9ff' : '#3fb950';
+
+    const setVal = (el, v) => {
+      if (!el) return;
+      el.textContent = fmt(v);
+      el.style.color = rainColor(v);
+    };
+    setVal(el1hr,  p1in);
+    setVal(el6hr,  p6in);
+    setVal(el24hr, p24in);
+
+    if (metaEl) metaEl.textContent = 'KJAX \u00b7 ' + nowEDT();
+
+    // Flood alert bar
+    if (floodBar) {
+      if (p1in >= 2.0 || p24in >= 6.0) {
+        floodBar.style.cssText = 'display:block;padding:6px 10px;border-radius:5px;text-align:center;' +
+          'font-family:Courier New,monospace;font-size:.6rem;font-weight:700;margin-bottom:8px;' +
+          'background:rgba(255,68,68,.15);border:1px solid #ff4444;color:#ff4444';
+        floodBar.textContent = '\u26A0 FLASH FLOOD THRESHOLD \u2014 Check NWS alerts';
+      } else if (p1in >= 1.0 || p24in >= 3.0) {
+        floodBar.style.cssText = 'display:block;padding:6px 10px;border-radius:5px;text-align:center;' +
+          'font-family:Courier New,monospace;font-size:.6rem;font-weight:700;margin-bottom:8px;' +
+          'background:rgba(255,165,0,.1);border:1px solid #ffa500;color:#ffa500';
+        floodBar.textContent = '\u26A0 HEAVY RAINFALL \u2014 St. Johns flooding possible';
+      } else {
+        floodBar.style.display = 'none';
+      }
+    }
+
+    if (ctxEl) ctxEl.innerHTML =
+      'Flash flood guidance: ~2.0&quot; / 1hr &middot; ~4.0&quot; / 6hr<br>' +
+      'St. Johns flooding: &gt;3.0&quot; / 24hr<br>' +
+      'Source: NWS KJAX hourly observations';
+
+    setPill('pill-qpe', 'live', 'QPE');
+
+  } catch(e) {
+    setPill('pill-qpe', 'error', 'QPE');
+    [el1hr, el6hr, el24hr].forEach(el => {
+      if (el) { el.textContent = '--'; el.style.color = '#555'; }
+    });
+    if (metaEl) metaEl.innerHTML = '<span class="cached-badge">\u26A0 OFFLINE</span>';
+  }
+}
+
+
+
+
+let _qpeLayer = null, qpeActive = false;
+
+function toggleQPE() {
+  const btn = document.getElementById('btn-qpe');
+  qpeActive = !qpeActive;
+  if (btn) { btn.classList.toggle('active', qpeActive); btn.textContent = qpeActive ? '\uD83C\uDF27 QPE ON' : '\uD83C\uDF27 QPE'; }
+  const map = window._radarMap;
+  if (!map) return;
+
+  if (qpeActive) {
+    // IEM serves MRMS QPE as standard map tiles — same server as the working radar tiles,
+    // no Referer checks, works from file:// without issues.
+    // "q2-n0q-900913" was a copy-paste mix-up (n0q is the reflectivity layer, not QPE) — 404s.
+    // The real 1-hour precipitation product is "q2-n1p".
+    _qpeLayer = L.tileLayer(
+      'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/q2-n1p/{z}/{x}/{y}.png',
+      { opacity: 0.65, attribution: 'IEM MRMS QPE', tileSize: 256, zIndex: 5 }
+    );
+    _qpeLayer.addTo(map);
+  } else {
+    if (_qpeLayer) { map.removeLayer(_qpeLayer); _qpeLayer = null; }
+  }
+}
+
+// ─── DUVAL COUNTY EVACUATION ZONES ────────────────────────────────────────────
+let _evacLayer = null, evacActive = false;
+
+const EVAC_COLORS = {
+  'A': { fill:'#ff0000', opacity:0.35, stroke:'#cc0000' },
+  'B': { fill:'#ff8800', opacity:0.30, stroke:'#cc6600' },
+  'C': { fill:'#ffff00', opacity:0.25, stroke:'#cccc00' },
+  'D': { fill:'#00cc00', opacity:0.20, stroke:'#009900' },
+  'E': { fill:'#0088ff', opacity:0.15, stroke:'#0055cc' },
+};
+
+function toggleWindRadii() {
+  const btn = document.getElementById('btn-radii');
+  const map = window._hurricaneMap;
+  if (!map) return;
+  if (window._radiiLayer) {
+    map.removeLayer(window._radiiLayer);
+    window._radiiLayer = null;
+    if (btn) { btn.classList.remove('active'); btn.textContent = '\uD83D\uDCA8 RADII'; }
+    return;
+  }
+  window._radiiLayer = L.layerGroup().addTo(map);
+  if (btn) { btn.classList.add('active'); btn.textContent = '\uD83D\uDCA8 RADII ON'; }
+
+  const storms = window._lastStormData || [];
+  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700','3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
+
+  if (!storms.length) {
+    // No active storms — show reference rings from Atlantic Beach
+    [[34,'#ffd700','34kt (TS force)'],[50,'#ffa500','50kt'],[64,'#ff4444','64kt (hurricane force)']].forEach(([kt,col,lbl]) => {
+      L.circle([CONFIG.lat, CONFIG.lon], {radius: kt * 30 * 1852 / 64, color:col, fill:false, weight:1.5, dashArray:'5,5', opacity:0.5})
+        .bindTooltip('Reference: '+lbl+' radius', {className:'spc-tip'}).addTo(window._radiiLayer);
+    });
+    return;
+  }
+
+  storms.forEach(s => {
+    if (!s.lat || !s.lon) return;
+    const col = catColor(s.classification);
+    const catRadii = {'TD':[150,0,0],'TS':[200,100,0],'1':[250,125,50],'2':[280,150,75],'3':[320,175,100],'4':[350,200,125],'5':[390,230,150]};
+    const radii = catRadii[s.classification] || [200,100,0];
+    [['34kt','#ffd700',radii[0]],['50kt','#ffa500',radii[1]],['64kt','#ff4444',radii[2]]].forEach(([lbl,col2,nm]) => {
+      if (!nm) return;
+      L.circle([s.lat, s.lon], {radius: nm * 1852, color:col2, fill:false, weight:1.5, dashArray:'6,4', opacity:0.7})
+        .bindTooltip(s.name + ' \u2022 ' + lbl + ' wind radius (~' + nm + 'nm / ' + Math.round(nm*1.15) + 'mi)', {className:'spc-tip'})
+        .addTo(window._radiiLayer);
+    });
+  });
+}
+
+async function toggleEvacZones() {
+  const btn = document.getElementById('btn-evac');
+  evacActive = !evacActive;
+  if (btn) { btn.classList.toggle('active', evacActive); btn.textContent = evacActive ? '🚗 EVAC ON' : '🚗 EVAC'; }
+  const map = window._hurricaneMap;
+  if (!map) return;
+
+  if (!evacActive) {
+    if (_evacLayer) { map.removeLayer(_evacLayer); _evacLayer = null; }
+    return;
+  }
+
+  if (_evacLayer) { _evacLayer.addTo(map); return; } // cached
+
+  try {
+    // Duval County GIS open data — evacuation zones FeatureServer
+    const url = 'https://services1.arcgis.com/CY1LXxl9zlJeBuRZ/arcgis/rest/services/Evacuation_Zones/FeatureServer/0/query?where=1%3D1&outFields=ZONE&geometryPrecision=4&f=geojson&outSR=4326';
+    const r = await fetchWithTimeout(url, {}, 10000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const gj = await r.json();
+    _evacLayer = L.geoJSON(gj, {
+      style: feat => {
+        const z = (feat.properties.ZONE || feat.properties.zone || 'E').toUpperCase();
+        const s = EVAC_COLORS[z] || EVAC_COLORS['E'];
+        return { color:s.stroke, fillColor:s.fill, fillOpacity:s.opacity, weight:1.5 };
+      },
+      onEachFeature: (feat, layer) => {
+        const z = (feat.properties.ZONE || feat.properties.zone || '?').toUpperCase();
+        layer.bindTooltip('Evac Zone ' + z + (z === 'A' ? ' — EVACUATE FIRST' : z === 'B' ? ' — EVACUATE 2ND' : ''),
+          { sticky:true, className:'spc-tip' });
+      }
+    }).addTo(map);
+  } catch(e) {
+    // Fallback: draw approximate zone boundaries manually
+    if (btn) btn.textContent = '🚗 EVAC ERR';
+    evacActive = false;
+    if (btn) btn.classList.remove('active');
+    // Draw a simplified Atlantic Beach / Duval barrier island polygon as Zone A indicator
+    const zoneACoords = [[30.37,-81.45],[30.37,-81.38],[30.26,-81.38],[30.26,-81.45],[30.37,-81.45]];
+    _evacLayer = L.layerGroup();
+    L.polygon(zoneACoords.map(c=>[c[0],c[1]]), {
+      color:'#cc0000', fillColor:'#ff0000', fillOpacity:0.25, weight:2,
+      dashArray:'6,4'
+    }).bindTooltip('Zone A — Barrier Islands (approx)', {className:'spc-tip'}).addTo(_evacLayer);
+    _evacLayer.addTo(map);
+    evacActive = true;
+    if (btn) { btn.classList.add('active'); btn.textContent = '🚗 APPROX'; }
+  }
+}
+
+// ─── LIVE BEACH CAMS (simple thumbnail+link cards, no embedding) ─────────────
+function initWebcams() { /* no-op — cams are static thumbnail links now */ }
+function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
+
+
+
+// ─── UPPER AIR SOUNDING INDICES (Univ. of Wyoming — KJAX 72206) ──────────────
+async function fetchSounding() {
+  const metaEl = document.getElementById('sounding-meta');
+  const threat  = document.getElementById('sounding-threat');
+  try {
+    const r = await fetchWithTimeout(
+      'https://api.weather.gov/stations/KJAX/observations/latest',
+      {headers:{Accept:'application/geo+json'}}, 8000
+    );
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const p = j.properties || {};
+    const tempC  = p.temperature ? p.temperature.value : null;
+    const dewC   = p.dewpoint    ? p.dewpoint.value    : null;
+    const windMs = p.windSpeed   ? p.windSpeed.value   : null;
+    if (tempC === null) throw new Error('no data');
+
+    const dewDep  = (dewC !== null) ? tempC - dewC : null;
+    const liProxy = dewDep !== null ? (-(10 - dewDep) * 0.4).toFixed(1) : null;
+    const kiProxy = (dewC !== null) ? Math.round(tempC + dewC - (dewDep||0) - 10) : null;
+    const pwat    = dewC !== null   ? (dewC / 20).toFixed(2) : null;
+    const windKt  = windMs          ? (windMs * 1.94384).toFixed(0) : null;
+
+    const set = (id, val, colorFn) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val !== null ? val : '--';
+      if (colorFn && val !== null) el.style.color = colorFn(parseFloat(val));
+    };
+    set('snd-li',    liProxy, v => v < -4 ? '#ffa500' : v < -2 ? '#ffd700' : '#3fb950');
+    set('snd-pwat',  pwat,    v => v > 1.8 ? '#ffa500' : v > 1.4 ? '#ffd700' : '#8b949e');
+    set('snd-shear', windKt,  v => v > 25  ? '#ffd700' : '#8b949e');
+    set('snd-ki',    kiProxy, v => v > 35  ? '#ffa500' : v > 25  ? '#ffd700' : '#3fb950');
+    ['snd-cape','snd-srh'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = 'N/A'; el.style.color = '#555'; }
+    });
+
+    const ts = p.timestamp ? new Date(p.timestamp).toLocaleString('en-US',{
+      month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',
+      hour12:false,timeZone:'America/New_York'}) + ' EDT' : '';
+    if (metaEl) metaEl.textContent = ts + ' - KJAX surface obs';
+
+    if (threat) {
+      const li = parseFloat(liProxy)||0, ki = kiProxy||0;
+      let msg='', col='', bg='', bdr='';
+      if      (li < -4 || ki > 35) { msg='ELEVATED - Storms possible';          col='#ffa500'; bg='rgba(255,165,0,.1)';   bdr='1px solid #ffa500'; }
+      else if (li < -2 || ki > 25) { msg='MARGINAL - Isolated storms possible'; col='#ffd700'; bg='rgba(255,215,0,.08)'; bdr='1px solid #ffd700'; }
+      if (msg) {
+        threat.style.cssText = 'display:block;padding:5px 10px;border-radius:5px;text-align:center;font-family:Courier New,monospace;font-size:.55rem;font-weight:700;margin-bottom:8px;color:'+col+';background:'+bg+';border:'+bdr;
+        threat.textContent = msg;
+      } else { threat.style.display = 'none'; }
+    }
+  } catch(e) {
+    if (metaEl) metaEl.innerHTML = '<span class="cached-badge">OFFLINE</span>';
+    ['snd-cape','snd-li','snd-pwat','snd-shear','snd-srh','snd-ki'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = '--'; el.style.color = '#555'; }
+    });
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', function() {
+  // Re-assert after all async images/iframes/maps settle and final page height is known.
+  window.scrollTo({top: 0, behavior: 'instant'});
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  window.scrollTo({top: 0, behavior: 'instant'});
+  loadSavedConfig();
+  renderParams();
+  initSPCMap();
+  initMesoAnalysis();
+  initRadarMap();
+  fetchAlerts();
+  fetchForecast();
+  fetchSPCOutlook();
+  fetchLSRs();
+  fetchActiveStorms();
+  fetchTWO();
+  fetchTide();
+  fetchBuoy();
+  fetchQPE();
+  fetchSounding();
+  initWebcams();
+  renderLSRHistory();
+  setTimeout(generateBriefing, 2500);
+
+  setInterval(fetchAlerts,        5 * 60 * 1000);
+  setInterval(fetchForecast,     30 * 60 * 1000);
+  setInterval(fetchSPCOutlook,   30 * 60 * 1000);
+  setInterval(fetchLSRs,          5 * 60 * 1000);
+  setInterval(fetchTide,         10 * 60 * 1000);
+  setInterval(fetchBuoy,         10 * 60 * 1000);
+  setInterval(fetchQPE,           5 * 60 * 1000);
+  setInterval(fetchSounding,     60 * 60 * 1000);
+
+  updateNotifBtn();
+  const notifBtn = document.getElementById('notif-btn');
+  if (notifBtn) notifBtn.addEventListener('click', toggleNotifications);
+
+  const copyBtn = document.getElementById('copy-briefing-x1z4');
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    const el = document.getElementById('briefing-text-w6y9');
+    if (!el) return;
+    el.select();
+    navigator.clipboard.writeText(el.value).then(() => {
+      const flash = document.getElementById('copy-flash-s8t1');
+      if (flash) { flash.classList.remove('hidden'); setTimeout(() => flash.classList.add('hidden'), 2000); }
+    }).catch(() => document.execCommand('copy'));
+  });
+  const regenBtn = document.getElementById('regen-briefing-m5n7');
+  if (regenBtn) regenBtn.addEventListener('click', generateBriefing);
+  const emailBtn = document.getElementById('email-briefing-q3r6');
+  if (emailBtn) emailBtn.addEventListener('click', () => {
+    const el = document.getElementById('briefing-text-w6y9');
+    if (el) window.location.href = 'mailto:?subject=StormWatch%20Briefing&body=' + encodeURIComponent(el.value);
+  });
+
+  const fl = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+  fl('s-lat',    CONFIG.lat);
+  fl('s-lon',    CONFIG.lon);
+  fl('s-office', CONFIG.office);
+  fl('s-gridx',  CONFIG.gridX);
+  fl('s-gridy',  CONFIG.gridY);
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+  </script>
+
+<!-- ====== TOAST CONTAINER ====== -->
+<div id="toast-container"></div>
+
+<!-- ====== SIREN ACKNOWLEDGMENT MODAL ====== -->
+<div id="siren-modal-backdrop" style="display:none">
+  <div id="siren-modal-box">
+    <span id="siren-modal-icon">🌀</span>
+    <div id="siren-modal-event">TORNADO WARNING</div>
+    <div id="siren-modal-headline"></div>
+    <div id="siren-modal-meta"></div>
+    <ul id="siren-modal-actions"></ul>
+    <button id="siren-modal-ack" onclick="acknowledgeSiren()">ACKNOWLEDGE — STOP SIREN</button>
+    <div id="siren-modal-queue"></div>
+  </div>
+</div>
+
+<!-- ====== SETTINGS MODAL ====== -->
+<div id="settings-modal" style="display:none" class="modal-backdrop" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:.8rem;font-weight:700;color:#e6edf3;letter-spacing:.08em">&#9881; STORMWATCH SETTINGS</div>
+      <button onclick="closeSettings()" style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:1rem">&#10005;</button>
+    </div>
+    <div style="font-size:.55rem;color:#555;margin-bottom:12px">Settings are saved to your browser and persist across sessions.</div>
+    <div style="display:grid;gap:10px">
+      <div>
+        <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">LATITUDE</label>
+        <input id="s-lat" type="number" step="0.0001" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.7rem;padding:5px 8px;box-sizing:border-box" />
+      </div>
+      <div>
+        <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">LONGITUDE</label>
+        <input id="s-lon" type="number" step="0.0001" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.7rem;padding:5px 8px;box-sizing:border-box" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">NWS OFFICE</label>
+          <input id="s-office" type="text" maxlength="4" placeholder="JAX" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.7rem;padding:5px 8px;box-sizing:border-box" />
+        </div>
+        <div>
+          <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">GRID X</label>
+          <input id="s-gridx" type="number" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.7rem;padding:5px 8px;box-sizing:border-box" />
+        </div>
+        <div>
+          <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">GRID Y</label>
+          <input id="s-gridy" type="number" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#c9d1d9;font-family:'Courier New',monospace;font-size:.7rem;padding:5px 8px;box-sizing:border-box" />
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.5rem;color:#555;margin-top:8px">
+      Find your NWS grid: <a href="https://api.weather.gov/points/30.3354,-81.3990" target="_blank" style="color:#06b6d4">api.weather.gov/points/LAT,LON</a>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="saveSettings()" style="flex:1;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);border-radius:6px;color:#00d9ff;font-family:'Courier New',monospace;font-size:.65rem;padding:7px;cursor:pointer">SAVE &amp; APPLY</button>
+      <button onclick="closeSettings()" style="background:#21262d;border:1px solid #30363d;border-radius:6px;color:#8b949e;font-family:'Courier New',monospace;font-size:.65rem;padding:7px 14px;cursor:pointer">CANCEL</button>
+    </div>
+    <div style="margin-top:20px;border-top:1px solid #30363d;padding-top:14px">
+      <div style="font-size:.6rem;font-weight:700;color:#e6edf3;letter-spacing:.06em;margin-bottom:6px">&#128266; TEST ALARMS</div>
+      <div style="font-size:.5rem;color:#555;margin-bottom:8px">Preview the sound + full-screen alert box for each category. Doesn't touch real alert data.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button onclick="testAlarm('Tornado Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">🌀 Tornado Warning</button>
+        <button onclick="testAlarm('Severe Thunderstorm Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">⛈️ Severe T-storm</button>
+        <button onclick="testAlarm('Hurricane Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">🌬️ Hurricane</button>
+        <button onclick="testAlarm('Flood Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">🌊 Flood</button>
+        <button onclick="testAlarm('Tornado Watch')" class="ctrl-btn" style="font-size:.6rem;justify-content:center;grid-column:1/-1">⚡ Watch / Statement (light chirp)</button>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;border-top:1px solid #30363d;padding-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:.6rem;font-weight:700;color:#e6edf3;letter-spacing:.06em">&#128203; LSR HISTORY LOG</div>
+        <button onclick="clearLSRHistory()" style="background:transparent;border:1px solid #ff4444;border-radius:4px;color:#ff4444;font-family:'Courier New',monospace;font-size:.5rem;padding:2px 7px;cursor:pointer">CLEAR</button>
+      </div>
+      <div style="font-size:.5rem;color:#555;margin-bottom:6px">Last 60 Local Storm Reports from IEM (JAX CWA) &#8212; persists across reloads.</div>
+      <div id="lsr-history-body" style="max-height:220px;overflow-y:auto;border:1px solid #21262d;border-radius:5px;padding:6px 8px;background:#0d1117"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
