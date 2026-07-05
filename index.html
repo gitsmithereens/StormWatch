@@ -150,8 +150,21 @@
       /* semi-transparent overlays */
       [data-theme="light"] [style*="rgba(13,17,23,.5)"] { background:rgba(246,248,250,.85)!important; }
       [data-theme="light"] [style*="rgba(13,17,23,.85)"] { background:rgba(246,248,250,.92)!important; }
-      /* status pills on light bg */
-      [data-theme="light"] .status-pill.live { box-shadow:0 0 5px rgba(0,200,80,.2); }
+      /* status pills: kill neon glow, use muted palette */
+      [data-theme="light"] .status-pill.live    { border-color:#1a7f37!important; color:#1a7f37!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.error   { border-color:#cf222e!important; color:#cf222e!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.offline { border-color:#953800!important; color:#953800!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.checking{ border-color:#636c76!important; color:#636c76!important; }
+      /* risk banner: mute the neon greens/yellows */
+      [data-theme="light"] .risk-clear   { background:rgba(26,127,55,.08)!important; color:#1a7f37!important; border-bottom-color:#1a7f37!important; }
+      [data-theme="light"] .risk-monitor { background:rgba(154,103,0,.08)!important; color:#7d4e00!important; border-bottom-color:#9a6700!important; }
+      [data-theme="light"] .risk-warning { background:rgba(154,87,0,.1)!important;  color:#953800!important; border-bottom-color:#953800!important; }
+      [data-theme="light"] .risk-unknown { background:#f0f4f8!important; color:#636c76!important; border-bottom-color:#d0d7de!important; }
+      /* "no active hazards" box and any #22c55e inline text */
+      [data-theme="light"] [style*="color:#22c55e"] { color:#1a7f37!important; }
+      [data-theme="light"] [style*="color:#3fb950"] { color:#1a7f37!important; }
+      /* tab-btn active on light */
+      [data-theme="light"] .tab-btn { color:#444c56; border-color:#d0d7de; }
       [data-theme="light"] .notif-btn { background:rgba(9,105,218,.08); border-color:rgba(9,105,218,.25); color:#0969da; }
       [data-theme="light"] .notif-btn.active { background:rgba(9,105,218,.18); border-color:#0969da; }
       /* toast container stays readable on both themes */
