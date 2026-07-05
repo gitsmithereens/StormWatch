@@ -156,6 +156,20 @@
       [data-theme="light"] .notif-btn.active { background:rgba(9,105,218,.18); border-color:#0969da; }
       /* toast container stays readable on both themes */
       [data-theme="light"] .toast { background:#ffffff; color:#1f2328; }
+      /* panel headers: near-white text becomes near-black */
+      [data-theme="light"] .panel-header { color:#0d1117 !important; }
+      /* grey utility classes: re-darken for light bg */
+      [data-theme="light"] .text-gray-300 { color:#57606a !important; }
+      [data-theme="light"] .text-gray-400 { color:#444c56 !important; }
+      [data-theme="light"] .text-gray-500 { color:#444c56 !important; }
+      [data-theme="light"] .text-gray-600 { color:#24292f !important; }
+      [data-theme="light"] .text-gray-700 { color:#1f2328 !important; }
+      /* hardcoded dim label colors used throughout inline styles */
+      [data-theme="light"] [style*="color:#555"] { color:#444c56 !important; }
+      [data-theme="light"] [style*="color: #555"] { color:#444c56 !important; }
+      [data-theme="light"] [style*="color:#666"] { color:#444c56 !important; }
+      [data-theme="light"] [style*="color:#888"] { color:#636c76 !important; }
+      [data-theme="light"] [style*="color:#6e7681"] { color:#444c56 !important; }
       /* ══════════════════════════════════════════════════════════════════════ */
       .leaflet-container{background:#0a1628!important}
       .spc-tip { background:#1c2128; border:1px solid #30363d; color:#00d9ff; font-family:'Courier New',monospace; font-size:.6rem; padding:2px 6px; border-radius:4px; box-shadow:none; }
@@ -259,9 +273,9 @@
     .text-white      { color:#fff }
     .text-gray-300   { color:#d1d5db }
     .text-gray-400   { color:#9ca3af }
-    .text-gray-500   { color:#6b7280 }
-    .text-gray-600   { color:#4b5563 }
-    .text-gray-700   { color:#374151 }
+    .text-gray-500   { color:#8b949e }
+    .text-gray-600   { color:#768390 }
+    .text-gray-700   { color:#636e7b }
     .text-yellow-300 { color:#fde047 }
     .text-yellow-400 { color:#facc15 }
     .text-cyan-400   { color:#22d3ee }
