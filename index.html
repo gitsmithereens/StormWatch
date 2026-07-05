@@ -29,6 +29,16 @@
         #panel-spc-meso{display:none}
         .panel-body{padding:8px 10px}
         #lightning-windy-panel iframe{height:220px}
+        /* ── mobile: pills row scrolls horizontally instead of wrapping ── */
+        #header-pills-row{overflow-x:auto;flex-wrap:nowrap !important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px;width:100%}
+        #header-pills-row::-webkit-scrollbar{display:none}
+        #header-pills-row .status-pill{flex-shrink:0}
+        /* ── mobile: header action buttons get full-width row ── */
+        #header-actions{width:100%;justify-content:flex-end}
+        /* ── mobile: tab switcher stretches ── */
+        header .flex.items-center.gap-1\.5:first-of-type button{flex:1;text-align:center}
+        /* ── mobile: hide panels that add length without storm value ── */
+        #panel-params-s3w7{display:none}
       }
       html{scroll-behavior:smooth}
       ::-webkit-scrollbar{width:4px;height:4px}
@@ -272,7 +282,7 @@
                 🌀 HURRICANE
             </button>
         </div>
-        <div data-id="14" class="flex items-center gap-1.5 flex-wrap">
+        <div id="header-pills-row" data-id="14" class="flex items-center gap-1.5 flex-wrap">
             <span data-id="15" id="pill-spc-w2q9" class="status-pill checking"><span data-id="16" class="status-dot"></span>SPC: CHECKING</span>
             <span data-id="17" id="pill-nws-a7e1" class="status-pill checking"><span data-id="18" class="status-dot"></span>NWS: CHECKING</span>
             <span data-id="19" id="pill-radar-b5f3" class="status-pill checking"><span data-id="20" class="status-dot"></span>RADAR: CHECKING</span>
@@ -282,8 +292,9 @@
             <span id="pill-tide" class="status-pill checking"><span class="status-dot"></span>TIDE: CHECKING</span>
             <span id="pill-buoy" class="status-pill checking"><span class="status-dot"></span>BUOY: CHECKING</span>
             <span id="pill-qpe"  class="status-pill checking"><span class="status-dot"></span>QPE: CHECKING</span>
+            <span id="pill-obs"  class="status-pill checking"><span class="status-dot"></span>OBS: CHECKING</span>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div id="header-actions" class="flex items-center gap-1.5">
             <button id="notif-btn" class="notif-btn" title="Enable push notifications for new alerts">🔔 ALERTS</button>
             <button class="notif-btn" onclick="document.getElementById('settings-modal').style.display='flex'" title="Settings">⚙ SETTINGS</button>
         </div>
@@ -452,7 +463,40 @@
             <!-- ========== RIGHT COLUMN ========== -->
             <div data-id="115" class="flex flex-col gap-3 min-w-0">
 
-                <!-- PANEL E: FORECAST -->
+                <!-- CURRENT CONDITIONS PANEL -->
+                <div class="panel" id="panel-conditions">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-cyan-400"></i> CURRENT CONDITIONS — KFHB</span>
+                        <span id="obs-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">TEMPERATURE</div>
+                                <div class="data-val" id="obs-temp" style="font-size:1.4rem">--</div>
+                                <div class="text-[.5rem] text-gray-500" id="obs-feels">--</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">WIND</div>
+                                <div class="data-val" id="obs-wind" style="font-size:1.4rem">--</div>
+                                <div class="text-[.5rem] text-gray-500" id="obs-wind-sub">--</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">HUMIDITY</div>
+                                <div class="data-val" id="obs-humidity" style="font-size:1.4rem">--</div>
+                                <div class="text-[.5rem] text-gray-500">%</div>
+                            </div>
+                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
+                                <div class="text-[.5rem] text-gray-600 mb-1">SKY / VIS</div>
+                                <div class="data-val" id="obs-sky" style="font-size:.9rem;line-height:1.2">--</div>
+                                <div class="text-[.5rem] text-gray-500" id="obs-vis">--</div>
+                            </div>
+                        </div>
+                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Fernandina Beach Airport · KFHB</div>
+                    </div>
+                </div>
+
+                <!-- PANEL E: ACTIVE ALERTS -->
                 <div data-id="154" class="panel flex-1 flex flex-col" id="panel-alerts-k7m2">
                     <div data-id="155" class="panel-header">
                         <span data-id="156" class="flex items-center gap-1"><i data-id="157" data-lucide="alert-triangle" class="w-3.5 h-3.5 text-danger"></i> ACTIVE ALERTS</span>
@@ -518,6 +562,17 @@
                                 </a>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- RIP CURRENT FORECAST PANEL -->
+                <div class="panel" id="panel-rip">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="waves" class="w-3.5 h-3.5 text-blue-400"></i> RIP CURRENT FORECAST — NWS JAX</span>
+                        <span id="rip-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body" id="rip-body">
+                        <div style="font-family:'Courier New',monospace;font-size:.6rem;color:#8b949e">Loading beach forecast…</div>
                     </div>
                 </div>
 
@@ -3160,6 +3215,125 @@ async function toggleEvacZones() {
 function initWebcams() { /* no-op — cams are static thumbnail links now */ }
 function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
 
+// ─── CURRENT CONDITIONS — KFHB (Fernandina Beach Airport, nearest coastal ASOS) ─
+async function fetchConditions() {
+  const metaEl = document.getElementById('obs-meta');
+  try {
+    const r = await fetchWithTimeout(
+      'https://api.weather.gov/stations/KFHB/observations/latest',
+      {headers:{Accept:'application/geo+json'}}, 8000
+    );
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const p = j.properties || {};
+
+    const cToF = c => (c != null && c !== undefined) ? Math.round(c * 9/5 + 32) : null;
+    const msToMph = ms => (ms != null && ms !== undefined) ? Math.round(ms * 2.237) : null;
+    const degToCompass = deg => {
+      if (deg == null) return '--';
+      const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+      return dirs[Math.round(deg / 22.5) % 16];
+    };
+
+    const tempF     = cToF(p.temperature?.value);
+    const humidity  = p.relativeHumidity?.value != null ? Math.round(p.relativeHumidity.value) : null;
+    const windSpd   = msToMph(p.windSpeed?.value);
+    const windGust  = msToMph(p.windGust?.value);
+    const windDir   = p.windDirection?.value;
+    const visM      = p.visibility?.value;
+    const visMi     = visM != null ? (visM / 1609.34).toFixed(1) : null;
+
+    // Heat index (Rothfusz, valid when temp ≥ 80°F and RH ≥ 40%)
+    let feelsLabel = '';
+    if (tempF != null && humidity != null && tempF >= 80 && humidity >= 40) {
+      const T = tempF, R = humidity;
+      const hi = -42.379 + 2.04901523*T + 10.14333127*R - 0.22475541*T*R
+        - 0.00683783*T*T - 0.05481717*R*R + 0.00122874*T*T*R
+        + 0.00085282*T*R*R - 0.00000199*T*T*R*R;
+      const hiR = Math.round(hi);
+      if (Math.abs(hiR - tempF) >= 2) feelsLabel = 'Feels ' + hiR + '°F';
+    }
+
+    // Sky condition from highest cloud layer
+    const cloudLabel = {CLR:'Clear',SKC:'Clear',FEW:'Few Clouds',SCT:'Scattered',BKN:'Broken',OVC:'Overcast'};
+    let sky = '--';
+    if (p.cloudLayers && p.cloudLayers.length) {
+      const top = p.cloudLayers[p.cloudLayers.length - 1];
+      sky = cloudLabel[top.amount] || top.amount || '--';
+    } else if (p.textDescription) {
+      sky = p.textDescription.split('.')[0].trim().substring(0, 14);
+    }
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('obs-temp',     tempF != null ? tempF + '°F' : '--');
+    set('obs-feels',    feelsLabel || 'Fernandina Beach');
+    set('obs-wind',     windSpd != null ? windSpd + ' mph' : '--');
+    set('obs-wind-sub', [degToCompass(windDir), windGust ? 'G' + windGust + ' mph' : ''].filter(Boolean).join(' · ') || '--');
+    set('obs-humidity', humidity != null ? humidity + '%' : '--');
+    set('obs-sky',      sky);
+    set('obs-vis',      visMi != null ? 'Vis ' + visMi + ' mi' : '');
+    if (metaEl) metaEl.textContent = nowEDT();
+    setPill('pill-obs', 'live', 'OBS');
+  } catch(e) {
+    console.warn('fetchConditions:', e);
+    setPill('pill-obs', 'error', 'OBS');
+  }
+}
+
+// ─── RIP CURRENT FORECAST — NWS JAX beach forecast product ──────────────────
+async function fetchRipCurrent() {
+  const body = document.getElementById('rip-body');
+  const metaEl = document.getElementById('rip-meta');
+  // Try RFD (Rip Current Discussion) first, fall back to BHS (Beach Hazard Statement)
+  const productTypes = ['RFD','BHS','CFW'];
+  let text = '', issuedAt = '';
+  for (const type of productTypes) {
+    try {
+      const listR = await fetchWithTimeout(
+        'https://api.weather.gov/products?type=' + type + '&office=JAX&limit=1',
+        {headers:{Accept:'application/ld+json'}}, 8000
+      );
+      if (!listR.ok) continue;
+      const list = await listR.json();
+      const items = list['@graph'] || [];
+      if (!items.length) continue;
+      const prodR = await fetchWithTimeout(items[0]['@id'], {headers:{Accept:'application/json'}}, 8000);
+      if (!prodR.ok) continue;
+      const prod = await prodR.json();
+      text = prod.productText || '';
+      issuedAt = prod.issuanceTime || '';
+      if (text) break;
+    } catch(e) { continue; }
+  }
+
+  if (!body) return;
+
+  if (!text) {
+    body.innerHTML = '<div style="font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e">⚠ Forecast unavailable — <a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" style="color:#06b6d4">check NWS JAX</a></div>';
+    return;
+  }
+
+  // Extract rip current section
+  const ripMatch = text.match(/RIP\s*CURR?ENT[S]?[.\s\-:]*([\s\S]*?)(?=\n\n[A-Z$.]|\$\$|&&)/i);
+  const ripText = ripMatch ? ripMatch[1].replace(/\n/g,' ').replace(/\s+/g,' ').trim() : '';
+
+  // Determine risk level
+  let level = 'LOW', color = '#22c55e', bg = 'rgba(34,197,94,.1)', border = 'rgba(34,197,94,.3)';
+  const upper = (ripText || text).toUpperCase();
+  if (/EXTREME/.test(upper))       { level = 'EXTREME'; color = '#ff2222'; bg = 'rgba(255,34,34,.14)'; border = 'rgba(255,34,34,.4)'; }
+  else if (/HIGH/.test(upper))     { level = 'HIGH';    color = '#ef4444'; bg = 'rgba(239,68,68,.12)'; border = 'rgba(239,68,68,.35)'; }
+  else if (/MODERATE/.test(upper)) { level = 'MOD';     color = '#f97316'; bg = 'rgba(249,115,22,.12)'; border = 'rgba(249,115,22,.35)'; }
+
+  const snippet = ripText.length > 220 ? ripText.substring(0, 220) + '…' : (ripText || 'See full beach forecast for details.');
+  body.innerHTML =
+    '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:6px;background:' + bg + ';border:1px solid ' + border + ';margin-bottom:8px">' +
+      '<div style="font-family:\'Courier New\',monospace;font-size:1rem;font-weight:700;color:' + color + ';white-space:nowrap;padding-top:1px">🌊 ' + level + '</div>' +
+      '<div style="font-family:\'Courier New\',monospace;font-size:.55rem;color:#c9d1d9;line-height:1.55;flex:1">' + snippet + '</div>' +
+    '</div>' +
+    '<a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" style="font-family:\'Courier New\',monospace;font-size:.52rem;color:#06b6d4">Full beach forecast → NWS JAX</a>';
+  if (metaEl) metaEl.textContent = nowEDT();
+}
+
 
 
 // ─── UPPER AIR SOUNDING INDICES (Univ. of Wyoming — KJAX 72206) ──────────────
@@ -3247,6 +3421,8 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchBuoy();
   fetchQPE();
   fetchSounding();
+  fetchConditions();
+  fetchRipCurrent();
   initWebcams();
   renderLSRHistory();
   setTimeout(generateBriefing, 2500);
@@ -3259,6 +3435,8 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchBuoy,         10 * 60 * 1000);
   setInterval(fetchQPE,           5 * 60 * 1000);
   setInterval(fetchSounding,     60 * 60 * 1000);
+  setInterval(fetchConditions,   20 * 60 * 1000);
+  setInterval(fetchRipCurrent,  120 * 60 * 1000);
 
   updateNotifBtn();
   const notifBtn = document.getElementById('notif-btn');
