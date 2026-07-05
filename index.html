@@ -9,6 +9,7 @@
     <meta name="theme-color" content="#0d1117" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" href="icon-192.png" />
+    <script>(function(){var t=localStorage.getItem('sw_theme');if(t)document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('sw_textsize')==='large')document.documentElement.classList.add('text-lg');})();</script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@1.8.0/dist/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
@@ -110,6 +111,52 @@
       #siren-modal-queue{font-family:'Courier New',monospace;font-size:.55rem;color:#8b949e;margin-top:10px}
       .dash-grid{display:grid;gap:14px;grid-template-columns:22fr 44fr 34fr;align-items:start}
       @media(max-width:900px){.dash-grid{grid-template-columns:1fr!important}}
+
+      /* ── LARGE TEXT MODE: bump root font-size so all rem values scale up ~12% ── */
+      html.text-lg { font-size: 18px; }
+
+      /* ══ LIGHT MODE THEME ════════════════════════════════════════════════════ */
+      :root[data-theme="light"] {
+        --bg:#f0f4f8; --card:#ffffff; --border:#d0d7de;
+        --cyan:#0969da; --amber:#953800; --danger:#cf222e;
+        --text:#1f2328; --text-dim:#636c76;
+      }
+      [data-theme="light"] header { background:rgba(246,248,250,.97)!important; border-bottom-color:#d0d7de!important; }
+      [data-theme="light"] .panel { box-shadow:0 1px 3px rgba(0,0,0,.08); }
+      [data-theme="light"] .modal-backdrop { background:rgba(0,0,0,.35); }
+      [data-theme="light"] .tab-btn.active { background:rgba(9,105,218,.12); color:#0969da; border-color:#0969da; }
+      [data-theme="light"] .ctrl-btn { background:#eaecef; border-color:#d0d7de; color:#1f2328; }
+      [data-theme="light"] .ctrl-btn.primary { background:rgba(9,105,218,.1); border-color:rgba(9,105,218,.3); color:#0969da; }
+      [data-theme="light"] .data-val { color:#0969da; }
+      [data-theme="light"] .time-val { color:#953800; }
+      [data-theme="light"] textarea { background:#f0f4f8!important; color:#0969da!important; border-color:#d0d7de!important; }
+      [data-theme="light"] input[type="number"],[data-theme="light"] input[type="text"] { background:#f0f4f8!important; border-color:#d0d7de!important; color:#1f2328!important; }
+      /* inline-hardcoded backgrounds */
+      [data-theme="light"] [style*="background:#1c2128"] { background:#eaecef!important; }
+      [data-theme="light"] [style*="background:#21262d"] { background:#dde1e7!important; }
+      [data-theme="light"] [style*="background:#0d1117"] { background:#f0f4f8!important; }
+      [data-theme="light"] [style*="background:#161b22"] { background:#ffffff!important; }
+      [data-theme="light"] [style*="background:#1a1a2e"] { background:#eef2fc!important; }
+      [data-theme="light"] [style*="background:#1a0606"] { /* siren modal — keep dark */ }
+      /* inline border overrides */
+      [data-theme="light"] [style*="border:1px solid #30363d"] { border-color:#d0d7de!important; }
+      [data-theme="light"] [style*="border-bottom:1px solid var(--border)"] { border-bottom-color:#d0d7de!important; }
+      [data-theme="light"] [style*="border:1px solid #21262d"] { border-color:#d0d7de!important; }
+      /* inline text color overrides */
+      [data-theme="light"] [style*="color:#c9d1d9"] { color:#1f2328!important; }
+      [data-theme="light"] [style*="color:#8b949e"] { color:#636c76!important; }
+      [data-theme="light"] [style*="color:#e6edf3"] { color:#1f2328!important; }
+      [data-theme="light"] [style*="color:#6e7681"] { color:#636c76!important; }
+      /* semi-transparent overlays */
+      [data-theme="light"] [style*="rgba(13,17,23,.5)"] { background:rgba(246,248,250,.85)!important; }
+      [data-theme="light"] [style*="rgba(13,17,23,.85)"] { background:rgba(246,248,250,.92)!important; }
+      /* status pills on light bg */
+      [data-theme="light"] .status-pill.live { box-shadow:0 0 5px rgba(0,200,80,.2); }
+      [data-theme="light"] .notif-btn { background:rgba(9,105,218,.08); border-color:rgba(9,105,218,.25); color:#0969da; }
+      [data-theme="light"] .notif-btn.active { background:rgba(9,105,218,.18); border-color:#0969da; }
+      /* toast container stays readable on both themes */
+      [data-theme="light"] .toast { background:#ffffff; color:#1f2328; }
+      /* ══════════════════════════════════════════════════════════════════════ */
       .leaflet-container{background:#0a1628!important}
       .spc-tip { background:#1c2128; border:1px solid #30363d; color:#00d9ff; font-family:'Courier New',monospace; font-size:.6rem; padding:2px 6px; border-radius:4px; box-shadow:none; }
       .panel-loading{position:relative}
@@ -2923,6 +2970,36 @@ function clearLSRHistory() {
   renderLSRHistory();
 }
 
+// ─── DISPLAY PREFERENCES: THEME + TEXT SIZE ──────────────────────────────────
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const next = isLight ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('sw_theme', next);
+  updateDisplayToggles();
+}
+
+function toggleTextSize() {
+  const isLg = document.documentElement.classList.contains('text-lg');
+  document.documentElement.classList.toggle('text-lg', !isLg);
+  localStorage.setItem('sw_textsize', isLg ? 'compact' : 'large');
+  updateDisplayToggles();
+}
+
+function updateDisplayToggles() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const isLg    = document.documentElement.classList.contains('text-lg');
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  const sizeBtn  = document.getElementById('textsize-toggle-btn');
+  if (themeBtn) {
+    themeBtn.textContent = isLight ? '☀️ Light' : '🌙 Dark';
+    themeBtn.style.background   = isLight ? 'rgba(255,200,50,.15)' : 'rgba(80,100,200,.15)';
+    themeBtn.style.borderColor  = isLight ? 'rgba(200,150,0,.4)'   : 'rgba(80,100,200,.4)';
+    themeBtn.style.color        = isLight ? '#953800' : '#9bb0ff';
+  }
+  if (sizeBtn) sizeBtn.textContent = isLg ? 'Aa Large' : 'Aa Compact';
+}
+
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
 function saveSettings() {
   const lat = parseFloat(document.getElementById('s-lat').value);
@@ -3438,6 +3515,9 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchConditions,   20 * 60 * 1000);
   setInterval(fetchRipCurrent,  120 * 60 * 1000);
 
+  // Restore display preferences (theme already set by early-init script; just sync buttons)
+  updateDisplayToggles();
+
   updateNotifBtn();
   const notifBtn = document.getElementById('notif-btn');
   if (notifBtn) notifBtn.addEventListener('click', toggleNotifications);
@@ -3495,6 +3575,26 @@ document.addEventListener('DOMContentLoaded', function() {
       <button onclick="closeSettings()" style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:1rem">&#10005;</button>
     </div>
     <div style="font-size:.55rem;color:#555;margin-bottom:12px">Settings are saved to your browser and persist across sessions.</div>
+
+    <!-- DISPLAY PREFERENCES -->
+    <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="font-size:.6rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:8px">🎨 DISPLAY</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:.65rem;font-weight:600;color:var(--text)">Theme</div>
+          <div style="font-size:.55rem;color:var(--text-dim)">Toggle dark / light mode</div>
+        </div>
+        <button id="theme-toggle-btn" onclick="toggleTheme()" class="ctrl-btn" style="min-width:90px;justify-content:center">🌙 Dark</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0">
+        <div>
+          <div style="font-size:.65rem;font-weight:600;color:var(--text)">Text Size</div>
+          <div style="font-size:.55rem;color:var(--text-dim)">Large bumps all text ~12%</div>
+        </div>
+        <button id="textsize-toggle-btn" onclick="toggleTextSize()" class="ctrl-btn" style="min-width:90px;justify-content:center">Aa Compact</button>
+      </div>
+    </div>
+
     <div style="display:grid;gap:10px">
       <div>
         <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">LATITUDE</label>
