@@ -150,11 +150,16 @@
       /* semi-transparent overlays */
       [data-theme="light"] [style*="rgba(13,17,23,.5)"] { background:rgba(246,248,250,.85)!important; }
       [data-theme="light"] [style*="rgba(13,17,23,.85)"] { background:rgba(246,248,250,.92)!important; }
-      /* status pills: kill neon glow, use muted palette */
-      [data-theme="light"] .status-pill.live    { border-color:#1a7f37!important; color:#1a7f37!important; box-shadow:none!important; }
-      [data-theme="light"] .status-pill.error   { border-color:#cf222e!important; color:#cf222e!important; box-shadow:none!important; }
-      [data-theme="light"] .status-pill.offline { border-color:#953800!important; color:#953800!important; box-shadow:none!important; }
-      [data-theme="light"] .status-pill.checking{ border-color:#636c76!important; color:#636c76!important; }
+      /* status pills: kill neon glow, use muted palette; add subtle bg tint in light mode */
+      [data-theme="light"] .status-pill.live    { background:rgba(26,127,55,.08)!important; border-color:#1a7f37!important; color:#1a7f37!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.error   { background:rgba(207,34,46,.07)!important;  border-color:#cf222e!important; color:#cf222e!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.offline { background:rgba(149,56,0,.07)!important;   border-color:#953800!important; color:#953800!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.checking{ background:rgba(99,108,118,.07)!important; border-color:#636c76!important; color:#636c76!important; }
+      /* dark mode: lift the near-invisible hardcoded dim inline colors */
+      :root:not([data-theme="light"]) [style*="color:#555"] { color:#8b949e!important; }
+      :root:not([data-theme="light"]) [style*="color: #555"] { color:#8b949e!important; }
+      :root:not([data-theme="light"]) [style*="color:#666"] { color:#8b949e!important; }
+      :root:not([data-theme="light"]) [style*="color:#888"] { color:#adb5c2!important; }
       /* risk banner: mute the neon greens/yellows */
       [data-theme="light"] .risk-clear   { background:rgba(26,127,55,.08)!important; color:#1a7f37!important; border-bottom-color:#1a7f37!important; }
       [data-theme="light"] .risk-monitor { background:rgba(154,103,0,.08)!important; color:#7d4e00!important; border-bottom-color:#9a6700!important; }
@@ -332,7 +337,7 @@
     </div>
 
     <!-- HEADER -->
-    <header data-id="3" id="header-bar-m3v8" class="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style="border-bottom:1px solid rgba(0,217,255,.2);background:#0d1117">
+    <header data-id="3" id="header-bar-m3v8" class="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style="border-bottom:1px solid var(--border);background:var(--bg)">
         <div data-id="4" class="flex flex-col min-w-0">
             <div data-id="5" class="text-sm font-bold text-white tracking-wide flex items-center gap-2 flex-wrap">
                 <i data-id="6" data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
