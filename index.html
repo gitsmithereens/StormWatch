@@ -547,7 +547,7 @@
                 <!-- CURRENT CONDITIONS PANEL -->
                 <div class="panel" id="panel-conditions">
                     <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-cyan-400"></i> CURRENT CONDITIONS — KFHB</span>
+                        <span class="flex items-center gap-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-cyan-400"></i> CURRENT CONDITIONS — KCRG</span>
                         <span id="obs-meta" class="time-val text-[.55rem]"></span>
                     </div>
                     <div class="panel-body">
@@ -573,7 +573,7 @@
                                 <div class="text-[.5rem] text-gray-500" id="obs-vis">--</div>
                             </div>
                         </div>
-                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Fernandina Beach Airport · KFHB</div>
+                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Jacksonville Executive at Craig · KCRG</div>
                     </div>
                 </div>
 
@@ -3326,12 +3326,12 @@ async function toggleEvacZones() {
 function initWebcams() { /* no-op — cams are static thumbnail links now */ }
 function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
 
-// ─── CURRENT CONDITIONS — KFHB (Fernandina Beach Airport, nearest coastal ASOS) ─
+// ─── CURRENT CONDITIONS — KCRG (Jacksonville Executive at Craig, ~7mi from Atlantic Beach) ─
 async function fetchConditions() {
   const metaEl = document.getElementById('obs-meta');
   try {
     const r = await fetchWithTimeout(
-      'https://api.weather.gov/stations/KFHB/observations/latest',
+      'https://api.weather.gov/stations/KCRG/observations/latest',
       {headers:{Accept:'application/geo+json'}}, 8000
     );
     if (!r.ok) throw new Error('HTTP ' + r.status);
