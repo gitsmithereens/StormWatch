@@ -1102,7 +1102,7 @@
                         <div id="spag-pane" style="min-height:180px"></div>
                         <div style="padding:5px 10px 8px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap">
                             <a href="https://www.tropicaltidbits.com/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Tropical Tidbits</a>
-                            <a href="https://www.weathernerds.org/tropics/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> WeatherNerds</a>
+                            <a href="https://zoom.earth/storms/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Zoom Earth</a>
                         </div>
                     </div>
                 </div>
@@ -3086,9 +3086,9 @@ function showSpagTab(tab) {
       head: currentStorms.length ? 'SPAGHETTI — ' + currentStorms.map(s=>s.name||'STORM').join(', ') : 'SPAGHETTI MODELS',
       sub:  currentStorms.length ? 'Multi-model ensemble track forecasts for active systems.' : 'No named storms active. Track models appear here during active season.',
       body: [
-        card('https://www.tropicaltidbits.com/analysis/storms/', 'Tropical Tidbits',  'GFS / EURO / CMC ensemble spaghetti'),
-        card('https://www.weathernerds.org/tropics/',            'WeatherNerds',       'Multi-model tropical track guidance'),
-        card('https://www.nhc.noaa.gov/cyclones/',               'NHC Official Track', 'Official forecast cone and advisory'),
+        card('https://zoom.earth/storms/',                  'Zoom Earth — Storms',   'Interactive model spaghetti & satellite'),
+        card('https://www.tropicaltidbits.com/',             'Tropical Tidbits',      'Model guidance & storm analysis'),
+        card('https://www.nhc.noaa.gov/cyclones/',           'NHC Official Track',    'Official forecast cone and advisory'),
       ]
     },
     shear: {
