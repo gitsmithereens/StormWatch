@@ -439,11 +439,6 @@
                             <div id="spcOutlookMap" style="height:220px;border-radius:6px;overflow:hidden;z-index:1"></div>
                             <div id="spc-map-legend" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px"></div>
                         </div>
-                        <div class="flex gap-1.5 mt-3" style="flex-wrap:wrap">
-                            <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem] flex-1 justify-center">Day 1 →</a>
-                            <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem] flex-1 justify-center">Day 2 →</a>
-                            <a href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem] flex-1 justify-center">Day 3 →</a>
-                        </div>
                     </div>
                 </div>
 
@@ -2040,17 +2035,17 @@ function renderOutlook() {
       : 'Updated: ' + nowEDT();
   }
   const days = [
-    {label:'Day 1',data:currentOutlook.day1,showProb:true},
-    {label:'Day 2',data:currentOutlook.day2,showProb:false},
-    {label:'Day 3',data:currentOutlook.day3,showProb:false}
+    {label:'Day 1',data:currentOutlook.day1,showProb:true,  url:'https://www.spc.noaa.gov/products/outlook/day1otlk.html'},
+    {label:'Day 2',data:currentOutlook.day2,showProb:false, url:'https://www.spc.noaa.gov/products/outlook/day2otlk.html'},
+    {label:'Day 3',data:currentOutlook.day3,showProb:false, url:'https://www.spc.noaa.gov/products/outlook/day3otlk.html'}
   ];
   container.innerHTML = days.map(d => {
     const s = riskStyles[d.data.risk] || riskStyles['NONE'];
-    return '<div class="day-card">' +
+    return '<a href="'+d.url+'" target="_blank" rel="noopener" class="day-card" style="display:block;text-decoration:none;cursor:pointer" title="SPC '+d.label+' Outlook →">' +
       '<div style="font-family:Courier New,monospace;font-size:.55rem;color:#8b949e;margin-bottom:4px">'+d.label+'</div>' +
       '<span style="display:inline-block;padding:2px 8px;border-radius:3px;font-family:Courier New,monospace;font-size:.62rem;font-weight:700;background:'+s.bg+';color:'+s.color+'">'+d.data.risk+'</span>' +
       (d.showProb?'<div style="margin-top:6px;font-family:Courier New,monospace;font-size:.5rem;color:#8b949e"><div>🌪 '+d.data.tornado+'%</div><div>🌩 '+d.data.hail+'%</div><div>💨 '+d.data.wind+'%</div></div>':'') +
-    '</div>';
+    '</a>';
   }).join('');
 
   const risks = ['NONE','TSTM','MRGL','SLGT','ENH','MDT','HIGH'];
