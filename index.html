@@ -507,6 +507,7 @@
                     </div>
                     <div data-id="71" class="panel-body p-0">
                         <div id="tornado-status-bar" style="padding:6px 12px;font-family:'Courier New',monospace;font-size:.62rem;text-align:center;border-bottom:1px solid var(--border)">✓ No tornado warnings near Atlantic Beach</div>
+                        <div id="lightning-prox" style="padding:4px 12px;font-family:'Courier New',monospace;font-size:.58rem;text-align:center;border-bottom:1px solid var(--border);color:#8b949e">⚡ Checking for nearby severe thunderstorms…</div>
                         <div data-id="72" id="radarMap" style="height:380px;z-index:1"></div>
                         <div data-id="73" class="px-3 py-2 flex items-center justify-between flex-wrap gap-2" style="border-top:1px solid var(--border);background:rgba(13,17,23,.5)">
                             <div data-id="74" class="flex items-center gap-1">
@@ -561,6 +562,7 @@
                     <div class="panel-body" id="beach-score-body">
                         <div style="font-family:'Courier New',monospace;font-size:.6rem;color:#8b949e">Loading conditions…</div>
                     </div>
+                    <div id="sun-times-row" style="padding:5px 14px 8px;border-top:1px solid var(--border);font-family:'Courier New',monospace;font-size:.55rem;color:#8b949e"></div>
                 </div>
 
                 <!-- CURRENT CONDITIONS PANEL -->
@@ -653,6 +655,8 @@
                                 <div class="text-center"><div class="data-val text-sm" id="buoy-wind">--</div><div class="text-[.5rem] text-gray-600">Wind (kt)</div></div>
                             </div>
                             <div id="buoy-rip" class="mt-2 text-[.55rem]" style="font-family:'Courier New',monospace"></div>
+                            <div id="surf-quality" class="mt-2 text-[.55rem]" style="font-family:'Courier New',monospace"></div>
+                            <div id="water-temp-trend" class="mt-2"></div>
                             <div class="mt-2 flex gap-3">
                                 <a href="https://www.ndbc.noaa.gov/station_page.php?station=41112" target="_blank" rel="noopener" class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline" style="font-family:'Courier New',monospace">
                                     <i data-lucide="external-link" class="w-3 h-3"></i> NDBC 41112 →
@@ -674,6 +678,7 @@
                     <div class="panel-body" id="rip-body">
                         <div style="font-family:'Courier New',monospace;font-size:.6rem;color:#8b949e">Loading beach forecast…</div>
                     </div>
+                    <div id="rip-history-bar" style="padding:6px 14px 10px;border-top:1px solid var(--border)"></div>
                 </div>
 
                 <!-- QPE RAINFALL PANEL -->
@@ -1410,7 +1415,9 @@ async function fetchAlerts() {
     'Severe Thunderstorm Watch':7,'Hurricane Watch':7,'Storm Surge Watch':7,
     'Special Marine Warning':6,'Tropical Storm Watch':6,'Flash Flood Watch':6,
     'Flood Watch':5,'Coastal Flood Watch':5,
-    'Rip Current Statement':4,'Beach Hazard Statement':3
+    'Rip Current Statement':4,'Beach Hazard Statement':3,
+    'High Surf Advisory':4,'Coastal Hazard Message':4,
+    'Special Weather Statement':2
   };
   try {
     const r = await fetchWithTimeout('https://api.weather.gov/alerts/active?point='+CONFIG.lat+','+CONFIG.lon, {}, 10000);
@@ -1882,7 +1889,9 @@ const alertColorMap = {
   'Severe Thunderstorm Watch':'#ffaa00','Hurricane Watch':'#ffcc00','Storm Surge Watch':'#ffcc00',
   'Special Marine Warning':'#0088ff','Tropical Storm Watch':'#ffaa00','Flash Flood Watch':'#ffaa00',
   'Flood Watch':'#ffd966','Coastal Flood Watch':'#ffd966',
-  'Rip Current Statement':'#00cccc','Beach Hazard Statement':'#5588aa'
+  'Rip Current Statement':'#00cccc','Beach Hazard Statement':'#5588aa',
+  'High Surf Advisory':'#0099cc','Coastal Hazard Message':'#0099cc',
+  'Special Weather Statement':'#a78bfa'
 };
 
 function fmtTime(iso) {
@@ -1923,9 +1932,11 @@ function renderAlerts() {
       : 'Last checked: ' + nowEDT();
   }
   if (!currentAlerts.length) {
+    renderLightningProximity();
     feed.innerHTML = '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:12px;text-align:center;font-size:.65rem;color:#22c55e;font-family:Courier New,monospace">✓ No active hazards for Atlantic Beach, FL</div>';
     return;
   }
+  renderLightningProximity();
   feed.innerHTML = currentAlerts.map(a => {
     const col = alertColorMap[a.event]||'#888888';
     return '<div class="alert-card" style="border-left-color:'+col+';background:'+col+'0a">' +
@@ -2984,6 +2995,8 @@ async function fetchBuoy() {
 
     beachWaveHtFt = waveHtFt ? parseFloat(waveHtFt) : null;
     renderBeachScore();
+    renderSurfQuality(waveHtFt, wavePd);
+    if (waterF != null) storeWaterTemp(waterF);
     const tsEl = document.getElementById('buoy-ts');
     if (tsEl) tsEl.textContent = nowEDT();
     setPill('pill-buoy', 'live', 'BUOY');
@@ -3349,6 +3362,161 @@ async function toggleEvacZones() {
 function initWebcams() { /* no-op — cams are static thumbnail links now */ }
 function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
 
+// ─── SUN TIMES (pure math, no API) ───────────────────────────────────────────
+function sunTimes(date) {
+  const lat = CONFIG.lat, lon = CONFIG.lon, rad = Math.PI / 180;
+  const JD = date.getTime() / 86400000 + 2440587.5;
+  const n = JD - 2451545.0;
+  const Jstar = n - lon / 360;
+  const M = (357.5291 + 0.98560028 * Jstar) % 360;
+  const C = 1.9148*Math.sin(M*rad) + 0.020*Math.sin(2*M*rad) + 0.0003*Math.sin(3*M*rad);
+  const lambda = (M + C + 180 + 102.9372) % 360;
+  const Jtransit = 2451545.0 + Jstar + 0.0053*Math.sin(M*rad) - 0.0069*Math.sin(2*lambda*rad);
+  const sinDec = Math.sin(lambda*rad) * Math.sin(23.4397*rad);
+  const cosDec = Math.cos(Math.asin(sinDec));
+  const ha = (elev) => {
+    const c = (Math.sin(elev*rad) - Math.sin(lat*rad)*sinDec) / (Math.cos(lat*rad)*cosDec);
+    return Math.abs(c) > 1 ? null : Math.acos(c) * 180 / Math.PI;
+  };
+  const toDate = jd => new Date((jd - 2440587.5) * 86400000);
+  const H0 = ha(-0.8333), H6 = ha(6);
+  if (!H0) return null;
+  return {
+    rise:       toDate(Jtransit - H0/360),
+    goldenMorn: H6 ? toDate(Jtransit - H6/360) : null,
+    set:        toDate(Jtransit + H0/360),
+    goldenEve:  H6 ? toDate(Jtransit + H6/360) : null,
+  };
+}
+
+function renderSunTimes() {
+  const el = document.getElementById('sun-times-row');
+  if (!el) return;
+  const t = sunTimes(new Date());
+  if (!t) { el.style.display = 'none'; return; }
+  const fmt = d => d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/New_York'}).toLowerCase();
+  el.innerHTML =
+    '<span style="color:#facc15">🌅</span> ' + fmt(t.rise) +
+    (t.goldenMorn ? ' <span style="color:#8b949e">→</span> <span style="color:#f97316">✨</span> ' + fmt(t.goldenMorn) : '') +
+    ' &nbsp;·&nbsp; ' +
+    (t.goldenEve  ? '<span style="color:#f97316">✨</span> ' + fmt(t.goldenEve) + ' <span style="color:#8b949e">→</span> ' : '') +
+    '<span style="color:#facc15">🌇</span> ' + fmt(t.set);
+}
+
+// ─── LIGHTNING PROXIMITY ──────────────────────────────────────────────────────
+function renderLightningProximity() {
+  const el = document.getElementById('lightning-prox');
+  if (!el) return;
+  const svrWarnings = currentAlerts.filter(a =>
+    /Severe Thunderstorm Warning/i.test(a.event||'') && a.geometry
+  );
+  if (!svrWarnings.length) {
+    el.style.color = '#3fb950';
+    el.textContent = '⚡ No active severe thunderstorm warnings near Atlantic Beach';
+    return;
+  }
+  let nearest = null, nearestDist = Infinity;
+  for (const w of svrWarnings) {
+    const c = polygonCentroid(w.geometry.coordinates);
+    const d = haversineMiles(CONFIG.lat, CONFIG.lon, c[0], c[1]);
+    if (d < nearestDist) { nearestDist = d; nearest = w; }
+  }
+  const c = polygonCentroid(nearest.geometry.coordinates);
+  const dir = bearingToCompass(bearingDeg(CONFIG.lat, CONFIG.lon, c[0], c[1]));
+  const motion = parseStormMotion(nearest.description || '');
+  const moveTxt = motion ? ' · moving ' + bearingToCompass(motion.bearingDeg) + ' at ' + motion.speedMph + ' mph' : '';
+  const dist = nearestDist.toFixed(0);
+  el.style.color = nearestDist < 20 ? '#ff4444' : '#f97316';
+  el.textContent = '⚡ Severe T-Storm Warning ~' + dist + ' mi ' + dir + ' of Atlantic Beach' + moveTxt;
+}
+
+// ─── SURF QUALITY ─────────────────────────────────────────────────────────────
+function renderSurfQuality(waveHtFt, wavePd) {
+  const el = document.getElementById('surf-quality');
+  if (!el) return;
+  if (waveHtFt == null) { el.innerHTML = ''; return; }
+  const ht = parseFloat(waveHtFt), pd = wavePd ? parseFloat(wavePd) : null;
+  let htLabel, pdLabel, rating, color;
+  if      (ht < 0.5)  htLabel = 'Flat';
+  else if (ht < 1.5)  htLabel = 'Ankle–Knee';
+  else if (ht < 2.5)  htLabel = 'Knee–Waist';
+  else if (ht < 3.5)  htLabel = 'Waist–Chest';
+  else if (ht < 5)    htLabel = 'Chest–Head';
+  else                htLabel = 'Overhead+';
+  if (pd == null)       pdLabel = '';
+  else if (pd >= 12)    pdLabel = ' · long-period groundswell';
+  else if (pd >= 9)     pdLabel = ' · solid period';
+  else if (pd >= 7)     pdLabel = ' · short period';
+  else                  pdLabel = ' · choppy';
+  if      (ht < 0.5)                              { rating = 'FLAT';      color = '#555'; }
+  else if (ht < 1.5 || (pd && pd < 6))            { rating = 'POOR';      color = '#8b949e'; }
+  else if (ht < 2 && pd && pd < 8)                { rating = 'FAIR';      color = '#facc15'; }
+  else if (ht >= 1.5 && ht < 4 && (!pd||pd >= 7)) { rating = 'GOOD';      color = '#3fb950'; }
+  else if (ht >= 4 && pd && pd >= 9)               { rating = 'EXCELLENT'; color = '#00d9ff'; }
+  else                                             { rating = 'FAIR';      color = '#facc15'; }
+  el.innerHTML = 'Surf: <span style="color:' + color + ';font-weight:700">' + rating + '</span>' +
+    ' <span style="color:#8b949e">(' + htLabel + pdLabel + ')</span>';
+}
+
+// ─── WATER TEMP TREND ─────────────────────────────────────────────────────────
+function storeWaterTemp(tempF) {
+  if (tempF == null) return;
+  const key = 'sw_water_temp_history';
+  const hist = JSON.parse(localStorage.getItem(key) || '[]');
+  hist.push({ ts: Date.now(), tempF });
+  // keep last 48 readings (~2 days at 10-min intervals)
+  if (hist.length > 48) hist.splice(0, hist.length - 48);
+  localStorage.setItem(key, JSON.stringify(hist));
+  renderWaterTempTrend(hist);
+}
+
+function renderWaterTempTrend(hist) {
+  const el = document.getElementById('water-temp-trend');
+  if (!el || !hist || hist.length < 2) return;
+  const W = 240, H = 28, pad = 4;
+  const temps = hist.map(h => h.tempF);
+  const mn = Math.min(...temps) - 0.5, mx = Math.max(...temps) + 0.5;
+  const xS = i => pad + (i / (hist.length - 1)) * (W - pad*2);
+  const yS = v => H - pad - ((v - mn) / (mx - mn)) * (H - pad*2);
+  const pts = hist.map((h, i) => xS(i) + ',' + yS(h.tempF)).join(' ');
+  el.innerHTML =
+    '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#8b949e;margin-bottom:2px">Water temp trend (48h)</div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:' + H + 'px;display:block">' +
+      '<polyline points="' + pts + '" fill="none" stroke="#00d9ff" stroke-width="1.5" stroke-linejoin="round"/>' +
+      '<text x="' + pad + '" y="' + (H-1) + '" font-size="6" fill="#4b5563" font-family="Courier New">48h ago</text>' +
+      '<text x="' + (W-28) + '" y="' + (H-1) + '" font-size="6" fill="#4b5563" font-family="Courier New">now</text>' +
+      '<text x="' + (W/2) + '" y="9" font-size="7" fill="#00d9ff" font-family="Courier New" text-anchor="middle">' + temps[temps.length-1].toFixed(1) + '°F</text>' +
+    '</svg>';
+}
+
+// ─── RIP CURRENT FLAG HISTORY ─────────────────────────────────────────────────
+function storeRipLevel(level) {
+  const key = 'sw_rip_history';
+  const today = new Date().toLocaleDateString('en-CA', {timeZone:'America/New_York'});
+  const hist = JSON.parse(localStorage.getItem(key) || '[]');
+  const last = hist[hist.length - 1];
+  if (last && last.date === today) { last.level = level; }
+  else { hist.push({ date: today, level }); }
+  if (hist.length > 14) hist.splice(0, hist.length - 14);
+  localStorage.setItem(key, JSON.stringify(hist));
+  renderRipHistory(hist);
+}
+
+function renderRipHistory(hist) {
+  const el = document.getElementById('rip-history-bar');
+  if (!el) return;
+  if (!hist || !hist.length) { el.innerHTML = ''; return; }
+  const colMap = { LOW:'#22c55e', MOD:'#f97316', HIGH:'#ef4444', EXTREME:'#ff2222' };
+  const squares = hist.map(h => {
+    const col = colMap[h.level] || '#555';
+    const d = new Date(h.date + 'T12:00:00').toLocaleDateString('en-US',{month:'numeric',day:'numeric'});
+    return '<span title="' + d + ': ' + h.level + '" style="display:inline-block;width:14px;height:14px;background:' + col + ';border-radius:2px;opacity:.85"></span>';
+  }).join('');
+  el.innerHTML =
+    '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#8b949e;margin-bottom:4px">Rip risk history (14 days)</div>' +
+    '<div style="display:flex;gap:3px;align-items:center">' + squares + '</div>';
+}
+
 // ─── BEACH CONDITIONS SCORE ───────────────────────────────────────────────────
 async function fetchUV() {
   try {
@@ -3558,6 +3726,7 @@ async function fetchRipCurrent() {
       '</span>';
   }
   beachRipLevel = level;
+  storeRipLevel(level);
   renderBeachScore();
 
   const snippet = ripText.length > 220 ? ripText.substring(0, 220) + '…' : (ripText || 'See full beach forecast for details.');
@@ -3663,6 +3832,10 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchConditions();
   fetchRipCurrent();
   fetchUV();
+  renderSunTimes();
+  // restore history from localStorage on load
+  renderRipHistory(JSON.parse(localStorage.getItem('sw_rip_history') || '[]'));
+  renderWaterTempTrend(JSON.parse(localStorage.getItem('sw_water_temp_history') || '[]'));
   initWebcams();
   renderLSRHistory();
   setTimeout(generateBriefing, 2500);
@@ -3677,6 +3850,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchSounding,     60 * 60 * 1000);
   setInterval(fetchConditions,   20 * 60 * 1000);
   setInterval(fetchUV,          120 * 60 * 1000);
+  setInterval(renderSunTimes,   60 * 60 * 1000);
   setInterval(fetchRipCurrent,  120 * 60 * 1000);
 
   // Restore display preferences (theme already set by early-init script; just sync buttons)
