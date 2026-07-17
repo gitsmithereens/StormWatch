@@ -386,6 +386,7 @@
         </div>
         <div id="header-actions" class="flex items-center gap-1.5">
             <button id="notif-btn" class="notif-btn" title="Enable push notifications for new alerts">🔔 ALERTS</button>
+            <button class="notif-btn" onclick="shareConditions()" title="Share current conditions">📤 SHARE</button>
             <button class="notif-btn" onclick="document.getElementById('settings-modal').style.display='flex'" title="Settings">⚙ SETTINGS</button>
         </div>
     </header>
@@ -1087,6 +1088,25 @@
                     </div>
                 </div>
 
+                <!-- Spaghetti / Model Guidance -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="git-branch" class="w-3.5 h-3.5 text-cyan-400"></i> MODEL GUIDANCE</span>
+                        <div class="flex gap-1">
+                            <button id="spag-btn-two"   class="tab-btn active" onclick="showSpagTab('two')"  title="NHC Tropical Weather Outlook — Atlantic 5-day">TWO</button>
+                            <button id="spag-btn-spag"  class="tab-btn"        onclick="showSpagTab('spag')" title="Multi-model spaghetti tracks">SPAG</button>
+                            <button id="spag-btn-shear" class="tab-btn"        onclick="showSpagTab('shear')" title="200–850mb wind shear">SHEAR</button>
+                        </div>
+                    </div>
+                    <div class="panel-body p-0">
+                        <div id="spag-pane" style="min-height:180px"></div>
+                        <div style="padding:5px 10px 8px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap">
+                            <a href="https://www.tropicaltidbits.com/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Tropical Tidbits</a>
+                            <a href="https://www.weathernerds.org/tropics/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> WeatherNerds</a>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- NHC Outlook links -->
                 <div class="panel">
                     <div class="panel-header">
@@ -1237,6 +1257,7 @@ function switchTab(tab) {
     if (tabS) tabS.classList.remove('active');
     if (tabH) tabH.classList.add('active');
     initHurricaneMap();
+    showSpagTab('two');
   }
 }
 
@@ -3038,6 +3059,75 @@ function clearLSRHistory() {
 }
 
 // ─── DISPLAY PREFERENCES: THEME + TEXT SIZE ──────────────────────────────────
+// ─── SPAGHETTI / MODEL GUIDANCE ──────────────────────────────────────────────
+function showSpagTab(tab) {
+  const pane = document.getElementById('spag-pane');
+  if (!pane) return;
+  ['two','spag','shear'].forEach(t => {
+    const b = document.getElementById('spag-btn-' + t);
+    if (b) b.classList.toggle('active', t === tab);
+  });
+  if (tab === 'spag') {
+    if (currentStorms.length) {
+      pane.innerHTML = currentStorms.map(s =>
+        '<div style="padding:10px 12px;font-family:\'Courier New\',monospace;font-size:.6rem">' +
+        '<div style="color:var(--cyan);font-weight:700;margin-bottom:6px">' + (s.name || 'Storm') + '</div>' +
+        '<div class="flex flex-col gap-1">' +
+        '<a href="https://www.tropicaltidbits.com/tracks/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Spaghetti — Tropical Tidbits</a>' +
+        '<a href="https://www.weathernerds.org/tropics/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Spaghetti — WeatherNerds</a>' +
+        '</div></div>'
+      ).join('');
+      if (window.lucide) lucide.createIcons();
+    } else {
+      pane.innerHTML =
+        '<div style="padding:20px 14px;font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e;text-align:center">' +
+        'No named storms active — spaghetti models appear here when a system is being tracked.<br><br>' +
+        '<a href="https://www.tropicaltidbits.com/analysis/storms/" target="_blank" rel="noopener" style="color:#06b6d4">Tropical Tidbits →</a>' +
+        '</div>';
+    }
+    return;
+  }
+  const srcs = {
+    two:   'https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png',
+    shear: 'https://tropic.ssec.wisc.edu/real-time/windshear/shear200850_atl.jpg',
+  };
+  pane.innerHTML = '<img src="' + srcs[tab] + '?_=' + Date.now() +
+    '" style="width:100%;display:block;border-radius:0 0 4px 4px" ' +
+    'onerror="this.parentElement.innerHTML=\'<div style=\\\"padding:20px;text-align:center;color:#8b949e;font-family:Courier New,monospace;font-size:.6rem\\\">Image unavailable — try the links below</div>\'">';
+}
+
+// ─── SHARE CONDITIONS ─────────────────────────────────────────────────────────
+async function shareConditions() {
+  const now = new Date().toLocaleString('en-US', {
+    timeZone:'America/New_York', month:'short', day:'numeric',
+    hour:'2-digit', minute:'2-digit', hour12:true
+  });
+  const g = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : null; };
+  const verdict = document.querySelector('#beach-score-body [style*="font-size:1.1rem"]');
+  const ripLvl  = document.querySelector('#rip-body [style*="font-weight:700"]');
+  const lines = [
+    '🌊 StormWatch ATL BEACH · ' + now,
+    verdict ? 'Beach: ' + verdict.textContent.trim() : null,
+    g('obs-temp')     !== '--' ? 'Temp: '    + g('obs-temp')     : null,
+    g('obs-wind')     !== '--' ? 'Wind: '    + g('obs-wind')     : null,
+    ripLvl            ? 'Rip: '     + ripLvl.textContent.trim()  : null,
+    g('buoy-wave-ht') !== '--' ? 'Waves: '   + g('buoy-wave-ht') + ' ft' : null,
+    g('tide-level')   !== '--' ? 'Tide: '    + g('tide-level')   : null,
+    '',
+    '🔗 gitsmithereens.github.io/StormWatch/',
+  ].filter(l => l !== null).join('\n');
+
+  if (navigator.share) {
+    try { await navigator.share({ title: 'StormWatch ATL Beach', text: lines }); return; } catch(e) {}
+  }
+  try {
+    await navigator.clipboard.writeText(lines);
+    showToast('📋 Conditions copied to clipboard!', 'info');
+  } catch(e) {
+    showToast('⚠ Could not copy — try selecting and copying the conditions manually.', 'warn');
+  }
+}
+
 function toggleTheme() {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const next = isLight ? 'dark' : 'light';
