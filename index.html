@@ -3067,33 +3067,45 @@ function showSpagTab(tab) {
     const b = document.getElementById('spag-btn-' + t);
     if (b) b.classList.toggle('active', t === tab);
   });
-  if (tab === 'spag') {
-    if (currentStorms.length) {
-      pane.innerHTML = currentStorms.map(s =>
-        '<div style="padding:10px 12px;font-family:\'Courier New\',monospace;font-size:.6rem">' +
-        '<div style="color:var(--cyan);font-weight:700;margin-bottom:6px">' + (s.name || 'Storm') + '</div>' +
-        '<div class="flex flex-col gap-1">' +
-        '<a href="https://www.tropicaltidbits.com/tracks/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Spaghetti — Tropical Tidbits</a>' +
-        '<a href="https://www.weathernerds.org/tropics/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Spaghetti — WeatherNerds</a>' +
-        '</div></div>'
-      ).join('');
-      if (window.lucide) lucide.createIcons();
-    } else {
-      pane.innerHTML =
-        '<div style="padding:20px 14px;font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e;text-align:center">' +
-        'No named storms active — spaghetti models appear here when a system is being tracked.<br><br>' +
-        '<a href="https://www.tropicaltidbits.com/analysis/storms/" target="_blank" rel="noopener" style="color:#06b6d4">Tropical Tidbits →</a>' +
-        '</div>';
+  const card = (href, label, desc) =>
+    '<a href="'+href+'" target="_blank" rel="noopener" style="display:flex;flex-direction:column;padding:8px 10px;background:rgba(0,217,255,.05);border:1px solid rgba(0,217,255,.15);border-radius:5px;text-decoration:none;margin-bottom:5px">' +
+      '<span style="font-family:\'Courier New\',monospace;font-size:.62rem;color:#00d9ff;font-weight:700">'+label+' →</span>' +
+      '<span style="font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;margin-top:2px">'+desc+'</span>' +
+    '</a>';
+  const tabs = {
+    two: {
+      head: 'TROPICAL WEATHER OUTLOOK',
+      sub:  'NHC 5-day development probabilities — Atlantic & East Pacific.',
+      body: [
+        card('https://www.nhc.noaa.gov/gtwo.php?basin=atlc', 'NHC TWO — Atlantic',      '5-day tropical development outlook'),
+        card('https://www.nhc.noaa.gov/gtwo.php?basin=epac', 'NHC TWO — East Pacific',  '5-day tropical development outlook'),
+        card('https://www.nhc.noaa.gov/cyclones/',           'NHC Active Cyclones',      'All currently active tropical systems'),
+      ]
+    },
+    spag: {
+      head: currentStorms.length ? 'SPAGHETTI — ' + currentStorms.map(s=>s.name||'STORM').join(', ') : 'SPAGHETTI MODELS',
+      sub:  currentStorms.length ? 'Multi-model ensemble track forecasts for active systems.' : 'No named storms active. Track models appear here during active season.',
+      body: [
+        card('https://www.tropicaltidbits.com/analysis/storms/', 'Tropical Tidbits',  'GFS / EURO / CMC ensemble spaghetti'),
+        card('https://www.weathernerds.org/tropics/',            'WeatherNerds',       'Multi-model tropical track guidance'),
+        card('https://www.nhc.noaa.gov/cyclones/',               'NHC Official Track', 'Official forecast cone and advisory'),
+      ]
+    },
+    shear: {
+      head: 'WIND SHEAR ANALYSIS',
+      sub:  'Vertical wind shear — key factor in storm development and intensification.',
+      body: [
+        card('https://tropic.ssec.wisc.edu/',                                                                      'UW-CIMSS Tropical',          'Observed 200–850mb shear analysis'),
+        card('https://www.tropicaltidbits.com/analysis/models/?model=gfs&region=atl&pkg=shear', 'Tropical Tidbits — GFS Shear', 'Model-forecast wind shear, Atlantic'),
+        card('https://www.nhc.noaa.gov/tafb/',                                                                     'NWS TAFB',                   'Tropical Analysis & Forecast Branch'),
+      ]
     }
-    return;
-  }
-  const srcs = {
-    two:   'https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png',
-    shear: 'https://tropic.ssec.wisc.edu/real-time/windshear/shear200850_atl.jpg',
   };
-  pane.innerHTML = '<img src="' + srcs[tab] + '?_=' + Date.now() +
-    '" style="width:100%;display:block;border-radius:0 0 4px 4px" ' +
-    'onerror="this.parentElement.innerHTML=\'<div style=\\\"padding:20px;text-align:center;color:#8b949e;font-family:Courier New,monospace;font-size:.6rem\\\">Image unavailable — try the links below</div>\'">';
+  const t = tabs[tab];
+  pane.innerHTML =
+    '<div style="padding:10px 12px 3px;font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;letter-spacing:.06em;font-weight:700">' + t.head + '</div>' +
+    '<div style="padding:2px 12px 8px;font-family:\'Courier New\',monospace;font-size:.52rem;color:#636c76">' + t.sub + '</div>' +
+    '<div style="padding:0 10px 10px">' + t.body.join('') + '</div>';
 }
 
 // ─── SHARE CONDITIONS ─────────────────────────────────────────────────────────
