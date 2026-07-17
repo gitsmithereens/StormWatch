@@ -2957,24 +2957,21 @@ async function fetchBuoy() {
     const windKt  = windData  ? parseFloat(windData.s)  : null;   // already in knots
     const waterF  = wtmpData  ? parseFloat(wtmpData.v)  : null;   // already in °F
 
-    // Wave height: fetch NDBC via a public CORS-anywhere style allorigins proxy
+    // Wave height + period: open-meteo marine API (CORS-friendly, no proxy needed)
     let waveHtFt = null, wavePd = null;
     try {
-      const ndbc = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/41112.txt'), {}, 8000);
-      if (ndbc.ok) {
-        const txt = await ndbc.text();
-        const lines = txt.split('\n').filter(l => l && !l.startsWith('#'));
-        if (lines.length >= 2) {
-          const hdr  = lines[0].trim().split(/\s+/);
-          const dat  = lines[1].trim().split(/\s+/);
-          const get  = k => { const i = hdr.indexOf(k); return i >= 0 ? dat[i] : null; };
-          const wvht = parseFloat(get('WVHT'));
-          const dpd  = parseFloat(get('DPD'));
-          if (!isNaN(wvht)) waveHtFt = (wvht * 3.28084).toFixed(1);
-          if (!isNaN(dpd))  wavePd   = dpd.toFixed(0);
-        }
+      const marine = await fetchWithTimeout(
+        'https://marine-api.open-meteo.com/v1/marine?latitude=30.34&longitude=-81.40&current=wave_height,wave_period',
+        {}, 8000
+      );
+      if (marine.ok) {
+        const mj = await marine.json();
+        const wvht = mj.current?.wave_height;
+        const dpd  = mj.current?.wave_period;
+        if (wvht != null && !isNaN(wvht)) waveHtFt = (wvht * 3.28084).toFixed(1);
+        if (dpd  != null && !isNaN(dpd))  wavePd   = parseFloat(dpd).toFixed(0);
       }
-    } catch(e) { /* wave height unavailable — rest still shows */ }
+    } catch(e) { /* wave data unavailable — rest still shows */ }
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val !== null && val !== undefined ? val : '--'; };
     set('buoy-wave-ht',   waveHtFt || '--');
@@ -3593,6 +3590,13 @@ function renderBeachScore() {
   const waveLabel = beachWaveHtFt != null ? beachWaveHtFt.toFixed(1) + ' ft' : null;
   const uvLabel   = beachUvIndex  != null ? beachUvIndex.toFixed(0) + (beachUvIndex >= 11 ? ' · Extreme' : beachUvIndex >= 8 ? ' · V.High' : beachUvIndex >= 6 ? ' · High' : beachUvIndex >= 3 ? ' · Mod' : ' · Low') : null;
 
+  const rows = [
+    ripScore  !== null ? row('RIP CURRENT', ripLabel,  ripScore)  : '',
+    windScore !== null ? row('WIND',        windLabel, windScore) : '',
+    waveScore !== null ? row('WAVE HT',     waveLabel, waveScore) : '',
+    uvScore   !== null ? row('UV INDEX',    uvLabel,   uvScore)   : '',
+  ].join('');
+
   el.innerHTML =
     '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:' + vBg + ';margin-bottom:10px">' +
       '<div style="font-family:\'Courier New\',monospace;font-size:1.1rem;font-weight:700;color:' + vColor + '">' + verdict + '</div>' +
@@ -3600,10 +3604,7 @@ function renderBeachScore() {
         (verdict === 'GREAT' ? 'Ideal conditions' : verdict === 'GOOD' ? 'Good day out' : verdict === 'FAIR' ? 'Use caution' : verdict === 'POOR' ? 'Rough conditions' : 'Stay out of water') +
       '</div>' +
     '</div>' +
-    row('RIP CURRENT', ripLabel, ripScore) +
-    row('WIND', windLabel, windScore) +
-    row('WAVE HT', waveLabel, waveScore) +
-    row('UV INDEX', uvLabel, uvScore) +
+    rows +
     '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#555;margin-top:6px">Updated ' + nowEDT() + '</div>';
 }
 
