@@ -553,6 +553,16 @@
             <!-- ========== RIGHT COLUMN ========== -->
             <div data-id="115" id="col-right" class="flex flex-col gap-3 min-w-0">
 
+                <!-- BEACH CONDITIONS SCORE PANEL -->
+                <div class="panel" id="panel-beach-score">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="sun" class="w-3.5 h-3.5 text-yellow-400"></i> BEACH CONDITIONS — ATL BEACH</span>
+                    </div>
+                    <div class="panel-body" id="beach-score-body">
+                        <div style="font-family:'Courier New',monospace;font-size:.6rem;color:#8b949e">Loading conditions…</div>
+                    </div>
+                </div>
+
                 <!-- CURRENT CONDITIONS PANEL -->
                 <div class="panel" id="panel-conditions">
                     <div class="panel-header">
@@ -1141,6 +1151,8 @@ let buoyData = null;
 let seenAlertIds = new Set(JSON.parse(localStorage.getItem('sw_seen_alerts') || '[]'));
 let notificationsEnabled = localStorage.getItem('sw_notif') === 'true';
 let lsrHistory = JSON.parse(localStorage.getItem('sw_lsr_history') || '[]');
+// beach score inputs — populated by their respective fetch functions
+let beachWindMph = null, beachRipLevel = null, beachWaveHtFt = null, beachUvIndex = null;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 // Fetch with hard timeout — prevents pills from sticking on CHECKING forever
@@ -2970,6 +2982,8 @@ async function fetchBuoy() {
       ripEl.innerHTML = 'Rip Current Risk: <span style="color:'+col+';font-weight:700">'+risk+'</span>';
     }
 
+    beachWaveHtFt = waveHtFt ? parseFloat(waveHtFt) : null;
+    renderBeachScore();
     const tsEl = document.getElementById('buoy-ts');
     if (tsEl) tsEl.textContent = nowEDT();
     setPill('pill-buoy', 'live', 'BUOY');
@@ -3335,6 +3349,87 @@ async function toggleEvacZones() {
 function initWebcams() { /* no-op — cams are static thumbnail links now */ }
 function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
 
+// ─── BEACH CONDITIONS SCORE ───────────────────────────────────────────────────
+async function fetchUV() {
+  try {
+    const r = await fetchWithTimeout(
+      'https://api.open-meteo.com/v1/forecast?latitude=30.34&longitude=-81.40&daily=uv_index_max&timezone=America%2FNew_York&forecast_days=1',
+      {}, 8000
+    );
+    if (!r.ok) return;
+    const d = await r.json();
+    beachUvIndex = d.daily?.uv_index_max?.[0] ?? null;
+    renderBeachScore();
+  } catch(e) { /* UV unavailable — score renders without it */ }
+}
+
+function renderBeachScore() {
+  const el = document.getElementById('beach-score-body');
+  if (!el) return;
+
+  // score each factor 0-2
+  const ripScore = !beachRipLevel ? null :
+    (beachRipLevel === 'EXTREME' || beachRipLevel === 'HIGH') ? 2 :
+    beachRipLevel === 'MOD' ? 1 : 0;
+  const windScore = beachWindMph == null ? null :
+    beachWindMph > 25 ? 2 : beachWindMph > 15 ? 1 : 0;
+  const waveScore = beachWaveHtFt == null ? null :
+    beachWaveHtFt > 4 ? 2 : beachWaveHtFt > 2 ? 1 : 0;
+  const uvScore = beachUvIndex == null ? null :
+    beachUvIndex >= 8 ? 2 : beachUvIndex >= 6 ? 1 : 0;
+
+  const scores = [ripScore, windScore, waveScore, uvScore].filter(s => s !== null);
+  if (!scores.length) {
+    el.innerHTML = '<div style="font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e">Loading conditions…</div>';
+    return;
+  }
+
+  const total = scores.reduce((a, b) => a + b, 0);
+  const maxPossible = scores.length * 2;
+  const pct = total / maxPossible;
+
+  let verdict, vColor, vBg;
+  if (pct <= 0.15)      { verdict = 'GREAT';     vColor = '#22c55e'; vBg = 'rgba(34,197,94,.1)'; }
+  else if (pct <= 0.35) { verdict = 'GOOD';      vColor = '#3fb950'; vBg = 'rgba(63,185,80,.1)'; }
+  else if (pct <= 0.55) { verdict = 'FAIR';      vColor = '#facc15'; vBg = 'rgba(250,204,21,.1)'; }
+  else if (pct <= 0.75) { verdict = 'POOR';      vColor = '#f97316'; vBg = 'rgba(249,115,22,.1)'; }
+  else                  { verdict = 'DANGEROUS';  vColor = '#ef4444'; vBg = 'rgba(239,68,68,.1)'; }
+
+  const bar = (score, max) => {
+    if (score === null) return '<span style="color:#555;font-size:.55rem">N/A</span>';
+    const filled = score, empty = max - score;
+    const dot = s => '<span style="color:' + s + '">●</span>';
+    const emp = '<span style="color:#30363d">●</span>';
+    const colors = ['#22c55e','#facc15','#ef4444'];
+    return Array(filled).fill(dot(colors[Math.min(score,2)])).join('') + Array(empty).fill(emp).join('');
+  };
+
+  const row = (label, value, score) =>
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">' +
+      '<div style="font-family:\'Courier New\',monospace;font-size:.55rem;color:#8b949e;width:80px;flex-shrink:0">' + label + '</div>' +
+      '<div style="font-family:\'Courier New\',monospace;font-size:.55rem;color:var(--text);flex:1">' + (value || '--') + '</div>' +
+      '<div style="font-size:.65rem;letter-spacing:2px">' + bar(score, 2) + '</div>' +
+    '</div>';
+
+  const ripLabel = beachRipLevel || '--';
+  const windLabel = beachWindMph != null ? beachWindMph + ' mph' : null;
+  const waveLabel = beachWaveHtFt != null ? beachWaveHtFt.toFixed(1) + ' ft' : null;
+  const uvLabel   = beachUvIndex  != null ? beachUvIndex.toFixed(0) + (beachUvIndex >= 11 ? ' · Extreme' : beachUvIndex >= 8 ? ' · V.High' : beachUvIndex >= 6 ? ' · High' : beachUvIndex >= 3 ? ' · Mod' : ' · Low') : null;
+
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:' + vBg + ';margin-bottom:10px">' +
+      '<div style="font-family:\'Courier New\',monospace;font-size:1.1rem;font-weight:700;color:' + vColor + '">' + verdict + '</div>' +
+      '<div style="font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;line-height:1.4">' +
+        (verdict === 'GREAT' ? 'Ideal conditions' : verdict === 'GOOD' ? 'Good day out' : verdict === 'FAIR' ? 'Use caution' : verdict === 'POOR' ? 'Rough conditions' : 'Stay out of water') +
+      '</div>' +
+    '</div>' +
+    row('RIP CURRENT', ripLabel, ripScore) +
+    row('WIND', windLabel, windScore) +
+    row('WAVE HT', waveLabel, waveScore) +
+    row('UV INDEX', uvLabel, uvScore) +
+    '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#555;margin-top:6px">Updated ' + nowEDT() + '</div>';
+}
+
 // ─── CURRENT CONDITIONS — KCRG (Jacksonville Executive at Craig, ~7mi from Atlantic Beach) ─
 async function fetchConditions() {
   const metaEl = document.getElementById('obs-meta');
@@ -3385,8 +3480,9 @@ async function fetchConditions() {
     }
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    beachWindMph = windSpd;
     set('obs-temp',     tempF != null ? tempF + '°F' : '--');
-    set('obs-feels',    feelsLabel || 'Fernandina Beach');
+    set('obs-feels',    feelsLabel || 'Craig Airport');
     set('obs-wind',     windSpd != null ? windSpd + ' mph' : '--');
     set('obs-wind-sub', [degToCompass(windDir), windGust ? 'G' + windGust + ' mph' : ''].filter(Boolean).join(' · ') || '--');
     set('obs-humidity', humidity != null ? humidity + '%' : '--');
@@ -3394,6 +3490,7 @@ async function fetchConditions() {
     set('obs-vis',      visMi != null ? 'Vis ' + visMi + ' mi' : '');
     if (metaEl) metaEl.textContent = nowEDT();
     setPill('pill-obs', 'live', 'OBS');
+    renderBeachScore();
   } catch(e) {
     console.warn('fetchConditions:', e);
     setPill('pill-obs', 'error', 'OBS');
@@ -3460,6 +3557,8 @@ async function fetchRipCurrent() {
       '<span style="display:inline-block;width:10px;height:14px;background:#facc15;border-radius:1px"></span>' +
       '</span>';
   }
+  beachRipLevel = level;
+  renderBeachScore();
 
   const snippet = ripText.length > 220 ? ripText.substring(0, 220) + '…' : (ripText || 'See full beach forecast for details.');
   body.innerHTML =
@@ -3563,6 +3662,7 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchSounding();
   fetchConditions();
   fetchRipCurrent();
+  fetchUV();
   initWebcams();
   renderLSRHistory();
   setTimeout(generateBriefing, 2500);
@@ -3576,6 +3676,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchQPE,           5 * 60 * 1000);
   setInterval(fetchSounding,     60 * 60 * 1000);
   setInterval(fetchConditions,   20 * 60 * 1000);
+  setInterval(fetchUV,          120 * 60 * 1000);
   setInterval(fetchRipCurrent,  120 * 60 * 1000);
 
   // Restore display preferences (theme already set by early-init script; just sync buttons)
