@@ -3367,7 +3367,7 @@ function sunTimes(date) {
   const lat = CONFIG.lat, lon = CONFIG.lon, rad = Math.PI / 180;
   const JD = date.getTime() / 86400000 + 2440587.5;
   const n = JD - 2451545.0;
-  const Jstar = n - lon / 360;
+  const Jstar = n + lon / 360;
   const M = (357.5291 + 0.98560028 * Jstar) % 360;
   const C = 1.9148*Math.sin(M*rad) + 0.020*Math.sin(2*M*rad) + 0.0003*Math.sin(3*M*rad);
   const lambda = (M + C + 180 + 102.9372) % 360;
