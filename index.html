@@ -3364,28 +3364,37 @@ function fetchLightning() { /* lightning uses Windy iframe — no polling needed
 
 // ─── SUN TIMES (pure math, no API) ───────────────────────────────────────────
 function sunTimes(date) {
-  const lat = CONFIG.lat, lon = CONFIG.lon, rad = Math.PI / 180;
-  const JD = date.getTime() / 86400000 + 2440587.5;
+  const lat = CONFIG.lat, lon = CONFIG.lon;
+  const rad = x => x * Math.PI / 180;
+  // Julian date for UTC midnight of the given date
+  const y = date.getUTCFullYear(), m = date.getUTCMonth() + 1, d = date.getUTCDate();
+  const A = Math.floor(y/100), B = 2 - A + Math.floor(A/4);
+  const JD = Math.floor(365.25*(y+4716)) + Math.floor(30.6001*(m+1)) + d + B - 1524.5;
   const n = JD - 2451545.0;
-  const Jstar = n + lon / 360;
-  const M = (357.5291 + 0.98560028 * Jstar) % 360;
-  const C = 1.9148*Math.sin(M*rad) + 0.020*Math.sin(2*M*rad) + 0.0003*Math.sin(3*M*rad);
-  const lambda = (M + C + 180 + 102.9372) % 360;
-  const Jtransit = 2451545.0 + Jstar + 0.0053*Math.sin(M*rad) - 0.0069*Math.sin(2*lambda*rad);
-  const sinDec = Math.sin(lambda*rad) * Math.sin(23.4397*rad);
-  const cosDec = Math.cos(Math.asin(sinDec));
+  // Solar coordinates
+  const L = (280.460 + 0.9856474*n) % 360;
+  const g = (357.528  + 0.9856003*n) % 360;
+  const lambda = L + 1.915*Math.sin(rad(g)) + 0.020*Math.sin(rad(2*g));
+  const epsilon = 23.439 - 4e-7*n;
+  const sinDec = Math.sin(rad(epsilon)) * Math.sin(rad(lambda));
+  const dec = Math.asin(sinDec);
+  // Equation of time → solar noon in UTC hours
+  const RA = Math.atan2(Math.cos(rad(epsilon))*Math.sin(rad(lambda)), Math.cos(rad(lambda))) * 180/Math.PI / 15;
+  const EoT = ((L/15 - RA) + 36) % 24 - 12;
+  const solarNoonUTC = 12 - lon/15 - EoT;
+  // Hour angle for given elevation → hours offset from noon
   const ha = (elev) => {
-    const c = (Math.sin(elev*rad) - Math.sin(lat*rad)*sinDec) / (Math.cos(lat*rad)*cosDec);
-    return Math.abs(c) > 1 ? null : Math.acos(c) * 180 / Math.PI;
+    const c = (Math.sin(rad(elev)) - Math.sin(rad(lat))*sinDec) / (Math.cos(rad(lat))*Math.cos(dec));
+    return Math.abs(c) > 1 ? null : Math.acos(c)*180/Math.PI/15;
   };
-  const toDate = jd => new Date((jd - 2440587.5) * 86400000);
   const H0 = ha(-0.8333), H6 = ha(6);
   if (!H0) return null;
+  const toDate = utcH => { const r = new Date(date); r.setUTCHours(0,0,0,0); r.setTime(r.getTime()+utcH*3600000); return r; };
   return {
-    rise:       toDate(Jtransit - H0/360),
-    goldenMorn: H6 ? toDate(Jtransit - H6/360) : null,
-    set:        toDate(Jtransit + H0/360),
-    goldenEve:  H6 ? toDate(Jtransit + H6/360) : null,
+    rise:       toDate(solarNoonUTC - H0),
+    goldenMorn: H6 ? toDate(solarNoonUTC - H6) : null,
+    set:        toDate(solarNoonUTC + H0),
+    goldenEve:  H6 ? toDate(solarNoonUTC + H6) : null,
   };
 }
 
@@ -3535,7 +3544,7 @@ function renderBeachScore() {
   const el = document.getElementById('beach-score-body');
   if (!el) return;
 
-  // score each factor 0-2
+  // score safety/comfort factors only — UV is advisory, not a penalty
   const ripScore = !beachRipLevel ? null :
     (beachRipLevel === 'EXTREME' || beachRipLevel === 'HIGH') ? 2 :
     beachRipLevel === 'MOD' ? 1 : 0;
@@ -3543,10 +3552,11 @@ function renderBeachScore() {
     beachWindMph > 25 ? 2 : beachWindMph > 15 ? 1 : 0;
   const waveScore = beachWaveHtFt == null ? null :
     beachWaveHtFt > 4 ? 2 : beachWaveHtFt > 2 ? 1 : 0;
+  // UV: display only — high UV means sunscreen, not a bad beach day
   const uvScore = beachUvIndex == null ? null :
     beachUvIndex >= 8 ? 2 : beachUvIndex >= 6 ? 1 : 0;
 
-  const scores = [ripScore, windScore, waveScore, uvScore].filter(s => s !== null);
+  const scores = [ripScore, windScore, waveScore].filter(s => s !== null);
   if (!scores.length) {
     el.innerHTML = '<div style="font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e">Loading conditions…</div>';
     return;
