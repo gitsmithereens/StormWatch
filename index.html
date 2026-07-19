@@ -1807,16 +1807,46 @@ function plotStormsOnMap(storms) {
   if (!map || !storms.length) return;
   const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
     '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
+  const catLabel = c => ({'TD':'TROP DEPRESSION','TS':'TROP STORM',
+    '1':'CAT 1','2':'CAT 2','3':'CAT 3','4':'CAT 4','5':'CAT 5'})[String(c)] || c;
   storms.forEach(s => {
     if (!s.lat || !s.lon) return;
     const col = catColor(s.classification);
-    L.circleMarker([s.lat, s.lon], {radius:10, color:col, fillColor:col, fillOpacity:.7, weight:2})
-    .bindTooltip('<b>'+(s.name||'Storm')+'</b><br>'+(s.classification||'')+' &bull; '+(s.windMph||'?')+' mph', {className:'spc-tip'})
-    .bindPopup('<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:160px"><b style="color:'+col+'">'+
-      (s.name||'Storm')+'</b><br>Winds: '+(s.windMph||'?')+' mph<br>'+
-      (s.pressure?'Pressure: '+s.pressure+' mb<br>':'') +
-      '<a href="https://www.nhc.noaa.gov/" target="_blank" style="color:#06b6d4">NHC Advisory &#8594;</a></div>')
+    // Outer pulsing ring
+    L.circleMarker([s.lat, s.lon], {
+      radius:20, color:col, fillColor:'transparent', fillOpacity:0, weight:1.5,
+      className:'atl-pulse', interactive:false
+    }).addTo(map);
+    // Inner filled dot
+    L.circleMarker([s.lat, s.lon], {radius:12, color:'#fff', fillColor:col, fillOpacity:.9, weight:2})
+    .bindTooltip(
+      '<b style="color:'+col+'">'+(s.name||'Storm')+'</b><br>'+catLabel(s.classification)+
+      (s.windMph?' &bull; '+s.windMph+' mph':'')+(s.pressure?'<br>'+s.pressure+' mb':''),
+      {className:'spc-tip', permanent:false}
+    )
+    .bindPopup(
+      '<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:180px">'+
+      '<b style="color:'+col+';font-size:.75rem">'+(s.name||'Storm')+'</b>'+
+      '<div style="color:'+col+';font-size:.55rem;margin-bottom:4px">'+catLabel(s.classification)+'</div>'+
+      (s.windMph?'<div>Winds: <b>'+s.windMph+' mph</b></div>':'')+
+      (s.pressure?'<div>Pressure: '+s.pressure+' mb</div>':'')+
+      '<div style="color:#8b949e;margin-top:2px">'+(s.lat.toFixed(1))+'°N '+(Math.abs(s.lon).toFixed(1))+'°W</div>'+
+      (s.movement?'<div style="color:#8b949e">'+s.movement+'</div>':'')+
+      '<hr style="border-color:#30363d;margin:5px 0">'+
+      '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="color:#06b6d4">Full Advisory &#8594;</a>'+
+      '</div>'
+    )
     .addTo(map);
+    // Name label
+    L.marker([s.lat, s.lon], {
+      icon: L.divIcon({
+        className:'',
+        html:'<div style="font-family:Courier New,monospace;font-size:.6rem;font-weight:700;color:'+col+
+             ';text-shadow:0 0 4px #000,0 0 4px #000;white-space:nowrap;margin-top:18px;margin-left:-20px">'+
+             (s.name||'')+'</div>',
+        iconSize:[80,20], iconAnchor:[0,0]
+      }), interactive:false
+    }).addTo(map);
   });
 }
 
