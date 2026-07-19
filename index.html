@@ -1603,7 +1603,7 @@ async function fetchActiveStorms() {
     } catch(e) {}
   }));
 
-  currentStorms = stormData.length ? stormData : quickStorms;
+  currentStorms = stormData;
   if (stormData.length) renderActiveStorms(stormData);
   renderWatchesWarnings(currentAlerts);
   updateRiskBanner();
