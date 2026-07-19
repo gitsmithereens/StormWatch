@@ -595,7 +595,7 @@
                                 <div class="text-[.5rem] text-gray-500" id="obs-vis">--</div>
                             </div>
                         </div>
-                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Mayport Bar Pilots Dock · NOAA CO-OPS 8720218 · sky/humidity via KCRG</div>
+                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Mayport Bar Pilots Dock · NOAA CO-OPS 8720218 · sky/humidity via NWS JAX grid</div>
                     </div>
                 </div>
 
@@ -3710,7 +3710,8 @@ function renderBeachScore() {
     '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#555;margin-top:6px">Updated ' + nowEDT() + '</div>';
 }
 
-// ─── CURRENT CONDITIONS — Mayport CO-OPS (wind/temp) + KCRG (humidity/sky) ──
+// ─── CURRENT CONDITIONS — Mayport CO-OPS (wind/temp) + NWS gridpoint (humidity/sky) ──
+// NWS grid for Atlantic Beach FL: JAX/75,66 (hardcoded from api.weather.gov/points/30.34,-81.40)
 async function fetchConditions() {
   const metaEl = document.getElementById('obs-meta');
   try {
@@ -3718,7 +3719,7 @@ async function fetchConditions() {
     const [windRes, tempRes, nwsRes] = await Promise.allSettled([
       fetchWithTimeout(COOPS + 'wind',            {}, 8000),
       fetchWithTimeout(COOPS + 'air_temperature', {}, 8000),
-      fetchWithTimeout('https://api.weather.gov/stations/KCRG/observations/latest',
+      fetchWithTimeout('https://api.weather.gov/gridpoints/JAX/75,66/forecast/hourly',
                        {headers:{Accept:'application/geo+json'}}, 8000),
     ]);
 
@@ -3749,20 +3750,14 @@ async function fetchConditions() {
       if (td?.v != null) tempF = Math.round(parseFloat(td.v));
     }
 
-    // KCRG supplemental: humidity, sky, visibility
+    // NWS gridpoint hourly (JAX/75,66 = Atlantic Beach): humidity + sky for current hour
     let humidity = null, sky = '--', visMi = null;
     if (nwsRes.status === 'fulfilled' && nwsRes.value.ok) {
       const nj = await nwsRes.value.json();
-      const p  = nj.properties || {};
-      humidity = p.relativeHumidity?.value != null ? Math.round(p.relativeHumidity.value) : null;
-      const visM = p.visibility?.value;
-      visMi = visM != null ? (visM / 1609.34).toFixed(1) : null;
-      const cloudLabel = {CLR:'Clear',SKC:'Clear',FEW:'Few Clouds',SCT:'Scattered',BKN:'Broken',OVC:'Overcast'};
-      if (p.cloudLayers?.length) {
-        const top = p.cloudLayers[p.cloudLayers.length - 1];
-        sky = cloudLabel[top.amount] || top.amount || '--';
-      } else if (p.textDescription) {
-        sky = p.textDescription.split('.')[0].trim().substring(0, 14);
+      const period = nj.properties?.periods?.[0];
+      if (period) {
+        humidity = period.relativeHumidity?.value != null ? Math.round(period.relativeHumidity.value) : null;
+        sky = period.shortForecast || '--';
       }
     }
 
