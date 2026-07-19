@@ -1729,7 +1729,7 @@ function renderActiveStorms(storms) {
       '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#555;margin-bottom:3px">'+lat+' '+lon+(s.movement?' &bull; '+s.movement:'')+'</div>' +
       (s.lon && s.lon < -80.5 && s.lon > -98 && s.lat > 18 && s.lat < 31
         ? '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#f0a500;margin-bottom:5px">&#9888; Gulf system &mdash; rain bands may reach FL east coast</div>'
-        : '<div style="margin-bottom:5px"></div>') + +
+        : '<div style="margin-bottom:5px"></div>') +
       '<div style="display:flex;gap:5px">' +
       '<a href="https://www.nhc.noaa.gov/" target="_blank" style="flex:1;display:block;padding:3px;background:'+col+'22;border:1px solid '+col+'44;border-radius:4px;color:'+col+';text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Advisory &#8594;</a>' +
       '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="flex:1;display:block;padding:3px;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#8b949e;text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Track &#8594;</a>' +
@@ -2355,6 +2355,11 @@ function initHurricaneMap() {
     .bindPopup('Atlantic Beach, FL').addTo(map);
   const lbl = document.getElementById('hurr-map-label');
   if (lbl) lbl.textContent = 'Atlantic Basin — open NHC.NOAA.GOV for live storms';
+  // Plot any storms already fetched before the map was opened
+  if (currentStorms && currentStorms.length) {
+    plotStormsOnMap(currentStorms);
+    currentStorms.forEach(s => { if (s.trackPoints && s.trackPoints.length > 1) drawStormCone(s); });
+  }
 }
 function toggleHurrLayer(layer) {
   const btn = document.getElementById('btn-'+layer);
