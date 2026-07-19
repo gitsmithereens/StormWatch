@@ -1812,12 +1812,7 @@ function plotStormsOnMap(storms) {
   storms.forEach(s => {
     if (!s.lat || !s.lon) return;
     const col = catColor(s.classification);
-    // Outer pulsing ring
-    L.circleMarker([s.lat, s.lon], {
-      radius:20, color:col, fillColor:'transparent', fillOpacity:0, weight:1.5,
-      className:'atl-pulse', interactive:false
-    }).addTo(map);
-    // Inner filled dot
+    // Filled dot
     L.circleMarker([s.lat, s.lon], {radius:12, color:'#fff', fillColor:col, fillOpacity:.9, weight:2})
     .bindTooltip(
       '<b style="color:'+col+'">'+(s.name||'Storm')+'</b><br>'+catLabel(s.classification)+
