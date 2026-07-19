@@ -569,7 +569,7 @@
                 <!-- CURRENT CONDITIONS PANEL -->
                 <div class="panel" id="panel-conditions">
                     <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-cyan-400"></i> CURRENT CONDITIONS — KCRG</span>
+                        <span class="flex items-center gap-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-cyan-400"></i> CURRENT CONDITIONS — MAYPORT</span>
                         <span id="obs-meta" class="time-val text-[.55rem]"></span>
                     </div>
                     <div class="panel-body">
@@ -595,7 +595,7 @@
                                 <div class="text-[.5rem] text-gray-500" id="obs-vis">--</div>
                             </div>
                         </div>
-                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Jacksonville Executive at Craig · KCRG</div>
+                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Mayport Bar Pilots Dock · NOAA CO-OPS 8720218 · sky/humidity via KCRG</div>
                     </div>
                 </div>
 
@@ -3710,33 +3710,61 @@ function renderBeachScore() {
     '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#555;margin-top:6px">Updated ' + nowEDT() + '</div>';
 }
 
-// ─── CURRENT CONDITIONS — KCRG (Jacksonville Executive at Craig, ~7mi from Atlantic Beach) ─
+// ─── CURRENT CONDITIONS — Mayport CO-OPS (wind/temp) + KCRG (humidity/sky) ──
 async function fetchConditions() {
   const metaEl = document.getElementById('obs-meta');
   try {
-    const r = await fetchWithTimeout(
-      'https://api.weather.gov/stations/KCRG/observations/latest',
-      {headers:{Accept:'application/geo+json'}}, 8000
-    );
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const p = j.properties || {};
+    const COOPS = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=8720218&date=latest&units=english&time_zone=lst_ldt&format=json&product=';
+    const [windRes, tempRes, nwsRes] = await Promise.allSettled([
+      fetchWithTimeout(COOPS + 'wind',            {}, 8000),
+      fetchWithTimeout(COOPS + 'air_temperature', {}, 8000),
+      fetchWithTimeout('https://api.weather.gov/stations/KCRG/observations/latest',
+                       {headers:{Accept:'application/geo+json'}}, 8000),
+    ]);
 
-    const cToF = c => (c != null && c !== undefined) ? Math.round(c * 9/5 + 32) : null;
-    const msToMph = ms => (ms != null && ms !== undefined) ? Math.round(ms * 2.237) : null;
     const degToCompass = deg => {
       if (deg == null) return '--';
       const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
       return dirs[Math.round(deg / 22.5) % 16];
     };
 
-    const tempF     = cToF(p.temperature?.value);
-    const humidity  = p.relativeHumidity?.value != null ? Math.round(p.relativeHumidity.value) : null;
-    const windSpd   = msToMph(p.windSpeed?.value);
-    const windGust  = msToMph(p.windGust?.value);
-    const windDir   = p.windDirection?.value;
-    const visM      = p.visibility?.value;
-    const visMi     = visM != null ? (visM / 1609.34).toFixed(1) : null;
+    // CO-OPS wind (already in mph for units=english)
+    let windSpd = null, windDir = null, windGust = null, windDr = null;
+    if (windRes.status === 'fulfilled' && windRes.value.ok) {
+      const wj = await windRes.value.json();
+      const wd = wj.data?.[0];
+      if (wd) {
+        windSpd = wd.s != null ? Math.round(parseFloat(wd.s)) : null;
+        windGust = wd.g != null ? Math.round(parseFloat(wd.g)) : null;
+        windDir  = wd.d != null ? parseFloat(wd.d) : null;
+        windDr   = wd.dr || null;
+      }
+    }
+
+    // CO-OPS air temp (°F for units=english)
+    let tempF = null;
+    if (tempRes.status === 'fulfilled' && tempRes.value.ok) {
+      const tj = await tempRes.value.json();
+      const td = tj.data?.[0];
+      if (td?.v != null) tempF = Math.round(parseFloat(td.v));
+    }
+
+    // KCRG supplemental: humidity, sky, visibility
+    let humidity = null, sky = '--', visMi = null;
+    if (nwsRes.status === 'fulfilled' && nwsRes.value.ok) {
+      const nj = await nwsRes.value.json();
+      const p  = nj.properties || {};
+      humidity = p.relativeHumidity?.value != null ? Math.round(p.relativeHumidity.value) : null;
+      const visM = p.visibility?.value;
+      visMi = visM != null ? (visM / 1609.34).toFixed(1) : null;
+      const cloudLabel = {CLR:'Clear',SKC:'Clear',FEW:'Few Clouds',SCT:'Scattered',BKN:'Broken',OVC:'Overcast'};
+      if (p.cloudLayers?.length) {
+        const top = p.cloudLayers[p.cloudLayers.length - 1];
+        sky = cloudLabel[top.amount] || top.amount || '--';
+      } else if (p.textDescription) {
+        sky = p.textDescription.split('.')[0].trim().substring(0, 14);
+      }
+    }
 
     // Heat index (Rothfusz, valid when temp ≥ 80°F and RH ≥ 40%)
     let feelsLabel = '';
@@ -3749,22 +3777,12 @@ async function fetchConditions() {
       if (Math.abs(hiR - tempF) >= 2) feelsLabel = 'Feels ' + hiR + '°F';
     }
 
-    // Sky condition from highest cloud layer
-    const cloudLabel = {CLR:'Clear',SKC:'Clear',FEW:'Few Clouds',SCT:'Scattered',BKN:'Broken',OVC:'Overcast'};
-    let sky = '--';
-    if (p.cloudLayers && p.cloudLayers.length) {
-      const top = p.cloudLayers[p.cloudLayers.length - 1];
-      sky = cloudLabel[top.amount] || top.amount || '--';
-    } else if (p.textDescription) {
-      sky = p.textDescription.split('.')[0].trim().substring(0, 14);
-    }
-
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     beachWindMph = windSpd;
     set('obs-temp',     tempF != null ? tempF + '°F' : '--');
-    set('obs-feels',    feelsLabel || 'Craig Airport');
+    set('obs-feels',    feelsLabel || 'Mayport Station');
     set('obs-wind',     windSpd != null ? windSpd + ' mph' : '--');
-    set('obs-wind-sub', [degToCompass(windDir), windGust ? 'G' + windGust + ' mph' : ''].filter(Boolean).join(' · ') || '--');
+    set('obs-wind-sub', [windDr || degToCompass(windDir), windGust ? 'G' + windGust + ' mph' : ''].filter(Boolean).join(' · ') || '--');
     set('obs-humidity', humidity != null ? humidity + '%' : '--');
     set('obs-sky',      sky);
     set('obs-vis',      visMi != null ? 'Vis ' + visMi + ' mi' : '');
