@@ -2722,8 +2722,35 @@ const ALERT_SOUND_MAP = {
   'Extreme Wind Warning': 'hurricane',
   'Flash Flood Warning': 'flood',
   'Flood Warning': 'flood',
-  'Coastal Flood Warning': 'flood'
+  'Coastal Flood Warning': 'flood',
+  'Special Marine Warning': 'marine',
+  'High Surf Advisory': 'marine',
+  'Coastal Hazard Message': 'marine'
 };
+
+// Nautical bell chime — two clean bell tones, soft and non-alarming.
+function playMarineChime() {
+  try {
+    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _sirenCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    [[0, 880], [0.55, 1109]].forEach(([offset, freq]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = now + offset;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.008); // sharp attack
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 2.2); // long bell decay
+      osc.start(t);
+      osc.stop(t + 2.3);
+    });
+  } catch(e) { console.warn('Marine chime failed:', e); }
+}
 
 function playAlertSound(event, durationMs) {
   const kind = ALERT_SOUND_MAP[event];
@@ -2731,6 +2758,7 @@ function playAlertSound(event, durationMs) {
   if (kind === 'thunder')   return playThunderCrack();
   if (kind === 'hurricane') return playHurricaneHorn(durationMs);
   if (kind === 'flood')     return playFloodAlert(durationMs);
+  if (kind === 'marine')    return playMarineChime();
   return playSiren(durationMs);
 }
 
