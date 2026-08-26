@@ -2319,7 +2319,7 @@ function initSPCMap() {
     zoomControl: false, attributionControl: false,
     scrollWheelZoom: false
   });
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     subdomains: 'abcd', maxZoom: 10
   }).addTo(_spcMap);
   L.circleMarker([CONFIG.lat, CONFIG.lon], {
@@ -2390,7 +2390,7 @@ function initRadarMap() {
   if (window._radarMap) return;
   const map = L.map('radarMap',{center:[CONFIG.lat,CONFIG.lon],zoom:7,zoomControl:true,attributionControl:false});
   window._radarMap = map;
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16}).addTo(map);
   window._radarLayer = L.tileLayer.wms('https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi',{
     layers:'nexrad-n0q',format:'image/png',transparent:true,opacity:.75,version:'1.1.1'
   }).addTo(map);
@@ -2435,7 +2435,7 @@ function initHurricaneMap() {
   const map = L.map('hurricaneMap',{center:[25,-65],zoom:4,zoomControl:true,attributionControl:false});
   window._hurrMap = map;
   window._hurricaneMap = map;
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16}).addTo(map);
   L.circleMarker([CONFIG.lat,CONFIG.lon],{radius:7,color:'#00d9ff',fillColor:'#00d9ff',fillOpacity:.9,weight:2})
     .bindPopup('Atlantic Beach, FL').addTo(map);
   const lbl = document.getElementById('hurr-map-label');
