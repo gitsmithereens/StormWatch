@@ -747,6 +747,20 @@
                     </div>
                 </div>
 
+                <!-- RAIN TIMELINE / DOG WALK PLANNER PANEL -->
+                <div class="panel" id="panel-rainwalk">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-cyan-400"></i> RAIN TIMELINE — DOG WALK PLANNER</span>
+                        <span id="rainwalk-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="rainwalk-verdict" style="font-family:'Courier New',monospace;font-size:.72rem;font-weight:700;padding:8px 10px;border:1px solid #30363d;border-radius:6px;background:#1c2128;margin-bottom:8px;text-align:center;color:#8b949e">Loading rain forecast…</div>
+                        <div id="rainwalk-timeline" style="margin-bottom:2px"></div>
+                        <div id="rainwalk-hours" style="display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:.48rem;color:#8b949e;margin-bottom:8px"></div>
+                        <div id="rainwalk-windows" style="font-family:'Courier New',monospace;font-size:.58rem;line-height:1.8"></div>
+                    </div>
+                </div>
+
                 <!-- FDOT CAMERAS PANEL -->
                 <!-- LIVE BEACH CAMS PANEL -->
                 <div class="panel" id="panel-webcams">
@@ -3590,6 +3604,134 @@ async function toggleEvacZones() {
   }
 }
 
+// ─── RAIN TIMELINE / DOG WALK PLANNER (Open-Meteo 15-min precip) ─────────────
+const RAIN_WET_MM = 0.1;   // ≥0.1 mm in a 15-min slot counts as rain
+const WALK_MIN_SLOTS = 3;  // a usable walk window is ≥45 min dry
+
+function fmtWalkTime(unix) {
+  return new Date(unix * 1000).toLocaleTimeString('en-US',
+    {hour:'numeric', minute:'2-digit', timeZone:'America/New_York'});
+}
+function fmtWalkDur(mins) {
+  if (mins < 60) return mins + ' min';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m ? h + ' h ' + m + ' m' : h + ' h';
+}
+
+async function fetchRainWalk() {
+  try {
+    const r = await fetchWithTimeout(
+      'https://api.open-meteo.com/v1/forecast?latitude=' + CONFIG.lat + '&longitude=' + CONFIG.lon +
+      '&minutely_15=precipitation&hourly=precipitation_probability&forecast_days=2&timeformat=unixtime&timezone=America%2FNew_York',
+      {}, 8000
+    );
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    saveCache('rainwalk', d);
+    renderRainWalk(d, Date.now());
+  } catch(e) {
+    const c = loadCache('rainwalk');
+    if (c) renderRainWalk(c.data, c.ts);
+    else {
+      const v = document.getElementById('rainwalk-verdict');
+      if (v) v.textContent = 'Rain forecast unavailable';
+    }
+  }
+}
+
+function renderRainWalk(d, fetchedTs) {
+  const vEl = document.getElementById('rainwalk-verdict');
+  const tEl = document.getElementById('rainwalk-timeline');
+  const hEl = document.getElementById('rainwalk-hours');
+  const wEl = document.getElementById('rainwalk-windows');
+  const mEl = document.getElementById('rainwalk-meta');
+  if (!vEl || !tEl) return;
+  const times = d.minutely_15 && d.minutely_15.time, mm = d.minutely_15 && d.minutely_15.precipitation;
+  if (!times || !mm) return;
+
+  const now = Date.now() / 1000;
+  const start = times.findIndex(t => t + 900 > now); // slot covering "now"
+  if (start < 0) return;
+  const slots = [];
+  for (let i = start; i < times.length && slots.length < 48; i++) {
+    const v = mm[i] == null ? 0 : mm[i];
+    slots.push({ t: times[i], mm: v, wet: v >= RAIN_WET_MM });
+  }
+  // bridge lone 15-min dry gaps inside a rain run so durations read sanely
+  for (let i = 1; i < slots.length - 1; i++) {
+    if (!slots[i].wet && slots[i-1].wet && slots[i+1].wet) slots[i].wet = true;
+  }
+
+  // hourly probability lookup (unix hour → %)
+  const probByHour = {};
+  ((d.hourly && d.hourly.time) || []).forEach((t, i) => {
+    probByHour[t] = d.hourly.precipitation_probability ? d.hourly.precipitation_probability[i] : null;
+  });
+  const probAt = t => probByHour[Math.floor(t / 3600) * 3600];
+
+  // ── 12-hour intensity bar ──
+  tEl.innerHTML = '<div style="display:flex;gap:1px;height:26px;align-items:flex-end">' + slots.map(s => {
+    const h = s.wet ? Math.max(30, Math.min(100, 30 + (s.mm / 2) * 70)) : 12;
+    const col = !s.wet ? '#21262d' : s.mm >= 1.5 ? '#ffa500' : s.mm >= 0.5 ? '#00b8d9' : '#155e75';
+    const p = probAt(s.t);
+    return '<div style="flex:1;height:' + h + '%;background:' + col + ';border-radius:1px" title="' +
+      fmtWalkTime(s.t) + ' — ' + (s.wet ? s.mm.toFixed(1) + ' mm' : 'dry') +
+      (p != null ? ' · ' + p + '%' : '') + '"></div>';
+  }).join('') + '</div>';
+  hEl.innerHTML = [0, 12, 24, 36, 47].map(i =>
+    '<span>' + fmtWalkTime(slots[Math.min(i, slots.length - 1)].t) + '</span>').join('');
+
+  // ── verdict line ──
+  const firstWet = slots.findIndex(s => s.wet);
+  if (firstWet === -1) {
+    let peak = null;
+    slots.forEach(s => { const p = probAt(s.t); if (p != null && (!peak || p > peak.p)) peak = {p, t: s.t}; });
+    vEl.style.color = '#3fb950';
+    vEl.textContent = '✓ DRY FOR THE NEXT 12 HOURS' +
+      (peak && peak.p >= 50 ? ' — but ' + peak.p + '% chance near ' + fmtWalkTime(peak.t) : '');
+  } else if (firstWet === 0) {
+    let end = 0; while (end < slots.length && slots[end].wet) end++;
+    vEl.style.color = '#00d9ff';
+    vEl.textContent = '🌧 RAINING NOW — ' +
+      (end >= slots.length ? 'rain through the next 12 h' : 'clears ~' + fmtWalkTime(slots[end].t));
+  } else {
+    let end = firstWet; while (end < slots.length && slots[end].wet) end++;
+    vEl.style.color = '#ffa500';
+    vEl.textContent = '☔ RAIN ~' + fmtWalkTime(slots[firstWet].t) +
+      ' (in ' + fmtWalkDur(Math.max(1, Math.round((slots[firstWet].t - now) / 60))) + ')' +
+      ' — lasting ~' + fmtWalkDur((end - firstWet) * 15) + (end >= slots.length ? '+' : '');
+  }
+
+  // ── dog-walk windows: dry stretches ≥45 min ──
+  const wins = [];
+  let i = 0;
+  while (i < slots.length) {
+    if (!slots[i].wet) {
+      let j = i; while (j < slots.length && !slots[j].wet) j++;
+      if (j - i >= WALK_MIN_SLOTS) wins.push({
+        s: slots[i].t, e: j < slots.length ? slots[j].t : slots[j-1].t + 900,
+        open: j >= slots.length, len: (j - i) * 15, startsNow: i === 0
+      });
+      i = j;
+    } else i++;
+  }
+  if (!wins.length) {
+    wEl.innerHTML = '<span style="color:#ff4444">No dry window ≥ 45 min in the next 12 h — umbrella walk 🐕</span>';
+  } else {
+    const bestLen = Math.max.apply(null, wins.map(w => w.len));
+    wEl.innerHTML = '<span style="color:#8b949e">DOG-WALK WINDOWS — NEXT 12 H:</span><br>' +
+      wins.slice(0, 3).map(w =>
+        '<span style="color:' + (w.len === bestLen ? '#3fb950' : '#adb5c2') + '">' +
+        (w.len === bestLen ? '★ ' : '&nbsp;&nbsp;') +
+        (w.startsNow ? 'now' : fmtWalkTime(w.s)) + ' – ' +
+        (w.open ? 'beyond 12 h' : fmtWalkTime(w.e)) +
+        ' (' + fmtWalkDur(w.len) + (w.open ? '+' : '') + ')</span>'
+      ).join('<br>');
+  }
+
+  if (mEl) mEl.textContent = (Date.now() - fetchedTs > 90000 ? 'cached ' + cacheAgeLabel(fetchedTs) : 'updated ' + fmtWalkTime(fetchedTs / 1000));
+}
+
 // ─── LIVE BEACH CAMS (simple thumbnail+link cards, no embedding) ─────────────
 function initWebcams() { /* no-op — cams are static thumbnail links now */ }
 function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
@@ -4090,6 +4232,7 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchConditions();
   fetchRipCurrent();
   fetchUV();
+  fetchRainWalk();
   renderSunTimes();
   // restore history from localStorage on load
   renderRipHistory(JSON.parse(localStorage.getItem('sw_rip_history') || '[]'));
@@ -4110,6 +4253,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchUV,          120 * 60 * 1000);
   setInterval(renderSunTimes,   60 * 60 * 1000);
   setInterval(fetchRipCurrent,  120 * 60 * 1000);
+  setInterval(fetchRainWalk,     15 * 60 * 1000);
 
   // Restore display preferences (theme already set by early-init script; just sync buttons)
   updateDisplayToggles();
