@@ -3,7 +3,7 @@
 // requests to weather/radar APIs (api.weather.gov, spc.noaa.gov, mesonet.agron.iastate.edu,
 // tidesandcurrents.noaa.gov, blitzortung, etc.) — the page's own JS already has a more
 // careful, alert-expiry-aware caching strategy for that live data via localStorage.
-const CACHE_NAME = 'stormwatch-shell-v2';
+const CACHE_NAME = 'stormwatch-shell-v3';
 
 const SHELL_URLS = [
   './',
