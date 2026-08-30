@@ -11,6 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <style>
   :root {
     --bg:#f4f1ea; --card:#ffffff; --border:#e2ddd2; --text:#1f2937; --dim:#6b7280;
@@ -65,6 +67,16 @@
   .win .t { font-weight:600; }
   .win .d { color:var(--dim); font-size:.8rem; }
   .win.best .t { color:var(--good); }
+  .seg { display:flex; gap:4px; }
+  .seg button {
+    border:1px solid var(--border); background:transparent; color:var(--dim); font:inherit;
+    font-size:.66rem; font-weight:600; padding:2px 8px; border-radius:999px; cursor:pointer;
+  }
+  .seg button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .card-head-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .card-head-row h2 { margin-bottom:0; }
+  #radar-map { height:220px; border-radius:10px; overflow:hidden; background:var(--bg); }
+  .leaflet-container { font:inherit; }
   footer { text-align:center; font-size:.68rem; color:var(--dim); line-height:1.7; }
   footer a { color:var(--dim); }
   /* location overlay */
@@ -112,13 +124,34 @@
   </div>
 
   <div class="card">
-    <h2>Walk windows <span style="text-transform:none;letter-spacing:0">(45+ min dry)</span></h2>
+    <div class="card-head-row">
+      <h2>Walk windows</h2>
+      <span class="seg" id="walklen-seg">
+        <button data-m="15" onclick="setWalkLen(15)">15m</button>
+        <button data-m="30" onclick="setWalkLen(30)">30m</button>
+        <button data-m="45" onclick="setWalkLen(45)">45m</button>
+        <button data-m="60" onclick="setWalkLen(60)">1h</button>
+      </span>
+    </div>
     <div id="windows"><div class="win"><span class="t">Loading…</span></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Tomorrow <span style="text-transform:none;letter-spacing:0">(6 AM – 10 PM)</span></h2>
+    <div id="tomorrow"><div class="win"><span class="t">Loading…</span></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head-row">
+      <h2>Radar</h2>
+      <span style="font-size:.68rem;color:var(--dim)" id="radar-time"></span>
+    </div>
+    <div id="radar-map"></div>
   </div>
 
   <footer>
     <span id="updated"></span><br>
-    forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · 15-min resolution
+    forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · radar by <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a> · <a href="https://ntfy.sh/dogwalk-atlbeach-rain-4187" target="_blank" rel="noopener">🔔 rain alerts</a>
   </footer>
 </div>
 
@@ -133,8 +166,11 @@
 
 <script>
 const WET_MM = 0.1;          // ≥0.1 mm per 15-min slot counts as rain
-const MIN_WALK_SLOTS = 3;    // 45 min
 const HOT_PAW_F = 88;        // feels-like threshold for the paw warning
+
+let walkLen = 45;            // minutes — the user's usual walk length
+try { const wl = +localStorage.getItem('dw_walklen'); if ([15,30,45,60].indexOf(wl) >= 0) walkLen = wl; } catch(e) {}
+let lastData = null, lastTs = 0;
 
 let loc = { lat: 30.34, lon: -81.40, name: 'Atlantic Beach, FL' };
 try { const s = localStorage.getItem('dw_loc'); if (s) loc = JSON.parse(s); } catch(e) {}
@@ -162,11 +198,13 @@ async function refresh() {
     const d = await r.json();
     lastFetch = Date.now();
     try { localStorage.setItem('dw_cache', JSON.stringify({d, ts: lastFetch})); } catch(e) {}
+    lastData = d; lastTs = lastFetch;
     render(d, lastFetch);
+    updateRadar();
   } catch(e) {
     try {
       const c = JSON.parse(localStorage.getItem('dw_cache'));
-      if (c) { render(c.d, c.ts); return; }
+      if (c) { lastData = c.d; lastTs = c.ts; render(c.d, c.ts); updateRadar(); return; }
     } catch(e2) {}
     $('verdict-main').textContent = 'Forecast unavailable';
     $('verdict-sub').textContent = 'Check your connection and pull to refresh';
@@ -218,28 +256,14 @@ function render(d, ts) {
   $('hour-labels').innerHTML = [0, 16, 32, 47].map(i =>
     '<span>' + fmtT(slots[Math.min(i, slots.length - 1)].t) + '</span>').join('');
 
-  // ── walk windows ──
-  const wins = [];
-  let i = 0;
-  while (i < slots.length) {
-    if (!slots[i].wet) {
-      let j = i; while (j < slots.length && !slots[j].wet) j++;
-      if (j - i >= MIN_WALK_SLOTS) wins.push({
-        s: slots[i].t, e: j < slots.length ? slots[j].t : slots[j-1].t + 900,
-        open: j >= slots.length, len: (j - i) * 15, now: i === 0
-      });
-      i = j;
-    } else i++;
-  }
+  // ── walk windows (≥ the user's walk length) ──
+  const wins = findWindows(slots, Math.ceil(walkLen / 15));
   if (!wins.length) {
-    $('windows').innerHTML = '<div class="win"><span class="t" style="color:var(--bad)">No dry window today</span><span class="d">umbrella walk 🐕☂️</span></div>';
+    $('windows').innerHTML = '<div class="win"><span class="t" style="color:var(--bad)">No ' + fmtDur(walkLen) + '+ dry window</span><span class="d">umbrella walk 🐕☂️</span></div>';
   } else {
-    const best = Math.max.apply(null, wins.map(w => w.len));
-    $('windows').innerHTML = wins.slice(0, 4).map(w =>
-      '<div class="win' + (w.len === best ? ' best' : '') + '">' +
-      '<span class="t">' + (w.len === best ? '★ ' : '') + (w.now ? 'Now' : fmtT(w.s)) + ' – ' + (w.open ? 'later' : fmtT(w.e)) + '</span>' +
-      '<span class="d">' + fmtDur(w.len) + (w.open ? '+' : '') + '</span></div>').join('');
+    $('windows').innerHTML = renderWins(wins, 4, true);
   }
+  renderTomorrow(times, mm);
 
   // ── verdict ──
   const firstWet = slots.findIndex(s => s.wet);
@@ -258,9 +282,9 @@ function render(d, ts) {
     let end = firstWet; while (end < slots.length && slots[end].wet) end++;
     const minsToRain = Math.max(1, Math.round((slots[firstWet].t - now) / 60));
     const dur = (end - firstWet) * 15;
-    if (minsToRain < 45) {
+    if (minsToRain < walkLen) {
       ve.textContent = '⏳'; vm.textContent = 'Quick walk only'; vm.style.color = 'var(--wait)';
-      vs.textContent = 'Rain in ' + fmtDur(minsToRain) + ' (~' + fmtT(slots[firstWet].t) + '), lasting ~' + fmtDur(dur);
+      vs.textContent = 'Rain in ' + fmtDur(minsToRain) + ' (~' + fmtT(slots[firstWet].t) + '), lasting ~' + fmtDur(dur) + ' — tighter than your usual ' + fmtDur(walkLen);
     } else {
       ve.textContent = '✅'; vm.textContent = 'Good to walk now'; vm.style.color = 'var(--good)';
       vs.textContent = fmtDur(minsToRain) + ' before rain arrives ~' + fmtT(slots[firstWet].t) + ', lasting ~' + fmtDur(dur) + (end >= slots.length ? '+' : '');
@@ -269,6 +293,95 @@ function render(d, ts) {
 
   const age = Math.round((Date.now() - ts) / 60000);
   $('updated').textContent = loc.name + ' · updated ' + (age < 1 ? 'just now' : age + ' min ago');
+}
+
+// ── window finding / rendering helpers ──
+function findWindows(slots, minSlots) {
+  const wins = [];
+  let i = 0;
+  while (i < slots.length) {
+    if (!slots[i].wet) {
+      let j = i; while (j < slots.length && !slots[j].wet) j++;
+      if (j - i >= minSlots) wins.push({
+        s: slots[i].t, e: j < slots.length ? slots[j].t : slots[j-1].t + 900,
+        open: j >= slots.length, len: (j - i) * 15, now: i === 0
+      });
+      i = j;
+    } else i++;
+  }
+  return wins;
+}
+function renderWins(wins, max, allowNow) {
+  const best = Math.max.apply(null, wins.map(w => w.len));
+  return wins.slice(0, max).map(w =>
+    '<div class="win' + (w.len === best ? ' best' : '') + '">' +
+    '<span class="t">' + (w.len === best ? '★ ' : '') + (allowNow && w.now ? 'Now' : fmtT(w.s)) + ' – ' + (w.open ? 'later' : fmtT(w.e)) + '</span>' +
+    '<span class="d">' + fmtDur(w.len) + (w.open ? '+' : '') + '</span></div>').join('');
+}
+
+// ── tomorrow (6 AM – 10 PM local) ──
+function renderTomorrow(times, mm) {
+  const el = $('tomorrow'); if (!el) return;
+  const t0 = new Date(); t0.setHours(24, 0, 0, 0);
+  const t6 = t0.getTime() / 1000 + 6 * 3600, t22 = t0.getTime() / 1000 + 22 * 3600;
+  const slots = [];
+  for (let i = 0; i < times.length; i++)
+    if (times[i] >= t6 && times[i] < t22) {
+      const v = mm[i] == null ? 0 : mm[i];
+      slots.push({ t: times[i], mm: v, wet: v >= WET_MM });
+    }
+  if (slots.length < 8) {
+    el.innerHTML = '<div class="win"><span class="d">Forecast doesn&rsquo;t reach far enough yet</span></div>';
+    return;
+  }
+  for (let i = 1; i < slots.length - 1; i++)
+    if (!slots[i].wet && slots[i-1].wet && slots[i+1].wet) slots[i].wet = true;
+  const wins = findWindows(slots, Math.ceil(walkLen / 15));
+  if (!slots.some(s => s.wet)) {
+    el.innerHTML = '<div class="win"><span class="t" style="color:var(--good)">Dry all day 🎉</span><span class="d">no rain expected</span></div>';
+  } else if (!wins.length) {
+    el.innerHTML = '<div class="win"><span class="t" style="color:var(--bad)">Rain most of the day</span><span class="d">no ' + fmtDur(walkLen) + '+ windows</span></div>';
+  } else {
+    el.innerHTML = renderWins(wins, 3, false);
+  }
+}
+
+// ── walk length setting ──
+function setWalkLen(m) {
+  walkLen = m;
+  try { localStorage.setItem('dw_walklen', m); } catch(e) {}
+  syncWalkLenSeg();
+  if (lastData) render(lastData, lastTs);
+}
+function syncWalkLenSeg() {
+  document.querySelectorAll('#walklen-seg button').forEach(b =>
+    b.classList.toggle('on', +b.dataset.m === walkLen));
+}
+
+// ── radar (RainViewer latest frame over Esri gray canvas) ──
+let map = null, radarLayer = null, locMarker = null;
+async function updateRadar() {
+  const el = $('radar-map');
+  if (!el || !window.L) return;
+  try {
+    if (!map) {
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      map = L.map('radar-map', { zoomControl: false, attributionControl: false }).setView([loc.lat, loc.lon], 8);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + (dark ? 'Dark' : 'Light') + '_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 12 }).addTo(map);
+      locMarker = L.circleMarker([loc.lat, loc.lon], { radius: 6, color: '#0d9488', fillColor: '#0d9488', fillOpacity: .9, weight: 2 }).addTo(map);
+    } else {
+      map.setView([loc.lat, loc.lon]);
+      locMarker.setLatLng([loc.lat, loc.lon]);
+    }
+    const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const d = await r.json();
+    const frames = (d.radar && d.radar.past) || [];
+    if (!frames.length) return;
+    const f = frames[frames.length - 1];
+    if (radarLayer) map.removeLayer(radarLayer);
+    radarLayer = L.tileLayer(d.host + f.path + '/256/{z}/{x}/{y}/2/1_1.png', { opacity: .75, maxZoom: 12 }).addTo(map);
+    $('radar-time').textContent = fmtT(f.time);
+  } catch(e) {}
 }
 
 // ── location picker ──
@@ -305,6 +418,7 @@ $('loc-input').addEventListener('input', () => {
 });
 
 // refresh every 15 min, and on return-to-app if stale >5 min
+syncWalkLenSeg();
 refresh();
 setInterval(refresh, 15 * 60 * 1000);
 document.addEventListener('visibilitychange', () => {

@@ -1,6 +1,6 @@
 // DogWalk service worker — caches the app shell only; forecast calls pass through
 // (the page keeps its own last-known-good copy in localStorage).
-const CACHE_NAME = 'dogwalk-shell-v4';
+const CACHE_NAME = 'dogwalk-shell-v5';
 
 const SHELL_URLS = [
   './',
@@ -8,10 +8,12 @@ const SHELL_URLS = [
   './manifest.json',
   './icon-192-v3.png',
   './icon-512-v3.png',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
+  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js'
 ];
 
-const SHELL_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+const SHELL_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

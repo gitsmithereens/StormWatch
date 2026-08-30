@@ -1,0 +1,52 @@
+name: DogWalk rain alerts
+
+# Checks the 15-min precipitation forecast every half hour during walk hours
+# (roughly 6 AM - 10:30 PM Eastern) and pushes a heads-up to ntfy.sh when
+# rain starts in ~30-55 minutes, or when current rain clears in ~30-60 min.
+# The 30-min-wide alert bands mean each rain event notifies about once.
+
+on:
+  schedule:
+    - cron: '*/30 10-23 * * *'   # 6:00 AM - 7:30 PM EDT
+    - cron: '*/30 0-2 * * *'     # 8:00 PM - 10:30 PM EDT
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+      LAT: "30.34"
+      LON: "-81.40"
+      TOPIC: dogwalk-atlbeach-rain-4187
+    steps:
+      - name: Check forecast and notify
+        run: |
+          set -e
+          d=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&minutely_15=precipitation&forecast_days=1&timeformat=unixtime&timezone=America%2FNew_York")
+          now=$(date +%s)
+          msg=$(echo "$d" | jq -r --argjson now "$now" '
+            .minutely_15 | [.time, .precipitation] | transpose
+            | map({t: .[0], mm: (.[1] // 0)})
+            | map(select(.t + 900 > $now))
+            | .[0:48] as $slots
+            | ($slots | map(.mm >= 0.1)) as $wet
+            | ($wet | index(true)) as $first
+            | if $first == null then empty
+              elif $first == 0 then
+                ($wet | index(false)) as $clr
+                | if $clr != null and ($slots[$clr].t - $now) >= 1800 and ($slots[$clr].t - $now) < 3600
+                  then "Clearing up around \($slots[$clr].t | strflocaltime("%I:%M %p") | ltrimstr("0")) - walk window coming"
+                  else empty end
+              else
+                ($slots[$first].t - $now) as $secs
+                | if $secs >= 1500 and $secs < 3300
+                  then "Rain around \($slots[$first].t | strflocaltime("%I:%M %p") | ltrimstr("0")) - last call for a dry walk"
+                  else empty end
+              end')
+          if [ -n "$msg" ]; then
+            curl -s -H "Title: DogWalk" -H "Tags: dog" -d "$msg" "https://ntfy.sh/$TOPIC" > /dev/null
+            echo "sent: $msg"
+          else
+            echo "no alert needed"
+          fi
