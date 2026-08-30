@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>DogWalk — Rain Window Planner</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0d9488" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" href="icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#f4f1ea; --card:#ffffff; --border:#e2ddd2; --text:#1f2937; --dim:#6b7280;
+    --accent:#0d9488; --good:#16a34a; --wait:#d97706; --bad:#dc2626;
+    --rain-l:#7dd3fc; --rain-m:#0ea5e9; --rain-h:#f59e0b; --slot-dry:#e5e0d5; --slot-night:#cfc9bb;
+    --shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#101418; --card:#1a2026; --border:#2b333c; --text:#e6edf3; --dim:#94a3b8;
+      --accent:#2dd4bf; --good:#4ade80; --wait:#fbbf24; --bad:#f87171;
+      --rain-l:#155e75; --rain-m:#0ea5e9; --rain-h:#f59e0b; --slot-dry:#242c34; --slot-night:#1c232a;
+      --shadow:0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body {
+    background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh; padding:16px 14px calc(20px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:2px 4px; }
+  .logo { font-size:1.25rem; font-weight:800; letter-spacing:-.02em; }
+  .logo span { color:var(--accent); }
+  #loc-btn {
+    border:1px solid var(--border); background:var(--card); color:var(--dim); font:inherit;
+    font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:999px; cursor:pointer;
+    max-width:55%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-shadow:var(--shadow);
+  }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); }
+  #verdict-emoji { font-size:2.6rem; line-height:1; }
+  #verdict-card { display:flex; align-items:center; gap:14px; }
+  #verdict-main { font-size:1.15rem; font-weight:800; letter-spacing:-.01em; }
+  #verdict-sub { font-size:.82rem; color:var(--dim); margin-top:3px; line-height:1.45; }
+  .now-row { display:flex; gap:8px; }
+  .now-chip {
+    flex:1; background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:9px 6px; text-align:center; box-shadow:var(--shadow);
+  }
+  .now-chip .v { font-weight:700; font-size:.95rem; }
+  .now-chip .l { font-size:.62rem; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; margin-top:1px; }
+  #paw-alert {
+    display:none; background:color-mix(in srgb, var(--wait) 12%, var(--card)); border:1px solid var(--wait);
+    border-radius:12px; padding:9px 12px; font-size:.8rem; font-weight:600;
+  }
+  .card h2 { font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin-bottom:10px; }
+  #timeline { display:flex; gap:2px; height:56px; align-items:flex-end; }
+  #timeline .slot { flex:1; border-radius:2px; min-height:8%; }
+  #hour-labels { display:flex; justify-content:space-between; font-size:.62rem; color:var(--dim); margin-top:6px; }
+  .win { display:flex; align-items:center; justify-content:space-between; padding:9px 2px; font-size:.9rem; }
+  .win + .win { border-top:1px solid var(--border); }
+  .win .t { font-weight:600; }
+  .win .d { color:var(--dim); font-size:.8rem; }
+  .win.best .t { color:var(--good); }
+  footer { text-align:center; font-size:.68rem; color:var(--dim); line-height:1.7; }
+  footer a { color:var(--dim); }
+  /* location overlay */
+  #loc-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:10;
+    align-items:flex-start; justify-content:center; padding:60px 16px;
+  }
+  #loc-panel { width:100%; max-width:420px; }
+  #loc-input {
+    width:100%; font:inherit; font-size:.95rem; padding:11px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); margin-bottom:8px;
+  }
+  .loc-opt { padding:10px 6px; cursor:pointer; font-size:.9rem; border-radius:8px; }
+  .loc-opt:hover { background:var(--bg); }
+  .loc-opt .sub { color:var(--dim); font-size:.75rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🐾 Dog<span>Walk</span></div>
+    <button id="loc-btn" onclick="openLoc()">…</button>
+  </header>
+
+  <div class="card" id="verdict-card">
+    <div id="verdict-emoji">🐕</div>
+    <div>
+      <div id="verdict-main">Checking the sky…</div>
+      <div id="verdict-sub">Fetching the rain forecast</div>
+    </div>
+  </div>
+
+  <div class="now-row">
+    <div class="now-chip"><div class="v" id="now-temp">--</div><div class="l">Temp</div></div>
+    <div class="now-chip"><div class="v" id="now-feels">--</div><div class="l">Feels</div></div>
+    <div class="now-chip"><div class="v" id="now-wind">--</div><div class="l">Wind</div></div>
+  </div>
+
+  <div id="paw-alert">🐾 Hot pavement — test it with your hand, stick to grass</div>
+
+  <div class="card">
+    <h2>Next 12 hours</h2>
+    <div id="timeline"></div>
+    <div id="hour-labels"></div>
+  </div>
+
+  <div class="card">
+    <h2>Walk windows <span style="text-transform:none;letter-spacing:0">(45+ min dry)</span></h2>
+    <div id="windows"><div class="win"><span class="t">Loading…</span></div></div>
+  </div>
+
+  <footer>
+    <span id="updated"></span><br>
+    forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · 15-min resolution
+  </footer>
+</div>
+
+<div id="loc-overlay" onclick="if(event.target===this)closeLoc()">
+  <div class="card" id="loc-panel">
+    <h2>Change location</h2>
+    <input id="loc-input" type="text" placeholder="Search city or town…" autocomplete="off" />
+    <div class="loc-opt" onclick="useMyLocation()">📍 <b>Use my location</b></div>
+    <div id="loc-results"></div>
+  </div>
+</div>
+
+<script>
+const WET_MM = 0.1;          // ≥0.1 mm per 15-min slot counts as rain
+const MIN_WALK_SLOTS = 3;    // 45 min
+const HOT_PAW_F = 88;        // feels-like threshold for the paw warning
+
+let loc = { lat: 30.34, lon: -81.40, name: 'Atlantic Beach, FL' };
+try { const s = localStorage.getItem('dw_loc'); if (s) loc = JSON.parse(s); } catch(e) {}
+
+let lastFetch = 0;
+
+const $ = id => document.getElementById(id);
+const fmtT = u => new Date(u * 1000).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+function fmtDur(m) {
+  if (m < 60) return m + ' min';
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? h + ' h ' + r + ' m' : h + ' h';
+}
+
+async function refresh() {
+  $('loc-btn').textContent = loc.name;
+  try {
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat + '&longitude=' + loc.lon +
+      '&minutely_15=precipitation&hourly=precipitation_probability' +
+      '&current=temperature_2m,apparent_temperature,wind_speed_10m' +
+      '&daily=sunrise,sunset&forecast_days=2' +
+      '&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=auto';
+    const r = await fetch(u);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    lastFetch = Date.now();
+    try { localStorage.setItem('dw_cache', JSON.stringify({d, ts: lastFetch})); } catch(e) {}
+    render(d, lastFetch);
+  } catch(e) {
+    try {
+      const c = JSON.parse(localStorage.getItem('dw_cache'));
+      if (c) { render(c.d, c.ts); return; }
+    } catch(e2) {}
+    $('verdict-main').textContent = 'Forecast unavailable';
+    $('verdict-sub').textContent = 'Check your connection and pull to refresh';
+  }
+}
+
+function render(d, ts) {
+  // ── current conditions ──
+  const cur = d.current || {};
+  if (cur.temperature_2m != null) $('now-temp').textContent = Math.round(cur.temperature_2m) + '°';
+  if (cur.apparent_temperature != null) $('now-feels').textContent = Math.round(cur.apparent_temperature) + '°';
+  if (cur.wind_speed_10m != null) $('now-wind').textContent = Math.round(cur.wind_speed_10m) + ' mph';
+  $('paw-alert').style.display = (cur.apparent_temperature >= HOT_PAW_F || cur.temperature_2m >= HOT_PAW_F) ? 'block' : 'none';
+
+  // ── build 48 15-min slots from now ──
+  const times = d.minutely_15.time, mm = d.minutely_15.precipitation;
+  const now = Date.now() / 1000;
+  const start = times.findIndex(t => t + 900 > now);
+  if (start < 0) return;
+  const slots = [];
+  for (let i = start; i < times.length && slots.length < 48; i++) {
+    const v = mm[i] == null ? 0 : mm[i];
+    slots.push({ t: times[i], mm: v, wet: v >= WET_MM });
+  }
+  for (let i = 1; i < slots.length - 1; i++)
+    if (!slots[i].wet && slots[i-1].wet && slots[i+1].wet) slots[i].wet = true;
+
+  const probByHour = {};
+  (d.hourly.time || []).forEach((t, i) => { probByHour[t] = d.hourly.precipitation_probability[i]; });
+  const probAt = t => probByHour[Math.floor(t / 3600) * 3600];
+
+  // night = between sunset and next sunrise
+  const sr = d.daily.sunrise || [], ss = d.daily.sunset || [];
+  const isNight = t => {
+    for (let i = 0; i < ss.length; i++)
+      if (t >= ss[i] && (sr[i+1] == null || t < sr[i+1])) return true;
+    return sr[0] != null && t < sr[0];
+  };
+
+  // ── timeline ──
+  $('timeline').innerHTML = slots.map(s => {
+    const h = s.wet ? Math.max(35, Math.min(100, 35 + (s.mm / 2) * 65)) : (isNight(s.t) ? 10 : 14);
+    const col = !s.wet ? (isNight(s.t) ? 'var(--slot-night)' : 'var(--slot-dry)')
+      : s.mm >= 1.5 ? 'var(--rain-h)' : s.mm >= 0.5 ? 'var(--rain-m)' : 'var(--rain-l)';
+    const p = probAt(s.t);
+    return '<div class="slot" style="height:' + h + '%;background:' + col + '" title="' +
+      fmtT(s.t) + ' · ' + (s.wet ? s.mm.toFixed(1) + ' mm' : 'dry') + (p != null ? ' · ' + p + '%' : '') + '"></div>';
+  }).join('');
+  $('hour-labels').innerHTML = [0, 16, 32, 47].map(i =>
+    '<span>' + fmtT(slots[Math.min(i, slots.length - 1)].t) + '</span>').join('');
+
+  // ── walk windows ──
+  const wins = [];
+  let i = 0;
+  while (i < slots.length) {
+    if (!slots[i].wet) {
+      let j = i; while (j < slots.length && !slots[j].wet) j++;
+      if (j - i >= MIN_WALK_SLOTS) wins.push({
+        s: slots[i].t, e: j < slots.length ? slots[j].t : slots[j-1].t + 900,
+        open: j >= slots.length, len: (j - i) * 15, now: i === 0
+      });
+      i = j;
+    } else i++;
+  }
+  if (!wins.length) {
+    $('windows').innerHTML = '<div class="win"><span class="t" style="color:var(--bad)">No dry window today</span><span class="d">umbrella walk 🐕☂️</span></div>';
+  } else {
+    const best = Math.max.apply(null, wins.map(w => w.len));
+    $('windows').innerHTML = wins.slice(0, 4).map(w =>
+      '<div class="win' + (w.len === best ? ' best' : '') + '">' +
+      '<span class="t">' + (w.len === best ? '★ ' : '') + (w.now ? 'Now' : fmtT(w.s)) + ' – ' + (w.open ? 'later' : fmtT(w.e)) + '</span>' +
+      '<span class="d">' + fmtDur(w.len) + (w.open ? '+' : '') + '</span></div>').join('');
+  }
+
+  // ── verdict ──
+  const firstWet = slots.findIndex(s => s.wet);
+  const vm = $('verdict-main'), vs = $('verdict-sub'), ve = $('verdict-emoji');
+  if (firstWet === -1) {
+    let peak = null;
+    slots.forEach(s => { const p = probAt(s.t); if (p != null && (!peak || p > peak.p)) peak = {p, t: s.t}; });
+    ve.textContent = '🐕'; vm.textContent = 'Perfect — dry all day'; vm.style.color = 'var(--good)';
+    vs.textContent = 'No rain expected in the next 12 hours' +
+      (peak && peak.p >= 50 ? ', but ' + peak.p + '% chance near ' + fmtT(peak.t) : '');
+  } else if (firstWet === 0) {
+    let end = 0; while (end < slots.length && slots[end].wet) end++;
+    ve.textContent = '🌧️'; vm.textContent = 'Hold off — raining now'; vm.style.color = 'var(--bad)';
+    vs.textContent = end >= slots.length ? 'Rain sticks around for the next 12 hours' : 'Should clear up around ' + fmtT(slots[end].t);
+  } else {
+    let end = firstWet; while (end < slots.length && slots[end].wet) end++;
+    const minsToRain = Math.max(1, Math.round((slots[firstWet].t - now) / 60));
+    const dur = (end - firstWet) * 15;
+    if (minsToRain < 45) {
+      ve.textContent = '⏳'; vm.textContent = 'Quick walk only'; vm.style.color = 'var(--wait)';
+      vs.textContent = 'Rain in ' + fmtDur(minsToRain) + ' (~' + fmtT(slots[firstWet].t) + '), lasting ~' + fmtDur(dur);
+    } else {
+      ve.textContent = '✅'; vm.textContent = 'Good to walk now'; vm.style.color = 'var(--good)';
+      vs.textContent = fmtDur(minsToRain) + ' before rain arrives ~' + fmtT(slots[firstWet].t) + ', lasting ~' + fmtDur(dur) + (end >= slots.length ? '+' : '');
+    }
+  }
+
+  const age = Math.round((Date.now() - ts) / 60000);
+  $('updated').textContent = loc.name + ' · updated ' + (age < 1 ? 'just now' : age + ' min ago');
+}
+
+// ── location picker ──
+function openLoc() { $('loc-overlay').style.display = 'flex'; $('loc-input').focus(); }
+function closeLoc() { $('loc-overlay').style.display = 'none'; $('loc-results').innerHTML = ''; $('loc-input').value = ''; }
+function setLoc(lat, lon, name) {
+  loc = { lat: +lat.toFixed(3), lon: +lon.toFixed(3), name };
+  try { localStorage.setItem('dw_loc', JSON.stringify(loc)); } catch(e) {}
+  closeLoc(); refresh();
+}
+function useMyLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    p => setLoc(p.coords.latitude, p.coords.longitude, 'My location'),
+    () => { $('loc-results').innerHTML = '<div class="loc-opt sub">Location permission denied — search instead</div>'; }
+  );
+}
+let searchTimer;
+$('loc-input').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = $('loc-input').value.trim();
+  if (q.length < 3) { $('loc-results').innerHTML = ''; return; }
+  searchTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) + '&count=5&language=en');
+      const d = await r.json();
+      $('loc-results').innerHTML = (d.results || []).map(x =>
+        '<div class="loc-opt" onclick="setLoc(' + x.latitude + ',' + x.longitude + ',\'' +
+        (x.name + (x.admin1 ? ', ' + x.admin1 : '')).replace(/'/g, '') + '\')"><b>' + x.name + '</b>' +
+        '<div class="sub">' + [x.admin1, x.country].filter(Boolean).join(', ') + '</div></div>').join('') ||
+        '<div class="loc-opt sub">No matches</div>';
+    } catch(e) {}
+  }, 350);
+});
+
+// refresh every 15 min, and on return-to-app if stale >5 min
+refresh();
+setInterval(refresh, 15 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && Date.now() - lastFetch > 5 * 60 * 1000) refresh();
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
