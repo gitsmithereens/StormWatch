@@ -37,11 +37,24 @@
   header { display:flex; align-items:center; justify-content:space-between; padding:2px 4px; }
   .logo { font-size:1.25rem; font-weight:800; letter-spacing:-.02em; }
   .logo span { color:var(--accent); }
-  #loc-btn {
+  #loc-btn, #set-btn {
     border:1px solid var(--border); background:var(--card); color:var(--dim); font:inherit;
     font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:999px; cursor:pointer;
-    max-width:55%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-shadow:var(--shadow);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-shadow:var(--shadow);
   }
+  #loc-btn { max-width:48%; }
+  #set-btn { padding:6px 10px; }
+  .hdr-right { display:flex; gap:6px; align-items:center; max-width:60%; }
+  .set-row { display:block; font-size:.8rem; color:var(--dim); margin-bottom:10px; }
+  .set-row input {
+    width:100%; font:inherit; font-size:.95rem; padding:9px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); margin-top:4px;
+  }
+  #set-save {
+    width:100%; border:none; background:var(--accent); color:#fff; font:inherit; font-weight:700;
+    font-size:.9rem; padding:10px; border-radius:10px; cursor:pointer; margin-top:2px;
+  }
+  .set-note { font-size:.7rem; color:var(--dim); line-height:1.5; margin-top:10px; }
   .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); }
   #verdict-emoji { font-size:2.6rem; line-height:1; }
   #verdict-card { display:flex; align-items:center; gap:14px; }
@@ -98,7 +111,10 @@
 <div class="wrap">
   <header>
     <div class="logo">🐾 Dog<span>Walk</span></div>
-    <button id="loc-btn" onclick="openLoc()">…</button>
+    <div class="hdr-right">
+      <button id="loc-btn" onclick="openLoc()">…</button>
+      <button id="set-btn" onclick="openSet()" aria-label="Safe conditions">⚙</button>
+    </div>
   </header>
 
   <div class="card" id="verdict-card">
@@ -112,6 +128,7 @@
   <div class="now-row">
     <div class="now-chip"><div class="v" id="now-temp">--</div><div class="l">Temp</div></div>
     <div class="now-chip"><div class="v" id="now-feels">--</div><div class="l">Feels</div></div>
+    <div class="now-chip"><div class="v" id="now-paw">--</div><div class="l">Pavement</div></div>
     <div class="now-chip"><div class="v" id="now-wind">--</div><div class="l">Wind</div></div>
   </div>
 
@@ -155,6 +172,20 @@
   </footer>
 </div>
 
+<div id="set-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10;align-items:flex-start;justify-content:center;padding:60px 16px" onclick="if(event.target===this)closeSet()">
+  <div class="card" style="width:100%;max-width:420px">
+    <h2>Safe conditions</h2>
+    <label class="set-row">Too hot above (feels-like °F)
+      <input id="set-hot" type="number" inputmode="numeric" min="60" max="120" />
+    </label>
+    <label class="set-row">Too cold below (feels-like °F)
+      <input id="set-cold" type="number" inputmode="numeric" min="-40" max="60" />
+    </label>
+    <button id="set-save" onclick="saveSet()">Save</button>
+    <div class="set-note">Pavement temp is an estimate from air temperature and sun. When in doubt: back of your hand on the pavement for 7 seconds — if it's too hot for you, it's too hot for paws.</div>
+  </div>
+</div>
+
 <div id="loc-overlay" onclick="if(event.target===this)closeLoc()">
   <div class="card" id="loc-panel">
     <h2>Change location</h2>
@@ -166,7 +197,10 @@
 
 <script>
 const WET_MM = 0.1;          // ≥0.1 mm per 15-min slot counts as rain
-const HOT_PAW_F = 88;        // feels-like threshold for the paw warning
+
+// personal safe-condition limits (feels-like °F), editable via the ⚙ sheet
+let prefs = { hot: 88, cold: 20 };
+try { const p = JSON.parse(localStorage.getItem('dw_prefs')); if (p && isFinite(p.hot) && isFinite(p.cold)) prefs = p; } catch(e) {}
 
 let walkLen = 45;            // minutes — the user's usual walk length
 try { const wl = +localStorage.getItem('dw_walklen'); if ([15,30,45,60].indexOf(wl) >= 0) walkLen = wl; } catch(e) {}
@@ -190,7 +224,7 @@ async function refresh() {
   try {
     const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat + '&longitude=' + loc.lon +
       '&minutely_15=precipitation&hourly=precipitation_probability' +
-      '&current=temperature_2m,apparent_temperature,wind_speed_10m' +
+      '&current=temperature_2m,apparent_temperature,wind_speed_10m,cloud_cover,is_day' +
       '&daily=sunrise,sunset&forecast_days=2' +
       '&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=auto';
     const r = await fetch(u);
@@ -217,7 +251,23 @@ function render(d, ts) {
   if (cur.temperature_2m != null) $('now-temp').textContent = Math.round(cur.temperature_2m) + '°';
   if (cur.apparent_temperature != null) $('now-feels').textContent = Math.round(cur.apparent_temperature) + '°';
   if (cur.wind_speed_10m != null) $('now-wind').textContent = Math.round(cur.wind_speed_10m) + ' mph';
-  $('paw-alert').style.display = (cur.apparent_temperature >= HOT_PAW_F || cur.temperature_2m >= HOT_PAW_F) ? 'block' : 'none';
+
+  // pavement estimate + safe-condition alert (uses the user's saved limits)
+  let pav = null;
+  if (cur.temperature_2m != null) {
+    pav = pavementF(cur.temperature_2m, cur.cloud_cover, cur.is_day === 1);
+    const pawEl = $('now-paw');
+    pawEl.textContent = '~' + pav + '°';
+    pawEl.style.color = pav >= 130 ? 'var(--bad)' : pav >= 110 ? 'var(--wait)' : '';
+  }
+  const feels = cur.apparent_temperature;
+  let alertMsg = '';
+  if (pav != null && pav >= 130) alertMsg = '🐾 Pavement ~' + pav + '° — too hot for paws, stick to grass';
+  else if (feels != null && feels >= prefs.hot) alertMsg = '🥵 Feels ' + Math.round(feels) + '° — above your ' + prefs.hot + '° heat limit';
+  else if (feels != null && feels <= prefs.cold) alertMsg = '🥶 Feels ' + Math.round(feels) + '° — below your ' + prefs.cold + '° cold limit';
+  const al = $('paw-alert');
+  al.textContent = alertMsg;
+  al.style.display = alertMsg ? 'block' : 'none';
 
   // ── build 48 15-min slots from now ──
   const times = d.minutely_15.time, mm = d.minutely_15.precipitation;
@@ -344,6 +394,33 @@ function renderTomorrow(times, mm) {
   } else {
     el.innerHTML = renderWins(wins, 3, false);
   }
+}
+
+// ── pavement estimate ──
+// Sunny asphalt runs far hotter than air (vet charts: 77°F air → ~125°F,
+// 87°F air → ~143°F; roughly pav = 1.8·air − 14 in full sun). Cloud cover
+// pulls it back toward air temp; at night pavement ≈ air.
+function pavementF(airF, cloudPct, isDay) {
+  if (!isDay) return Math.round(airF);
+  const sun = 1 - Math.min(100, cloudPct == null ? 50 : cloudPct) / 100 * 0.75;
+  const fullSun = 1.8 * airF - 14;
+  return Math.round(airF + Math.max(0, fullSun - airF) * sun);
+}
+
+// ── safe-conditions settings sheet ──
+function openSet() {
+  $('set-hot').value = prefs.hot;
+  $('set-cold').value = prefs.cold;
+  $('set-overlay').style.display = 'flex';
+}
+function closeSet() { $('set-overlay').style.display = 'none'; }
+function saveSet() {
+  const h = +$('set-hot').value, c = +$('set-cold').value;
+  if (isFinite(h)) prefs.hot = h;
+  if (isFinite(c)) prefs.cold = c;
+  try { localStorage.setItem('dw_prefs', JSON.stringify(prefs)); } catch(e) {}
+  closeSet();
+  if (lastData) render(lastData, lastTs);
 }
 
 // ── walk length setting ──
