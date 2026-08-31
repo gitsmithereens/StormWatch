@@ -1,6 +1,6 @@
 // DogWalk service worker — caches the app shell only; forecast calls pass through
 // (the page keeps its own last-known-good copy in localStorage).
-const CACHE_NAME = 'dogwalk-shell-v8';
+const CACHE_NAME = 'dogwalk-shell-v9';
 
 const SHELL_URLS = [
   './',

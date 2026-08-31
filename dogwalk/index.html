@@ -42,9 +42,9 @@
     font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:999px; cursor:pointer;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-shadow:var(--shadow);
   }
-  #loc-btn { max-width:48%; }
-  #set-btn { padding:6px 10px; }
-  .hdr-right { display:flex; gap:6px; align-items:center; max-width:60%; }
+  #loc-btn { max-width:100%; min-width:0; }
+  #set-btn { padding:6px 10px; flex-shrink:0; }
+  .hdr-right { display:flex; gap:6px; align-items:center; flex:1; min-width:0; justify-content:flex-end; margin-left:10px; }
   .set-row { display:block; font-size:.8rem; color:var(--dim); margin-bottom:10px; }
   .set-row input {
     width:100%; font:inherit; font-size:.95rem; padding:9px 12px; border-radius:10px;
@@ -222,6 +222,7 @@ function fmtDur(m) {
 
 async function refresh() {
   $('loc-btn').textContent = loc.name;
+  $('loc-btn').title = loc.name;
   try {
     const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat + '&longitude=' + loc.lon +
       '&minutely_15=precipitation&hourly=precipitation_probability' +
