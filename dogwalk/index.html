@@ -366,9 +366,13 @@ async function updateRadar() {
   try {
     if (!map) {
       const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-      map = L.map('radar-map', { zoomControl: false, attributionControl: false }).setView([loc.lat, loc.lon], 8);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + (dark ? 'Dark' : 'Light') + '_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 12 }).addTo(map);
+      map = L.map('radar-map', { zoomControl: false, attributionControl: false, maxZoom: 10, minZoom: 4 }).setView([loc.lat, loc.lon], 7);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + (dark ? 'Dark' : 'Light') + '_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 10 }).addTo(map);
       locMarker = L.circleMarker([loc.lat, loc.lon], { radius: 6, color: '#0d9488', fillColor: '#0d9488', fillOpacity: .9, weight: 2 }).addTo(map);
+      // container may not have settled at init — recalc once layout is done,
+      // otherwise tiles render misaligned until the user zooms
+      setTimeout(() => { map.invalidateSize(); map.setView([loc.lat, loc.lon], 7); }, 300);
+      window.addEventListener('load', () => map.invalidateSize());
     } else {
       map.setView([loc.lat, loc.lon]);
       locMarker.setLatLng([loc.lat, loc.lon]);
@@ -379,7 +383,7 @@ async function updateRadar() {
     if (!frames.length) return;
     const f = frames[frames.length - 1];
     if (radarLayer) map.removeLayer(radarLayer);
-    radarLayer = L.tileLayer(d.host + f.path + '/256/{z}/{x}/{y}/2/1_1.png', { opacity: .75, maxZoom: 12 }).addTo(map);
+    radarLayer = L.tileLayer(d.host + f.path + '/256/{z}/{x}/{y}/2/1_1.png', { opacity: .75, maxZoom: 10 }).addTo(map);
     $('radar-time').textContent = fmtT(f.time);
   } catch(e) {}
 }
