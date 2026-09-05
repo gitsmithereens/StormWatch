@@ -50,3 +50,24 @@ jobs:
           else
             echo "no alert needed"
           fi
+
+          # Morning storm-risk heads-up (8:00 AM run only). Deterministic
+          # forecasts routinely miss FL pop-up storms entirely, so on days
+          # with a meaningful probability, warn once up front.
+          if [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; then
+            p=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&hourly=precipitation_probability&forecast_days=1&timeformat=unixtime&timezone=America%2FNew_York")
+            risk=$(echo "$p" | jq -r '
+              .hourly | [.time, .precipitation_probability] | transpose
+              | map({t: .[0], p: (.[1] // 0)})
+              | map(select((.t | strflocaltime("%H") | tonumber) >= 6 and (.t | strflocaltime("%H") | tonumber) < 22))
+              | max_by(.p)
+              | if .p >= 50
+                then "Storm risk today - peak \(.p)% around \(.t | strflocaltime("%I:%M %p") | ltrimstr("0")). Pop-up storms can beat the forecast; favor earlier walks."
+                else empty end')
+            if [ -n "$risk" ]; then
+              curl -s -H "Title: DogWalk" -H "Tags: zap" -d "$risk" "https://ntfy.sh/$TOPIC" > /dev/null
+              echo "sent morning risk: $risk"
+            else
+              echo "no morning risk alert"
+            fi
+          fi

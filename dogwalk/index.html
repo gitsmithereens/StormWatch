@@ -226,7 +226,7 @@ async function refresh() {
   try {
     const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + loc.lat + '&longitude=' + loc.lon +
       '&minutely_15=precipitation&hourly=precipitation_probability' +
-      '&current=temperature_2m,apparent_temperature,wind_speed_10m,cloud_cover,is_day' +
+      '&current=temperature_2m,apparent_temperature,wind_speed_10m,cloud_cover,is_day,precipitation,weather_code' +
       '&daily=sunrise,sunset&forecast_days=2' +
       '&temperature_unit=fahrenheit&wind_speed_unit=mph&timeformat=unixtime&timezone=auto';
     const r = await fetch(u);
@@ -287,6 +287,19 @@ function render(d, ts) {
   const probByHour = {};
   (d.hourly.time || []).forEach((t, i) => { probByHour[t] = d.hourly.precipitation_probability[i]; });
   const probAt = t => probByHour[Math.floor(t / 3600) * 3600];
+  const RISK_PCT = 30;
+  const winRisk = w => {
+    for (let t = Math.floor(w.s / 3600) * 3600; t < w.e; t += 3600) {
+      const p = probAt(t); if (p != null && p >= RISK_PCT) return true;
+    }
+    return false;
+  };
+
+  // radar truth beats the model: if it is raining right now, say so —
+  // pop-up storms routinely never appear in the minutely forecast at all
+  const rainingNow = (cur.precipitation != null && cur.precipitation > 0) ||
+                     (cur.weather_code != null && cur.weather_code >= 51);
+  if (rainingNow && slots.length) slots[0].wet = true;
 
   // night = between sunset and next sunrise
   const sr = d.daily.sunrise || [], ss = d.daily.sunset || [];
@@ -298,12 +311,13 @@ function render(d, ts) {
 
   // ── timeline ──
   $('timeline').innerHTML = slots.map(s => {
-    const h = s.wet ? Math.max(35, Math.min(100, 35 + (s.mm / 2) * 65)) : (isNight(s.t) ? 10 : 14);
-    const col = !s.wet ? (isNight(s.t) ? 'var(--slot-night)' : 'var(--slot-dry)')
-      : s.mm >= 1.5 ? 'var(--rain-h)' : s.mm >= 0.5 ? 'var(--rain-m)' : 'var(--rain-l)';
     const p = probAt(s.t);
-    return '<div class="slot" style="height:' + h + '%;background:' + col + '" title="' +
-      fmtT(s.t) + ' · ' + (s.wet ? s.mm.toFixed(1) + ' mm' : 'dry') + (p != null ? ' · ' + p + '%' : '') + '"></div>';
+    const risky = !s.wet && p != null && p >= RISK_PCT;
+    const h = s.wet ? Math.max(35, Math.min(100, 35 + (s.mm / 2) * 65)) : risky ? 22 : (isNight(s.t) ? 10 : 14);
+    const col = !s.wet ? (risky ? 'var(--wait)' : isNight(s.t) ? 'var(--slot-night)' : 'var(--slot-dry)')
+      : s.mm >= 1.5 ? 'var(--rain-h)' : s.mm >= 0.5 ? 'var(--rain-m)' : 'var(--rain-l)';
+    return '<div class="slot" style="height:' + h + '%;background:' + col + (risky ? ';opacity:.45' : '') + '" title="' +
+      fmtT(s.t) + ' · ' + (s.wet ? s.mm.toFixed(1) + ' mm' : risky ? 'dry, ' + p + '% storm risk' : 'dry') + (p != null && !risky ? ' · ' + p + '%' : '') + '"></div>';
   }).join('');
   $('hour-labels').innerHTML = [0, 16, 32, 47].map(i =>
     '<span>' + fmtT(slots[Math.min(i, slots.length - 1)].t) + '</span>').join('');
@@ -313,9 +327,9 @@ function render(d, ts) {
   if (!wins.length) {
     $('windows').innerHTML = '<div class="win"><span class="t" style="color:var(--bad)">No ' + fmtDur(walkLen) + '+ dry window</span><span class="d">umbrella walk 🐕☂️</span></div>';
   } else {
-    $('windows').innerHTML = renderWins(wins, 4, true);
+    $('windows').innerHTML = renderWins(wins, 4, true, winRisk);
   }
-  renderTomorrow(times, mm);
+  renderTomorrow(times, mm, winRisk);
 
   // ── verdict ──
   const firstWet = slots.findIndex(s => s.wet);
@@ -323,13 +337,22 @@ function render(d, ts) {
   if (firstWet === -1) {
     let peak = null;
     slots.forEach(s => { const p = probAt(s.t); if (p != null && (!peak || p > peak.p)) peak = {p, t: s.t}; });
-    ve.textContent = '🐕'; vm.textContent = 'Perfect — dry all day'; vm.style.color = 'var(--good)';
-    vs.textContent = 'No rain expected in the next 12 hours' +
-      (peak && peak.p >= 50 ? ', but ' + peak.p + '% chance near ' + fmtT(peak.t) : '');
+    if (peak && peak.p >= 50) {
+      ve.textContent = '🌦️'; vm.textContent = 'Probably dry — storms possible'; vm.style.color = 'var(--wait)';
+      vs.textContent = peak.p + '% storm chance near ' + fmtT(peak.t) + ' — pop-up storms can beat this forecast, glance at the radar first';
+    } else if (peak && peak.p >= RISK_PCT) {
+      ve.textContent = '🐕'; vm.textContent = 'Should be dry all day'; vm.style.color = 'var(--good)';
+      vs.textContent = 'No rain in the forecast, but a ' + peak.p + '% storm chance near ' + fmtT(peak.t);
+    } else {
+      ve.textContent = '🐕'; vm.textContent = 'Perfect — dry all day'; vm.style.color = 'var(--good)';
+      vs.textContent = 'No rain expected in the next 12 hours';
+    }
   } else if (firstWet === 0) {
     let end = 0; while (end < slots.length && slots[end].wet) end++;
     ve.textContent = '🌧️'; vm.textContent = 'Hold off — raining now'; vm.style.color = 'var(--bad)';
-    vs.textContent = end >= slots.length ? 'Rain sticks around for the next 12 hours' : 'Should clear up around ' + fmtT(slots[end].t);
+    vs.textContent = (rainingNow && end <= 1)
+      ? 'Radar-level rain the forecast missed — check the map below and try again soon'
+      : end >= slots.length ? 'Rain sticks around for the next 12 hours' : 'Should clear up around ' + fmtT(slots[end].t);
   } else {
     let end = firstWet; while (end < slots.length && slots[end].wet) end++;
     const minsToRain = Math.max(1, Math.round((slots[firstWet].t - now) / 60));
@@ -363,16 +386,18 @@ function findWindows(slots, minSlots) {
   }
   return wins;
 }
-function renderWins(wins, max, allowNow) {
+function renderWins(wins, max, allowNow, riskFn) {
   const best = Math.max.apply(null, wins.map(w => w.len));
-  return wins.slice(0, max).map(w =>
-    '<div class="win' + (w.len === best ? ' best' : '') + '">' +
-    '<span class="t">' + (w.len === best ? '★ ' : '') + (allowNow && w.now ? 'Now' : fmtT(w.s)) + ' – ' + (w.open ? 'later' : fmtT(w.e)) + '</span>' +
-    '<span class="d">' + fmtDur(w.len) + (w.open ? '+' : '') + '</span></div>').join('');
+  return wins.slice(0, max).map(w => {
+    const risky = riskFn && riskFn(w);
+    return '<div class="win' + (w.len === best ? ' best' : '') + '"' + (risky ? ' title="storm chance during this window — check radar"' : '') + '>' +
+      '<span class="t">' + (w.len === best ? '★ ' : '') + (allowNow && w.now ? 'Now' : fmtT(w.s)) + ' – ' + (w.open ? 'later' : fmtT(w.e)) + (risky ? ' ⚡' : '') + '</span>' +
+      '<span class="d">' + fmtDur(w.len) + (w.open ? '+' : '') + '</span></div>';
+  }).join('');
 }
 
 // ── tomorrow (6 AM – 10 PM local) ──
-function renderTomorrow(times, mm) {
+function renderTomorrow(times, mm, riskFn) {
   const el = $('tomorrow'); if (!el) return;
   const t0 = new Date(); t0.setHours(24, 0, 0, 0);
   const t6 = t0.getTime() / 1000 + 6 * 3600, t22 = t0.getTime() / 1000 + 22 * 3600;
@@ -394,7 +419,7 @@ function renderTomorrow(times, mm) {
   } else if (!wins.length) {
     el.innerHTML = '<div class="win"><span class="t" style="color:var(--bad)">Rain most of the day</span><span class="d">no ' + fmtDur(walkLen) + '+ windows</span></div>';
   } else {
-    el.innerHTML = renderWins(wins, 3, false);
+    el.innerHTML = renderWins(wins, 3, false, riskFn);
   }
 }
 

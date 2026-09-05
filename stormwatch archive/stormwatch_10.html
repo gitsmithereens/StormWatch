@@ -9,7 +9,6 @@
     <meta name="theme-color" content="#0d1117" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" href="icon-192.png" />
-    <script>(function(){var t=localStorage.getItem('sw_theme');if(t)document.documentElement.setAttribute('data-theme',t);if(localStorage.getItem('sw_textsize')==='large')document.documentElement.classList.add('text-lg');})();</script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@1.8.0/dist/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
@@ -19,10 +18,10 @@
     <style>
       :root {
         --bg:#0d1117;--card:#161b22;--border:#30363d;--cyan:#00d9ff;--amber:#ffa500;
-        --danger:#ff4444;--text:#e6edf3;--text-dim:#adb5c2;
+        --danger:#ff4444;--text:#c9d1d9;--text-dim:#8b949e;
       }
       *{box-sizing:border-box}
-      body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;margin:0;min-height:100vh;overflow-x:hidden;overflow-anchor:none;scrollbar-gutter:stable}
+      body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;margin:0;min-height:100vh;overflow-x:hidden;overflow-anchor:none}
       @media(max-width:768px){
         .dash-grid{grid-template-columns:1fr !important}
         header{flex-wrap:wrap;gap:6px;padding:8px 10px}
@@ -30,25 +29,6 @@
         #panel-spc-meso{display:none}
         .panel-body{padding:8px 10px}
         #lightning-windy-panel iframe{height:220px}
-        /* ── mobile: pills row scrolls horizontally instead of wrapping ── */
-        #header-pills-row{overflow-x:auto;flex-wrap:nowrap !important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px;width:100%}
-        #header-pills-row::-webkit-scrollbar{display:none}
-        #header-pills-row .status-pill{flex-shrink:0}
-        /* ── mobile: header action buttons get full-width row ── */
-        #header-actions{width:100%;justify-content:flex-end}
-        /* ── mobile: tab switcher stretches ── */
-        header .flex.items-center.gap-1\.5:first-of-type button{flex:1;text-align:center}
-        /* ── mobile: hide panels that add length without storm value ── */
-        #panel-params-s3w7{display:none}
-        /* ── mobile: right column (alerts/conditions/rip) first, radar last ── */
-        #col-right{order:-1}
-        #col-left{order:0}
-        #col-center{order:1}
-        /* ── mobile: bigger tap targets on control buttons ── */
-        .tab-btn{padding:7px 12px !important;font-size:.65rem !important}
-        .notif-btn{padding:7px 14px !important;font-size:.65rem !important}
-        /* ── mobile: radar map full height ── */
-        #panel-radar-g2h5 iframe{height:280px}
       }
       html{scroll-behavior:smooth}
       ::-webkit-scrollbar{width:4px;height:4px}
@@ -120,86 +100,6 @@
       #siren-modal-queue{font-family:'Courier New',monospace;font-size:.55rem;color:#8b949e;margin-top:10px}
       .dash-grid{display:grid;gap:14px;grid-template-columns:22fr 44fr 34fr;align-items:start}
       @media(max-width:900px){.dash-grid{grid-template-columns:1fr!important}}
-
-      /* ── LARGE TEXT MODE: bump root font-size so all rem values scale up ~12% ── */
-      html.text-lg { font-size: 18px; }
-
-      /* ══ LIGHT MODE THEME ════════════════════════════════════════════════════ */
-      :root[data-theme="light"] {
-        --bg:#f0f4f8; --card:#ffffff; --border:#d0d7de;
-        --cyan:#0969da; --amber:#953800; --danger:#cf222e;
-        --text:#0d1117; --text-dim:#444c56;
-      }
-      [data-theme="light"] header { background:rgba(246,248,250,.97)!important; border-bottom-color:#d0d7de!important; }
-      [data-theme="light"] .panel { box-shadow:0 1px 3px rgba(0,0,0,.08); }
-      [data-theme="light"] .modal-backdrop { background:rgba(0,0,0,.35); }
-      [data-theme="light"] .tab-btn.active { background:rgba(9,105,218,.12); color:#0969da; border-color:#0969da; }
-      [data-theme="light"] .ctrl-btn { background:#eaecef; border-color:#d0d7de; color:#1f2328; }
-      [data-theme="light"] .ctrl-btn.primary { background:rgba(9,105,218,.1); border-color:rgba(9,105,218,.3); color:#0969da; }
-      [data-theme="light"] .data-val { color:#0969da; }
-      [data-theme="light"] .time-val { color:#953800; }
-      [data-theme="light"] textarea { background:#f0f4f8!important; color:#0969da!important; border-color:#d0d7de!important; }
-      [data-theme="light"] input[type="number"],[data-theme="light"] input[type="text"] { background:#f0f4f8!important; border-color:#d0d7de!important; color:#1f2328!important; }
-      /* inline-hardcoded backgrounds */
-      [data-theme="light"] [style*="background:#1c2128"] { background:#eaecef!important; }
-      [data-theme="light"] [style*="background:#21262d"] { background:#dde1e7!important; }
-      [data-theme="light"] [style*="background:#0d1117"] { background:#f0f4f8!important; }
-      [data-theme="light"] [style*="background:#161b22"] { background:#ffffff!important; }
-      [data-theme="light"] [style*="background:#1a1a2e"] { background:#eef2fc!important; }
-      [data-theme="light"] [style*="background:#1a0606"] { /* siren modal — keep dark */ }
-      /* inline border overrides */
-      [data-theme="light"] [style*="border:1px solid #30363d"] { border-color:#d0d7de!important; }
-      [data-theme="light"] [style*="border-bottom:1px solid var(--border)"] { border-bottom-color:#d0d7de!important; }
-      [data-theme="light"] [style*="border:1px solid #21262d"] { border-color:#d0d7de!important; }
-      /* inline text color overrides */
-      [data-theme="light"] [style*="color:#c9d1d9"] { color:#1f2328!important; }
-      [data-theme="light"] [style*="color:#8b949e"] { color:#636c76!important; }
-      [data-theme="light"] [style*="color:#e6edf3"] { color:#1f2328!important; }
-      [data-theme="light"] [style*="color:#6e7681"] { color:#636c76!important; }
-      /* semi-transparent overlays */
-      [data-theme="light"] [style*="rgba(13,17,23,.5)"] { background:rgba(246,248,250,.85)!important; }
-      [data-theme="light"] [style*="rgba(13,17,23,.85)"] { background:rgba(246,248,250,.92)!important; }
-      /* status pills: kill neon glow, use muted palette; add subtle bg tint in light mode */
-      [data-theme="light"] .status-pill.live    { background:rgba(26,127,55,.08)!important; border-color:#1a7f37!important; color:#1a7f37!important; box-shadow:none!important; }
-      [data-theme="light"] .status-pill.error   { background:rgba(207,34,46,.07)!important;  border-color:#cf222e!important; color:#cf222e!important; box-shadow:none!important; }
-      [data-theme="light"] .status-pill.offline { background:rgba(149,56,0,.07)!important;   border-color:#953800!important; color:#953800!important; box-shadow:none!important; }
-      [data-theme="light"] .status-pill.checking{ background:rgba(99,108,118,.07)!important; border-color:#636c76!important; color:#636c76!important; }
-      /* dark mode: lift the near-invisible hardcoded dim inline colors */
-      :root:not([data-theme="light"]) [style*="color:#555"] { color:#8b949e!important; }
-      :root:not([data-theme="light"]) [style*="color: #555"] { color:#8b949e!important; }
-      :root:not([data-theme="light"]) [style*="color:#666"] { color:#8b949e!important; }
-      :root:not([data-theme="light"]) [style*="color:#888"] { color:#adb5c2!important; }
-      /* risk banner: mute the neon greens/yellows */
-      [data-theme="light"] .risk-clear   { background:rgba(26,127,55,.08)!important; color:#1a7f37!important; border-bottom-color:#1a7f37!important; }
-      [data-theme="light"] .risk-monitor { background:rgba(154,103,0,.08)!important; color:#7d4e00!important; border-bottom-color:#9a6700!important; }
-      [data-theme="light"] .risk-warning { background:rgba(154,87,0,.1)!important;  color:#953800!important; border-bottom-color:#953800!important; }
-      [data-theme="light"] .risk-unknown { background:#f0f4f8!important; color:#636c76!important; border-bottom-color:#d0d7de!important; }
-      /* "no active hazards" box and any #22c55e inline text */
-      [data-theme="light"] [style*="color:#22c55e"] { color:#1a7f37!important; }
-      [data-theme="light"] [style*="color:#3fb950"] { color:#1a7f37!important; }
-      /* tab-btn active on light */
-      [data-theme="light"] .tab-btn { color:#444c56; border-color:#d0d7de; }
-      [data-theme="light"] .notif-btn { background:rgba(9,105,218,.08); border-color:rgba(9,105,218,.25); color:#0969da; }
-      [data-theme="light"] .notif-btn.active { background:rgba(9,105,218,.18); border-color:#0969da; }
-      /* toast container stays readable on both themes */
-      [data-theme="light"] .toast { background:#ffffff; color:#1f2328; }
-      /* panel headers: near-white text becomes near-black */
-      [data-theme="light"] .panel-header { color:#0d1117 !important; }
-      /* header title + clock: text-white becomes near-black in light mode */
-      [data-theme="light"] #header-bar-m3v8 .text-white { color:#0d1117 !important; }
-      /* grey utility classes: re-darken for light bg */
-      [data-theme="light"] .text-gray-300 { color:#57606a !important; }
-      [data-theme="light"] .text-gray-400 { color:#444c56 !important; }
-      [data-theme="light"] .text-gray-500 { color:#444c56 !important; }
-      [data-theme="light"] .text-gray-600 { color:#24292f !important; }
-      [data-theme="light"] .text-gray-700 { color:#1f2328 !important; }
-      /* hardcoded dim label colors used throughout inline styles */
-      [data-theme="light"] [style*="color:#555"] { color:#444c56 !important; }
-      [data-theme="light"] [style*="color: #555"] { color:#444c56 !important; }
-      [data-theme="light"] [style*="color:#666"] { color:#444c56 !important; }
-      [data-theme="light"] [style*="color:#888"] { color:#636c76 !important; }
-      [data-theme="light"] [style*="color:#6e7681"] { color:#444c56 !important; }
-      /* ══════════════════════════════════════════════════════════════════════ */
       .leaflet-container{background:#0a1628!important}
       .spc-tip { background:#1c2128; border:1px solid #30363d; color:#00d9ff; font-family:'Courier New',monospace; font-size:.6rem; padding:2px 6px; border-radius:4px; box-shadow:none; }
       .panel-loading{position:relative}
@@ -302,9 +202,9 @@
     .text-white      { color:#fff }
     .text-gray-300   { color:#d1d5db }
     .text-gray-400   { color:#9ca3af }
-    .text-gray-500   { color:#8b949e }
-    .text-gray-600   { color:#768390 }
-    .text-gray-700   { color:#636e7b }
+    .text-gray-500   { color:#6b7280 }
+    .text-gray-600   { color:#4b5563 }
+    .text-gray-700   { color:#374151 }
     .text-yellow-300 { color:#fde047 }
     .text-yellow-400 { color:#facc15 }
     .text-cyan-400   { color:#22d3ee }
@@ -348,7 +248,7 @@
     </div>
 
     <!-- HEADER -->
-    <header data-id="3" id="header-bar-m3v8" class="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style="border-bottom:1px solid var(--border);background:var(--bg)">
+    <header data-id="3" id="header-bar-m3v8" class="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style="border-bottom:1px solid rgba(0,217,255,.2);background:#0d1117">
         <div data-id="4" class="flex flex-col min-w-0">
             <div data-id="5" class="text-sm font-bold text-white tracking-wide flex items-center gap-2 flex-wrap">
                 <i data-id="6" data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
@@ -372,7 +272,7 @@
                 🌀 HURRICANE
             </button>
         </div>
-        <div id="header-pills-row" data-id="14" class="flex items-center gap-1.5 flex-wrap">
+        <div data-id="14" class="flex items-center gap-1.5 flex-wrap">
             <span data-id="15" id="pill-spc-w2q9" class="status-pill checking"><span data-id="16" class="status-dot"></span>SPC: CHECKING</span>
             <span data-id="17" id="pill-nws-a7e1" class="status-pill checking"><span data-id="18" class="status-dot"></span>NWS: CHECKING</span>
             <span data-id="19" id="pill-radar-b5f3" class="status-pill checking"><span data-id="20" class="status-dot"></span>RADAR: CHECKING</span>
@@ -382,11 +282,9 @@
             <span id="pill-tide" class="status-pill checking"><span class="status-dot"></span>TIDE: CHECKING</span>
             <span id="pill-buoy" class="status-pill checking"><span class="status-dot"></span>BUOY: CHECKING</span>
             <span id="pill-qpe"  class="status-pill checking"><span class="status-dot"></span>QPE: CHECKING</span>
-            <span id="pill-obs"  class="status-pill checking"><span class="status-dot"></span>OBS: CHECKING</span>
         </div>
-        <div id="header-actions" class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5">
             <button id="notif-btn" class="notif-btn" title="Enable push notifications for new alerts">🔔 ALERTS</button>
-            <button class="notif-btn" onclick="shareConditions()" title="Share current conditions">📤 SHARE</button>
             <button class="notif-btn" onclick="document.getElementById('settings-modal').style.display='flex'" title="Settings">⚙ SETTINGS</button>
         </div>
     </header>
@@ -402,7 +300,7 @@
         <div data-id="24" class="dash-grid">
 
             <!-- ========== LEFT COLUMN ========== -->
-            <div data-id="25" id="col-left" class="flex flex-col gap-3 min-w-0">
+            <div data-id="25" class="flex flex-col gap-3 min-w-0">
 
                 <!-- PANEL A: SPC CONVECTIVE OUTLOOK -->
                 <div data-id="26" class="panel" id="panel-spc-outlook-y6t2">
@@ -492,7 +390,7 @@
             </div>
 
             <!-- ========== CENTER COLUMN ========== -->
-            <div data-id="60" id="col-center" class="flex flex-col gap-3 min-w-0">
+            <div data-id="60" class="flex flex-col gap-3 min-w-0">
 
                 <!-- PANEL C: RADAR -->
                 <div data-id="61" class="panel" id="panel-radar-g2h5">
@@ -508,7 +406,6 @@
                     </div>
                     <div data-id="71" class="panel-body p-0">
                         <div id="tornado-status-bar" style="padding:6px 12px;font-family:'Courier New',monospace;font-size:.62rem;text-align:center;border-bottom:1px solid var(--border)">✓ No tornado warnings near Atlantic Beach</div>
-                        <div id="lightning-prox" style="padding:4px 12px;font-family:'Courier New',monospace;font-size:.58rem;text-align:center;border-bottom:1px solid var(--border);color:#8b949e">⚡ Checking for nearby severe thunderstorms…</div>
                         <div data-id="72" id="radarMap" style="height:380px;z-index:1"></div>
                         <div data-id="73" class="px-3 py-2 flex items-center justify-between flex-wrap gap-2" style="border-top:1px solid var(--border);background:rgba(13,17,23,.5)">
                             <div data-id="74" class="flex items-center gap-1">
@@ -553,67 +450,9 @@
             </div>
 
             <!-- ========== RIGHT COLUMN ========== -->
-            <div data-id="115" id="col-right" class="flex flex-col gap-3 min-w-0">
+            <div data-id="115" class="flex flex-col gap-3 min-w-0">
 
-                <!-- RAIN TIMELINE / DOG WALK PLANNER PANEL -->
-                <div class="panel" id="panel-rainwalk">
-                    <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-cyan-400"></i> RAIN TIMELINE — DOG WALK PLANNER</span>
-                        <span id="rainwalk-meta" class="time-val text-[.55rem]"></span>
-                    </div>
-                    <div class="panel-body">
-                        <div id="rainwalk-verdict" style="font-family:'Courier New',monospace;font-size:.72rem;font-weight:700;padding:8px 10px;border:1px solid #30363d;border-radius:6px;background:#1c2128;margin-bottom:8px;text-align:center;color:#8b949e">Loading rain forecast…</div>
-                        <div id="rainwalk-timeline" style="margin-bottom:2px"></div>
-                        <div id="rainwalk-hours" style="display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:.48rem;color:#8b949e;margin-bottom:8px"></div>
-                        <div id="rainwalk-windows" style="font-family:'Courier New',monospace;font-size:.58rem;line-height:1.8"></div>
-                    </div>
-                </div>
-
-                <!-- BEACH CONDITIONS SCORE PANEL -->
-                <div class="panel" id="panel-beach-score">
-                    <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="sun" class="w-3.5 h-3.5 text-yellow-400"></i> BEACH CONDITIONS — ATL BEACH</span>
-                    </div>
-                    <div class="panel-body" id="beach-score-body">
-                        <div style="font-family:'Courier New',monospace;font-size:.6rem;color:#8b949e">Loading conditions…</div>
-                    </div>
-                    <div id="sun-times-row" style="padding:5px 14px 8px;border-top:1px solid var(--border);font-family:'Courier New',monospace;font-size:.55rem;color:#8b949e"></div>
-                </div>
-
-                <!-- CURRENT CONDITIONS PANEL -->
-                <div class="panel" id="panel-conditions">
-                    <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-cyan-400"></i> CURRENT CONDITIONS — MAYPORT</span>
-                        <span id="obs-meta" class="time-val text-[.55rem]"></span>
-                    </div>
-                    <div class="panel-body">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
-                                <div class="text-[.5rem] text-gray-600 mb-1">TEMPERATURE</div>
-                                <div class="data-val" id="obs-temp" style="font-size:1.4rem">--</div>
-                                <div class="text-[.5rem] text-gray-500" id="obs-feels">--</div>
-                            </div>
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
-                                <div class="text-[.5rem] text-gray-600 mb-1">WIND</div>
-                                <div class="data-val" id="obs-wind" style="font-size:1.4rem">--</div>
-                                <div class="text-[.5rem] text-gray-500" id="obs-wind-sub">--</div>
-                            </div>
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
-                                <div class="text-[.5rem] text-gray-600 mb-1">HUMIDITY</div>
-                                <div class="data-val" id="obs-humidity" style="font-size:1.4rem">--</div>
-                                <div class="text-[.5rem] text-gray-500">%</div>
-                            </div>
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">
-                                <div class="text-[.5rem] text-gray-600 mb-1">SKY / VIS</div>
-                                <div class="data-val" id="obs-sky" style="font-size:.9rem;line-height:1.2">--</div>
-                                <div class="text-[.5rem] text-gray-500" id="obs-vis">--</div>
-                            </div>
-                        </div>
-                        <div id="obs-station-note" class="text-[.5rem] text-gray-700 mt-2" style="font-family:'Courier New',monospace;text-align:right">Mayport Bar Pilots Dock · NOAA CO-OPS 8720218 · sky/humidity via NWS JAX grid</div>
-                    </div>
-                </div>
-
-                <!-- PANEL E: ACTIVE ALERTS -->
+                <!-- PANEL E: FORECAST -->
                 <div data-id="154" class="panel flex-1 flex flex-col" id="panel-alerts-k7m2">
                     <div data-id="155" class="panel-header">
                         <span data-id="156" class="flex items-center gap-1"><i data-id="157" data-lucide="alert-triangle" class="w-3.5 h-3.5 text-danger"></i> ACTIVE ALERTS</span>
@@ -670,8 +509,6 @@
                                 <div class="text-center"><div class="data-val text-sm" id="buoy-wind">--</div><div class="text-[.5rem] text-gray-600">Wind (kt)</div></div>
                             </div>
                             <div id="buoy-rip" class="mt-2 text-[.55rem]" style="font-family:'Courier New',monospace"></div>
-                            <div id="surf-quality" class="mt-2 text-[.55rem]" style="font-family:'Courier New',monospace"></div>
-                            <div id="water-temp-trend" class="mt-2"></div>
                             <div class="mt-2 flex gap-3">
                                 <a href="https://www.ndbc.noaa.gov/station_page.php?station=41112" target="_blank" rel="noopener" class="text-[.55rem] text-cyan-500 flex items-center gap-1 hover:underline" style="font-family:'Courier New',monospace">
                                     <i data-lucide="external-link" class="w-3 h-3"></i> NDBC 41112 →
@@ -682,18 +519,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- RIP CURRENT FORECAST PANEL -->
-                <div class="panel" id="panel-rip">
-                    <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="waves" class="w-3.5 h-3.5 text-blue-400"></i> RIP CURRENT FORECAST — NWS JAX</span>
-                        <span id="rip-meta" class="time-val text-[.55rem]"></span>
-                    </div>
-                    <div class="panel-body" id="rip-body">
-                        <div style="font-family:'Courier New',monospace;font-size:.6rem;color:#8b949e">Loading beach forecast…</div>
-                    </div>
-                    <div id="rip-history-bar" style="padding:6px 14px 10px;border-top:1px solid var(--border)"></div>
                 </div>
 
                 <!-- QPE RAINFALL PANEL -->
@@ -769,44 +594,31 @@
                     </div>
                     <div class="panel-body">
                         <div style="display:flex;flex-direction:column;gap:8px">
-                            <a href="https://www.youtube.com/watch?v=JLvCEDGJr-s" target="_blank" rel="noopener"
+                            <a href="https://www.youtube.com/watch?v=_x4KSTVD3ug" target="_blank" rel="noopener"
                                style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
-                                <img src="https://img.youtube.com/vi/JLvCEDGJr-s/mqdefault.jpg" alt="Jax Beach Pier North"
+                                <img src="https://img.youtube.com/vi/_x4KSTVD3ug/mqdefault.jpg" alt="Cam 1 thumbnail"
                                      style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
                                 <div style="flex:1">
-                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Jax Beach Pier — North</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#8b949e;margin-bottom:3px">Jacksonville Beach, FL</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Cam 1</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live on YouTube</div>
+                                </div>
+                            </a>
+                            <a href="https://www.youtube.com/watch?v=JLvCEDGJr-s" target="_blank" rel="noopener"
+                               style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
+                                <img src="https://img.youtube.com/vi/JLvCEDGJr-s/mqdefault.jpg" alt="Cam 2 thumbnail"
+                                     style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
+                                <div style="flex:1">
+                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Cam 2</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live on YouTube</div>
                                 </div>
                             </a>
                             <a href="https://www.youtube.com/watch?v=c400PBf6adI" target="_blank" rel="noopener"
                                style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
-                                <img src="https://img.youtube.com/vi/c400PBf6adI/mqdefault.jpg" alt="Jax Beach Pier South"
+                                <img src="https://img.youtube.com/vi/c400PBf6adI/mqdefault.jpg" alt="Cam 3 thumbnail"
                                      style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
                                 <div style="flex:1">
-                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Jax Beach Pier — South</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#8b949e;margin-bottom:3px">Jacksonville Beach, FL</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live</div>
-                                </div>
-                            </a>
-                            <a href="https://duval.weatherstem.com/fswnneptunebch" target="_blank" rel="noopener"
-                               style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
-                                <img src="https://images.weatherstem.com/skycamera/duval/fswnneptunebch/fswnneptunebchne/snapshot.jpg" alt="Neptune Beach WeatherSTEM cam"
-                                     style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
-                                <div style="flex:1">
-                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Neptune Beach — WeatherSTEM</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#8b949e;margin-bottom:3px">Duval Co. Schools FSWN network</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#8635; Live Snapshot</div>
-                                </div>
-                            </a>
-                            <a href="https://www.youtube.com/watch?v=0lox0s8zNcU" target="_blank" rel="noopener"
-                               style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#1c2128;border:1px solid #30363d;border-radius:6px;text-decoration:none;color:#c9d1d9">
-                                <img src="https://img.youtube.com/vi/0lox0s8zNcU/mqdefault.jpg" alt="Bridge of Lions live cam"
-                                     style="width:90px;height:auto;border-radius:4px;flex-shrink:0" />
-                                <div style="flex:1">
-                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Bridge of Lions — Bayfront</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#8b949e;margin-bottom:3px">St. Augustine, FL</div>
-                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.62rem;color:#e6edf3;margin-bottom:3px">Cam 3</div>
+                                    <div style="font-family:'Courier New',monospace;font-size:.52rem;color:#06b6d4">&#9654; Watch Live on YouTube</div>
                                 </div>
                             </a>
                         </div>
@@ -989,25 +801,10 @@
                                     <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#00d9ff"></span> You
                                 </span>
                                 <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#00ced1"></span> TD
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff4444"></span> Hurricane
                                 </span>
                                 <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#00d9ff"></span> TS
-                                </span>
-                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#aabbff"></span> C1
-                                </span>
-                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ffd700"></span> C2
-                                </span>
-                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff8800"></span> C3
-                                </span>
-                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff4444"></span> C4
-                                </span>
-                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
-                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff00ff"></span> C5
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ffa500"></span> TS/Invest
                                 </span>
                                 <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
                                     <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ff0000;opacity:.5"></span> Zone A
@@ -1127,25 +924,6 @@
                     </div>
                 </div>
 
-                <!-- Spaghetti / Model Guidance -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <span class="flex items-center gap-1"><i data-lucide="git-branch" class="w-3.5 h-3.5 text-cyan-400"></i> MODEL GUIDANCE</span>
-                        <div class="flex gap-1">
-                            <button id="spag-btn-two"   class="tab-btn active" onclick="showSpagTab('two')"  title="NHC Tropical Weather Outlook — Atlantic 5-day">TWO</button>
-                            <button id="spag-btn-spag"  class="tab-btn"        onclick="showSpagTab('spag')" title="Multi-model spaghetti tracks">SPAG</button>
-                            <button id="spag-btn-shear" class="tab-btn"        onclick="showSpagTab('shear')" title="200–850mb wind shear">SHEAR</button>
-                        </div>
-                    </div>
-                    <div class="panel-body p-0">
-                        <div id="spag-pane" style="min-height:180px"></div>
-                        <div style="padding:5px 10px 8px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap">
-                            <a href="https://www.tropicaltidbits.com/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Tropical Tidbits</a>
-                            <a href="https://zoom.earth/storms/" target="_blank" rel="noopener" class="ctrl-btn text-[.55rem]"><i data-lucide="external-link" class="w-3 h-3"></i> Zoom Earth</a>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- NHC Outlook links -->
                 <div class="panel">
                     <div class="panel-header">
@@ -1178,7 +956,7 @@
 
     <footer data-id="178" id="footer-bar-d2e5" class="py-4 text-center mt-2" style="border-top:1px solid var(--border)">
         <p data-id="179" class="text-[.6rem] text-gray-600" style="font-family:'Courier New',monospace">StormWatch // ATL BEACH · Data: NWS api.weather.gov · IEM mesonet.agron.iastate.edu · SPC spc.noaa.gov · Radar: KJAX · Built for Daniel</p>
-        <p data-id="180" class="text-[.55rem] text-gray-700 mt-1">Conceived by Copilot · Engineered by Claude · Atlantic Beach, FL</p>
+        <p data-id="180" class="text-[.55rem] text-gray-700 mt-1">Made by Copilot</p>
     </footer>
 
     <script>
@@ -1215,8 +993,6 @@ let buoyData = null;
 let seenAlertIds = new Set(JSON.parse(localStorage.getItem('sw_seen_alerts') || '[]'));
 let notificationsEnabled = localStorage.getItem('sw_notif') === 'true';
 let lsrHistory = JSON.parse(localStorage.getItem('sw_lsr_history') || '[]');
-// beach score inputs — populated by their respective fetch functions
-let beachWindMph = null, beachRipLevel = null, beachWaveHtFt = null, beachUvIndex = null;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 // Fetch with hard timeout — prevents pills from sticking on CHECKING forever
@@ -1296,9 +1072,6 @@ function switchTab(tab) {
     if (tabS) tabS.classList.remove('active');
     if (tabH) tabH.classList.add('active');
     initHurricaneMap();
-    showSpagTab('two');
-    // Leaflet mis-sizes when initialized in a hidden container — fix after reveal
-    setTimeout(() => { if (window._hurricaneMap) window._hurricaneMap.invalidateSize(); }, 50);
   }
 }
 
@@ -1477,9 +1250,7 @@ async function fetchAlerts() {
     'Severe Thunderstorm Watch':7,'Hurricane Watch':7,'Storm Surge Watch':7,
     'Special Marine Warning':6,'Tropical Storm Watch':6,'Flash Flood Watch':6,
     'Flood Watch':5,'Coastal Flood Watch':5,
-    'Rip Current Statement':4,'Beach Hazard Statement':3,
-    'High Surf Advisory':4,'Coastal Hazard Message':4,
-    'Special Weather Statement':2
+    'Rip Current Statement':4,'Beach Hazard Statement':3
   };
   try {
     const r = await fetchWithTimeout('https://api.weather.gov/alerts/active?point='+CONFIG.lat+','+CONFIG.lon, {}, 10000);
@@ -1589,7 +1360,7 @@ async function fetchActiveStorms() {
 
   try {
     const r = await fetchWithTimeout(
-      'https://api.weather.gov/products?type=TCM&office=KNHC&limit=20',
+      'https://api.weather.gov/products?type=TCP&office=KNHC&limit=20',
       {headers:{Accept:'application/geo+json'}}, 12000
     );
     if (r.ok) {
@@ -1617,19 +1388,17 @@ async function fetchActiveStorms() {
     return;
   }
 
-  // Filter to Atlantic TCM only (WTNT2x = Marine/Forecast Advisory for Atlantic storms)
-  // Each Atlantic storm has a unique WTNT2x code; deduplicate to get only the latest per storm
+  // Deduplicate by storm name prefix
   const seen = new Set();
   const unique = products.filter(p => {
-    const wmo = p.wmoCollectiveId || '';
-    if (!/^WTNT2\d$/.test(wmo)) return false;
-    if (seen.has(wmo)) return false;
-    seen.add(wmo); return true;
+    const key = (p.productName||'').replace(/ADVISORY.*/i,'').trim();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
   });
 
-  // productName is always the generic "Public Tropical Cyclone Advisory" string —
-  // skip quick cards and go straight to full text fetch for accurate names
-  renderActiveStorms([]);
+  // Show quick cards from product names immediately
+  const quickStorms = unique.slice(0,6).map(p => quickParseProductName(p.productName||'')).filter(Boolean);
+  renderActiveStorms(quickStorms);
   setPill('pill-nhc','live','NHC');
 
   // Fetch full advisory text for details
@@ -1639,12 +1408,12 @@ async function fetchActiveStorms() {
       const pr = await fetchWithTimeout(prod['@id'], {headers:{Accept:'application/geo+json'}}, 12000);
       if (!pr.ok) return;
       const pj = await pr.json();
-      const parsed = parseTCMText(pj.productText || '');
+      const parsed = parseTCPText(pj.productText || '', prod.productName || '');
       if (parsed && parsed.name) stormData.push(parsed);
     } catch(e) {}
   }));
 
-  currentStorms = stormData;
+  currentStorms = stormData.length ? stormData : quickStorms;
   if (stormData.length) renderActiveStorms(stormData);
   renderWatchesWarnings(currentAlerts);
   updateRiskBanner();
@@ -1662,82 +1431,66 @@ function quickParseProductName(name) {
           lat:null, lon:null, movement:'', trackPoints:[]};
 }
 
-function parseTCMText(text) {
+function parseTCPText(text, productName) {
   if (!text) return null;
   const lines = text.split('\n');
-
-  // Storm name from "TROPICAL DEPRESSION TWO FORECAST/ADVISORY NUMBER   2"
-  let name = '', type = 'TD';
+  let name = '', type = 'TC';
   const headerLine = lines.find(l =>
-    /TROPICAL|SUBTROPICAL/i.test(l) && /FORECAST\/ADVISORY/i.test(l));
+    /TROPICAL STORM|HURRICANE|TROPICAL DEPRESSION|SUBTROPICAL/i.test(l) && /ADVISORY/i.test(l));
   if (headerLine) {
     const m = headerLine.match(/(TROPICAL STORM|HURRICANE|TROPICAL DEPRESSION|SUBTROPICAL STORM)\s+(\w+)/i);
     if (m) { type = m[1]; name = m[2]; }
+  } else {
+    const pm = productName.match(/ADVISORY\s+\d+[A-Z]?\s+(?:FOR\s+)?(.+)/i);
+    name = pm ? pm[1].trim() : productName.replace(/ADVISORY.*/i,'').trim();
   }
-  if (!name) return null;
+  if (!name) return null; // can't do anything without a name
 
-  // Current position: "CENTER LOCATED NEAR 27.5N  85.0W"
+  const windLine  = lines.find(l => /MAX SUSTAINED WINDS/i.test(l));
+  const windMatch = windLine && windLine.match(/(\d+)\s*MPH/i);
+  const windMph   = windMatch ? parseInt(windMatch[1]) : null;
+  const windKt    = windMph ? Math.round(windMph / 1.15078) : null;
+
+  const presLine  = lines.find(l => /MINIMUM CENTRAL PRESSURE|CENTRAL PRESSURE/i.test(l));
+  const presMatch = presLine && presLine.match(/(\d{3,4})\s*MB/i);
+  const pressure  = presMatch ? parseInt(presMatch[1]) : null;
+
+  // Try multiple position line formats
   let lat = null, lon = null;
-  const posMatch = text.match(/CENTER LOCATED NEAR\s+([\d.]+)N\s+([\d.]+)W/i);
-  if (posMatch) { lat = parseFloat(posMatch[1]); lon = -parseFloat(posMatch[2]); }
-
-  // Current winds in knots: "MAX SUSTAINED WINDS  25 KT WITH GUSTS TO  35 KT."
-  const windLine = lines.find(l => /MAX SUSTAINED WINDS/i.test(l));
-  const windKt  = windLine ? parseInt((windLine.match(/(\d+)\s*KT/i)||[])[1]||0) : null;
-  const windMph = windKt ? Math.round(windKt * 1.15078) : null;
-  const gustKt  = windLine ? parseInt((windLine.match(/GUSTS\s+(?:TO\s+)?(\d+)\s*KT/i)||[])[1]||0) : null;
-  const windGust = gustKt ? Math.round(gustKt * 1.15078) : null;
-
-  // Pressure
-  const presLine = lines.find(l => /CENTRAL PRESSURE/i.test(l));
-  const pressure = presLine ? parseInt((presLine.match(/(\d{3,4})\s*MB/i)||[])[1]) : null;
-
-  // Movement: "PRESENT MOVEMENT TOWARD THE NORTH OR 360 DEGREES AT   0 KT"
-  const moveLine = lines.find(l => /PRESENT MOVEMENT/i.test(l));
-  let movement = '';
-  if (moveLine) {
-    const dm = moveLine.match(/TOWARD THE\s+([\w\s-]+?)\s+OR\s+\d+\s+DEGREES\s+AT\s+(\d+)\s*KT/i);
-    if (dm) {
-      const spd = parseInt(dm[2]);
-      movement = spd === 0 ? 'Stationary' : dm[1].trim() + ' at ' + Math.round(spd * 1.15078) + ' mph';
-    }
+  const posPatterns = [
+    /CENTER LOCATED NEAR\s+([\d.]+)N[,\s]+([\d.]+)W/i,
+    /PRESENT LOCATION\s+([\d.]+)N[,\s]+([\d.]+)W/i,
+    /LOCATION\.\.\.([\d.]+)N[,\s]+([\d.]+)W/i,
+    /NEAR\s+([\d.]+)N[,\s]+([\d.]+)W/i,
+  ];
+  for (const pat of posPatterns) {
+    const full = text.match(pat);
+    if (full) { lat = parseFloat(full[1]); lon = -parseFloat(full[2]); break; }
   }
 
-  // Classification helper
-  const classify = kt => {
-    if (!kt) return 'TD';
-    if (kt >= 137) return '5'; if (kt >= 113) return '4';
-    if (kt >= 96)  return '3'; if (kt >= 83)  return '2';
-    if (kt >= 64)  return '1'; if (kt >= 34)  return 'TS';
-    return 'TD';
-  };
-  const classification = classify(windKt);
+  const moveLine = lines.find(l => /MOVING/i.test(l) && /MPH/i.test(l));
+  const movement = moveLine ? moveLine.replace(/.*MOVING\.\.\./i,'').trim().split('.')[0] : '';
 
-  // Forecast track from "FORECAST VALID dd/hhZ lat N  lon W" lines
-  const NHC_HRS = [0, 12, 24, 36, 48, 72, 96, 120];
+  // Forecast track
   const trackPoints = [];
-  if (lat && lon) trackPoints.push({lat, lon, hr:0, wind:windMph||0, kt:windKt||0, classification});
-
-  lines.forEach((line, idx) => {
-    const fm = line.match(/(?:FORECAST|OUTLOOK) VALID\s+\d+\/\d+Z\s+([\d.]+)N\s+([\d.]+)W/i);
-    if (!fm) return;
-    let fKt = null;
-    for (let k = idx + 1; k < Math.min(idx + 4, lines.length); k++) {
-      const wm = lines[k].match(/MAX WIND\s+(\d+)\s*KT/i);
-      if (wm) { fKt = parseInt(wm[1]); break; }
-    }
-    const fMph = fKt ? Math.round(fKt * 1.15078) : null;
-    const fCls = classify(fKt);
-    const fIdx = trackPoints.length;
-    trackPoints.push({
-      lat: parseFloat(fm[1]), lon: -parseFloat(fm[2]),
-      hr: NHC_HRS[fIdx] ?? fIdx * 12,
-      wind: fMph || 0, kt: fKt || 0, classification: fCls,
-      inland: /INLAND/i.test(line)
-    });
+  if (lat && lon) trackPoints.push({lat, lon, hr:0, wind:windMph||0});
+  lines.forEach(l => {
+    const m = l.match(/\d+\/\d+Z\s+([\d.]+)N\s+([\d.]+)W\s+(\d+)/);
+    if (m) trackPoints.push({lat:parseFloat(m[1]), lon:-parseFloat(m[2]), hr:trackPoints.length*12, wind:parseFloat(m[3])*1.15});
   });
+  trackPoints.sort((a,b) => a.hr - b.hr);
 
-  return {name, type, classification, windMph, windKt, windGust, pressure, lat, lon, movement, trackPoints, rawText:text};
+  let classification = 'TC';
+  if (/HURRICANE/i.test(type)) {
+    if      (windMph >= 157) classification = '5';
+    else if (windMph >= 130) classification = '4';
+    else if (windMph >= 111) classification = '3';
+    else if (windMph >= 96)  classification = '2';
+    else                     classification = '1';
+  } else if (/TROPICAL STORM/i.test(type)) classification = 'TS';
+  else if   (/DEPRESSION/i.test(type))     classification = 'TD';
+
+  return {name, type, classification, windMph, windKt, pressure, lat, lon, movement, trackPoints, rawText:text};
 }
 
 
@@ -1783,10 +1536,7 @@ function renderActiveStorms(storms) {
       '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
         '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">FROM YOU</div>' +
         '<div style="font-family:Courier New,monospace;font-size:.55rem;color:'+(dist&&dist<500?'#ff4444':dist&&dist<800?'#ffa500':'#c9d1d9')+'">'+(dist?dist+' mi':'--')+'</div></div></div>' +
-      '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#555;margin-bottom:3px">'+lat+' '+lon+(s.movement?' &bull; '+s.movement:'')+'</div>' +
-      (s.lon && s.lon < -80.5 && s.lon > -98 && s.lat > 18 && s.lat < 31
-        ? '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#f0a500;margin-bottom:5px">&#9888; Gulf system &mdash; rain bands may reach FL east coast</div>'
-        : '<div style="margin-bottom:5px"></div>') +
+      '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#555;margin-bottom:5px">'+lat+' '+lon+(s.movement?' &bull; '+s.movement:'')+'</div>' +
       '<div style="display:flex;gap:5px">' +
       '<a href="https://www.nhc.noaa.gov/" target="_blank" style="flex:1;display:block;padding:3px;background:'+col+'22;border:1px solid '+col+'44;border-radius:4px;color:'+col+';text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Advisory &#8594;</a>' +
       '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="flex:1;display:block;padding:3px;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#8b949e;text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Track &#8594;</a>' +
@@ -1840,48 +1590,21 @@ function drawStormCone(storm) {
     rightEdge.push([pt.lat - pLat, pt.lon + pLon]);
   });
   L.polygon([...leftEdge, ...[...rightEdge].reverse()], {
-    color:col, fillColor:col, fillOpacity:0.12, weight:1, dashArray:'4,4'
-  }).bindTooltip('NHC 5-Day Cone of Uncertainty', {className:'spc-tip'}).addTo(_coneLayer);
-
-  // Track line \u2014 colored per segment by forecast intensity
-  const catColor2 = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
-    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-  const catLabel = c => ({'TD':'TD','TS':'TS','1':'C1','2':'C2','3':'C3','4':'C4','5':'C5'})[String(c)] || c;
-  for (let i = 0; i < storm.trackPoints.length - 1; i++) {
-    const a = storm.trackPoints[i], b = storm.trackPoints[i+1];
-    L.polyline([[a.lat,a.lon],[b.lat,b.lon]], {
-      color: catColor2(b.classification), weight:3, opacity:0.9
-    }).addTo(_coneLayer);
-  }
-
-  // Nodes with intensity labels
-  storm.trackPoints.forEach((pt, i) => {
-    const ptCol = catColor2(pt.classification);
-    const isCurrent = i === 0;
+    color:col, fillColor:col, fillOpacity:0.12, weight:1.5, dashArray:'4,4'
+  }).bindTooltip('NHC Cone of Uncertainty', {className:'spc-tip'}).addTo(_coneLayer);
+  L.polyline(storm.trackPoints.map(p => [p.lat, p.lon]), {
+    color:col, weight:2.5, dashArray:'8,4'
+  }).addTo(_coneLayer);
+  storm.trackPoints.forEach(pt => {
     L.circleMarker([pt.lat, pt.lon], {
-      radius: isCurrent ? 9 : 6,
-      color:'#fff', fillColor:ptCol, fillOpacity:0.95, weight: isCurrent ? 2.5 : 1.5
+      radius: pt.hr===0 ? 7 : 4, color:col,
+      fillColor: pt.hr===0 ? col : '#fff', fillOpacity:0.9, weight:2
     }).bindTooltip(
-      '<b style="color:'+ptCol+'">'+(isCurrent ? storm.name+' (now)' : catLabel(pt.classification))+'</b>'+
-      (pt.wind ? '<br>'+pt.wind+' mph' : '')+(pt.inland ? '<br><i>inland</i>' : ''),
-      {className:'spc-tip', direction:'top'}
+      pt.hr===0 ? '<b>'+storm.name+'</b><br>Current' : pt.hr+'hr'+(pt.wind?' \u2022 '+Math.round(pt.wind)+' mph':''),
+      {className:'spc-tip'}
     ).addTo(_coneLayer);
-    if (!isCurrent) {
-      L.marker([pt.lat, pt.lon], {
-        icon: L.divIcon({
-          className:'',
-          html:'<div style="font-family:Courier New,monospace;font-size:.55rem;font-weight:700;color:'+ptCol+
-               ';text-shadow:0 0 3px #000,0 0 3px #000;margin-top:10px;margin-left:8px">'+
-               catLabel(pt.classification)+'</div>',
-          iconSize:[24,16], iconAnchor:[0,0]
-        }), interactive:false
-      }).addTo(_coneLayer);
-    }
   });
-
-  try {
-    map.fitBounds(L.latLngBounds(storm.trackPoints.map(p=>[p.lat,p.lon])).pad(0.25), {maxZoom:6});
-  } catch(e) { map.setView([storm.lat, storm.lon], 5); }
+  map.setView([storm.lat, storm.lon], 5);
 }
 
 function plotStormsOnMap(storms) {
@@ -1889,41 +1612,16 @@ function plotStormsOnMap(storms) {
   if (!map || !storms.length) return;
   const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
     '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-  const catLabel = c => ({'TD':'TROP DEPRESSION','TS':'TROP STORM',
-    '1':'CAT 1','2':'CAT 2','3':'CAT 3','4':'CAT 4','5':'CAT 5'})[String(c)] || c;
   storms.forEach(s => {
     if (!s.lat || !s.lon) return;
     const col = catColor(s.classification);
-    // Filled dot
-    L.circleMarker([s.lat, s.lon], {radius:12, color:'#fff', fillColor:col, fillOpacity:.9, weight:2})
-    .bindTooltip(
-      '<b style="color:'+col+'">'+(s.name||'Storm')+'</b><br>'+catLabel(s.classification)+
-      (s.windMph?' &bull; '+s.windMph+' mph':'')+(s.pressure?'<br>'+s.pressure+' mb':''),
-      {className:'spc-tip', permanent:false}
-    )
-    .bindPopup(
-      '<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:180px">'+
-      '<b style="color:'+col+';font-size:.75rem">'+(s.name||'Storm')+'</b>'+
-      '<div style="color:'+col+';font-size:.55rem;margin-bottom:4px">'+catLabel(s.classification)+'</div>'+
-      (s.windMph?'<div>Winds: <b>'+s.windMph+' mph</b></div>':'')+
-      (s.pressure?'<div>Pressure: '+s.pressure+' mb</div>':'')+
-      '<div style="color:#8b949e;margin-top:2px">'+(s.lat.toFixed(1))+'°N '+(Math.abs(s.lon).toFixed(1))+'°W</div>'+
-      (s.movement?'<div style="color:#8b949e">'+s.movement+'</div>':'')+
-      '<hr style="border-color:#30363d;margin:5px 0">'+
-      '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="color:#06b6d4">Full Advisory &#8594;</a>'+
-      '</div>'
-    )
+    L.circleMarker([s.lat, s.lon], {radius:10, color:col, fillColor:col, fillOpacity:.7, weight:2})
+    .bindTooltip('<b>'+(s.name||'Storm')+'</b><br>'+(s.classification||'')+' &bull; '+(s.windMph||'?')+' mph', {className:'spc-tip'})
+    .bindPopup('<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:160px"><b style="color:'+col+'">'+
+      (s.name||'Storm')+'</b><br>Winds: '+(s.windMph||'?')+' mph<br>'+
+      (s.pressure?'Pressure: '+s.pressure+' mb<br>':'') +
+      '<a href="https://www.nhc.noaa.gov/" target="_blank" style="color:#06b6d4">NHC Advisory &#8594;</a></div>')
     .addTo(map);
-    // Name label
-    L.marker([s.lat, s.lon], {
-      icon: L.divIcon({
-        className:'',
-        html:'<div style="font-family:Courier New,monospace;font-size:.6rem;font-weight:700;color:'+col+
-             ';text-shadow:0 0 4px #000,0 0 4px #000;white-space:nowrap;margin-top:18px;margin-left:-20px">'+
-             (s.name||'')+'</div>',
-        iconSize:[80,20], iconAnchor:[0,0]
-      }), interactive:false
-    }).addTo(map);
   });
 }
 
@@ -2024,9 +1722,7 @@ const alertColorMap = {
   'Severe Thunderstorm Watch':'#ffaa00','Hurricane Watch':'#ffcc00','Storm Surge Watch':'#ffcc00',
   'Special Marine Warning':'#0088ff','Tropical Storm Watch':'#ffaa00','Flash Flood Watch':'#ffaa00',
   'Flood Watch':'#ffd966','Coastal Flood Watch':'#ffd966',
-  'Rip Current Statement':'#00cccc','Beach Hazard Statement':'#5588aa',
-  'High Surf Advisory':'#0099cc','Coastal Hazard Message':'#0099cc',
-  'Special Weather Statement':'#a78bfa'
+  'Rip Current Statement':'#00cccc','Beach Hazard Statement':'#5588aa'
 };
 
 function fmtTime(iso) {
@@ -2067,11 +1763,9 @@ function renderAlerts() {
       : 'Last checked: ' + nowEDT();
   }
   if (!currentAlerts.length) {
-    renderLightningProximity();
     feed.innerHTML = '<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:12px;text-align:center;font-size:.65rem;color:#22c55e;font-family:Courier New,monospace">✓ No active hazards for Atlantic Beach, FL</div>';
     return;
   }
-  renderLightningProximity();
   feed.innerHTML = currentAlerts.map(a => {
     const col = alertColorMap[a.event]||'#888888';
     return '<div class="alert-card" style="border-left-color:'+col+';background:'+col+'0a">' +
@@ -2149,17 +1843,17 @@ function renderOutlook() {
       : 'Updated: ' + nowEDT();
   }
   const days = [
-    {label:'Day 1',data:currentOutlook.day1,showProb:true,  url:'https://www.spc.noaa.gov/products/outlook/day1otlk.html'},
-    {label:'Day 2',data:currentOutlook.day2,showProb:false, url:'https://www.spc.noaa.gov/products/outlook/day2otlk.html'},
-    {label:'Day 3',data:currentOutlook.day3,showProb:false, url:'https://www.spc.noaa.gov/products/outlook/day3otlk.html'}
+    {label:'Day 1',data:currentOutlook.day1,showProb:true},
+    {label:'Day 2',data:currentOutlook.day2,showProb:false},
+    {label:'Day 3',data:currentOutlook.day3,showProb:false}
   ];
   container.innerHTML = days.map(d => {
     const s = riskStyles[d.data.risk] || riskStyles['NONE'];
-    return '<a href="'+d.url+'" target="_blank" rel="noopener" class="day-card" style="display:block;text-decoration:none;cursor:pointer" title="SPC '+d.label+' Outlook →">' +
+    return '<div class="day-card">' +
       '<div style="font-family:Courier New,monospace;font-size:.55rem;color:#8b949e;margin-bottom:4px">'+d.label+'</div>' +
       '<span style="display:inline-block;padding:2px 8px;border-radius:3px;font-family:Courier New,monospace;font-size:.62rem;font-weight:700;background:'+s.bg+';color:'+s.color+'">'+d.data.risk+'</span>' +
       (d.showProb?'<div style="margin-top:6px;font-family:Courier New,monospace;font-size:.5rem;color:#8b949e"><div>🌪 '+d.data.tornado+'%</div><div>🌩 '+d.data.hail+'%</div><div>💨 '+d.data.wind+'%</div></div>':'') +
-    '</a>';
+    '</div>';
   }).join('');
 
   const risks = ['NONE','TSTM','MRGL','SLGT','ENH','MDT','HIGH'];
@@ -2343,7 +2037,7 @@ function initSPCMap() {
     zoomControl: false, attributionControl: false,
     scrollWheelZoom: false
   });
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     subdomains: 'abcd', maxZoom: 10
   }).addTo(_spcMap);
   L.circleMarker([CONFIG.lat, CONFIG.lon], {
@@ -2414,7 +2108,7 @@ function initRadarMap() {
   if (window._radarMap) return;
   const map = L.map('radarMap',{center:[CONFIG.lat,CONFIG.lon],zoom:7,zoomControl:true,attributionControl:false});
   window._radarMap = map;
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(map);
   window._radarLayer = L.tileLayer.wms('https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi',{
     layers:'nexrad-n0q',format:'image/png',transparent:true,opacity:.75,version:'1.1.1'
   }).addTo(map);
@@ -2459,16 +2153,11 @@ function initHurricaneMap() {
   const map = L.map('hurricaneMap',{center:[25,-65],zoom:4,zoomControl:true,attributionControl:false});
   window._hurrMap = map;
   window._hurricaneMap = map;
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16}).addTo(map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:18}).addTo(map);
   L.circleMarker([CONFIG.lat,CONFIG.lon],{radius:7,color:'#00d9ff',fillColor:'#00d9ff',fillOpacity:.9,weight:2})
     .bindPopup('Atlantic Beach, FL').addTo(map);
   const lbl = document.getElementById('hurr-map-label');
   if (lbl) lbl.textContent = 'Atlantic Basin — open NHC.NOAA.GOV for live storms';
-  // Plot any storms already fetched before the map was opened
-  if (currentStorms && currentStorms.length) {
-    plotStormsOnMap(currentStorms);
-    currentStorms.forEach(s => { if (s.trackPoints && s.trackPoints.length > 1) drawStormCone(s); });
-  }
 }
 function toggleHurrLayer(layer) {
   const btn = document.getElementById('btn-'+layer);
@@ -2746,35 +2435,8 @@ const ALERT_SOUND_MAP = {
   'Extreme Wind Warning': 'hurricane',
   'Flash Flood Warning': 'flood',
   'Flood Warning': 'flood',
-  'Coastal Flood Warning': 'flood',
-  'Special Marine Warning': 'marine',
-  'High Surf Advisory': 'marine',
-  'Coastal Hazard Message': 'marine'
+  'Coastal Flood Warning': 'flood'
 };
-
-// Nautical bell chime — two clean bell tones, soft and non-alarming.
-function playMarineChime() {
-  try {
-    if (!_sirenCtx) _sirenCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = _sirenCtx;
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-    [[0, 880], [0.55, 1109]].forEach(([offset, freq]) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      const t = now + offset;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.28, t + 0.008); // sharp attack
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 2.2); // long bell decay
-      osc.start(t);
-      osc.stop(t + 2.3);
-    });
-  } catch(e) { console.warn('Marine chime failed:', e); }
-}
 
 function playAlertSound(event, durationMs) {
   const kind = ALERT_SOUND_MAP[event];
@@ -2782,7 +2444,6 @@ function playAlertSound(event, durationMs) {
   if (kind === 'thunder')   return playThunderCrack();
   if (kind === 'hurricane') return playHurricaneHorn(durationMs);
   if (kind === 'flood')     return playFloodAlert(durationMs);
-  if (kind === 'marine')    return playMarineChime();
   return playSiren(durationMs);
 }
 
@@ -3125,21 +2786,24 @@ async function fetchBuoy() {
     const windKt  = windData  ? parseFloat(windData.s)  : null;   // already in knots
     const waterF  = wtmpData  ? parseFloat(wtmpData.v)  : null;   // already in °F
 
-    // Wave height + period: open-meteo marine API (CORS-friendly, no proxy needed)
+    // Wave height: fetch NDBC via a public CORS-anywhere style allorigins proxy
     let waveHtFt = null, wavePd = null;
     try {
-      const marine = await fetchWithTimeout(
-        'https://marine-api.open-meteo.com/v1/marine?latitude=30.34&longitude=-81.40&current=wave_height,wave_period',
-        {}, 8000
-      );
-      if (marine.ok) {
-        const mj = await marine.json();
-        const wvht = mj.current?.wave_height;
-        const dpd  = mj.current?.wave_period;
-        if (wvht != null && !isNaN(wvht)) waveHtFt = (wvht * 3.28084).toFixed(1);
-        if (dpd  != null && !isNaN(dpd))  wavePd   = parseFloat(dpd).toFixed(0);
+      const ndbc = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.ndbc.noaa.gov/data/realtime2/41112.txt'), {}, 8000);
+      if (ndbc.ok) {
+        const txt = await ndbc.text();
+        const lines = txt.split('\n').filter(l => l && !l.startsWith('#'));
+        if (lines.length >= 2) {
+          const hdr  = lines[0].trim().split(/\s+/);
+          const dat  = lines[1].trim().split(/\s+/);
+          const get  = k => { const i = hdr.indexOf(k); return i >= 0 ? dat[i] : null; };
+          const wvht = parseFloat(get('WVHT'));
+          const dpd  = parseFloat(get('DPD'));
+          if (!isNaN(wvht)) waveHtFt = (wvht * 3.28084).toFixed(1);
+          if (!isNaN(dpd))  wavePd   = dpd.toFixed(0);
+        }
       }
-    } catch(e) { /* wave data unavailable — rest still shows */ }
+    } catch(e) { /* wave height unavailable — rest still shows */ }
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val !== null && val !== undefined ? val : '--'; };
     set('buoy-wave-ht',   waveHtFt || '--');
@@ -3158,10 +2822,6 @@ async function fetchBuoy() {
       ripEl.innerHTML = 'Rip Current Risk: <span style="color:'+col+';font-weight:700">'+risk+'</span>';
     }
 
-    beachWaveHtFt = waveHtFt ? parseFloat(waveHtFt) : null;
-    renderBeachScore();
-    renderSurfQuality(waveHtFt, wavePd);
-    if (waterF != null) storeWaterTemp(waterF);
     const tsEl = document.getElementById('buoy-ts');
     if (tsEl) tsEl.textContent = nowEDT();
     setPill('pill-buoy', 'live', 'BUOY');
@@ -3203,117 +2863,6 @@ function clearLSRHistory() {
   lsrHistory = [];
   try { localStorage.removeItem('sw_lsr_history'); } catch(e) {}
   renderLSRHistory();
-}
-
-// ─── DISPLAY PREFERENCES: THEME + TEXT SIZE ──────────────────────────────────
-// ─── SPAGHETTI / MODEL GUIDANCE ──────────────────────────────────────────────
-function showSpagTab(tab) {
-  const pane = document.getElementById('spag-pane');
-  if (!pane) return;
-  ['two','spag','shear'].forEach(t => {
-    const b = document.getElementById('spag-btn-' + t);
-    if (b) b.classList.toggle('active', t === tab);
-  });
-  const card = (href, label, desc) =>
-    '<a href="'+href+'" target="_blank" rel="noopener" style="display:flex;flex-direction:column;padding:8px 10px;background:rgba(0,217,255,.05);border:1px solid rgba(0,217,255,.15);border-radius:5px;text-decoration:none;margin-bottom:5px">' +
-      '<span style="font-family:\'Courier New\',monospace;font-size:.62rem;color:#00d9ff;font-weight:700">'+label+' →</span>' +
-      '<span style="font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;margin-top:2px">'+desc+'</span>' +
-    '</a>';
-  const tabs = {
-    two: {
-      head: 'TROPICAL WEATHER OUTLOOK',
-      sub:  'NHC 5-day development probabilities — Atlantic & East Pacific.',
-      body: [
-        card('https://www.nhc.noaa.gov/gtwo.php?basin=atlc', 'NHC TWO — Atlantic',      '5-day tropical development outlook'),
-        card('https://www.nhc.noaa.gov/gtwo.php?basin=epac', 'NHC TWO — East Pacific',  '5-day tropical development outlook'),
-        card('https://www.nhc.noaa.gov/cyclones/',           'NHC Active Cyclones',      'All currently active tropical systems'),
-      ]
-    },
-    spag: {
-      head: currentStorms.length ? 'SPAGHETTI — ' + currentStorms.map(s=>s.name||'STORM').join(', ') : 'SPAGHETTI MODELS',
-      sub:  currentStorms.length ? 'Multi-model ensemble track forecasts for active systems.' : 'No named storms active. Track models appear here during active season.',
-      body: [
-        card('https://zoom.earth/storms/',                  'Zoom Earth — Storms',   'Interactive model spaghetti & satellite'),
-        card('https://www.tropicaltidbits.com/',             'Tropical Tidbits',      'Model guidance & storm analysis'),
-        card('https://www.nhc.noaa.gov/cyclones/',           'NHC Official Track',    'Official forecast cone and advisory'),
-      ]
-    },
-    shear: {
-      head: 'WIND SHEAR ANALYSIS',
-      sub:  'Vertical wind shear — key factor in storm development and intensification.',
-      body: [
-        card('https://tropic.ssec.wisc.edu/',                                                                      'UW-CIMSS Tropical',          'Observed 200–850mb shear analysis'),
-        card('https://www.tropicaltidbits.com/analysis/models/?model=gfs&region=atl&pkg=shear', 'Tropical Tidbits — GFS Shear', 'Model-forecast wind shear, Atlantic'),
-        card('https://www.nhc.noaa.gov/tafb/',                                                                     'NWS TAFB',                   'Tropical Analysis & Forecast Branch'),
-      ]
-    }
-  };
-  const t = tabs[tab];
-  pane.innerHTML =
-    '<div style="padding:10px 12px 3px;font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;letter-spacing:.06em;font-weight:700">' + t.head + '</div>' +
-    '<div style="padding:2px 12px 8px;font-family:\'Courier New\',monospace;font-size:.52rem;color:#636c76">' + t.sub + '</div>' +
-    '<div style="padding:0 10px 10px">' + t.body.join('') + '</div>';
-}
-
-// ─── SHARE CONDITIONS ─────────────────────────────────────────────────────────
-async function shareConditions() {
-  const now = new Date().toLocaleString('en-US', {
-    timeZone:'America/New_York', month:'short', day:'numeric',
-    hour:'2-digit', minute:'2-digit', hour12:true
-  });
-  const g = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : null; };
-  const verdict = document.querySelector('#beach-score-body [style*="font-size:1.1rem"]');
-  const ripLvl  = document.querySelector('#rip-body [style*="font-weight:700"]');
-  const lines = [
-    '🌊 StormWatch ATL BEACH · ' + now,
-    verdict ? 'Beach: ' + verdict.textContent.trim() : null,
-    g('obs-temp')     !== '--' ? 'Temp: '    + g('obs-temp')     : null,
-    g('obs-wind')     !== '--' ? 'Wind: '    + g('obs-wind')     : null,
-    ripLvl            ? 'Rip: '     + ripLvl.textContent.trim()  : null,
-    g('buoy-wave-ht') !== '--' ? 'Waves: '   + g('buoy-wave-ht') + ' ft' : null,
-    g('tide-level')   !== '--' ? 'Tide: '    + g('tide-level')   : null,
-    '',
-    '🔗 gitsmithereens.github.io/StormWatch/',
-  ].filter(l => l !== null).join('\n');
-
-  if (navigator.share) {
-    try { await navigator.share({ title: 'StormWatch ATL Beach', text: lines }); return; } catch(e) {}
-  }
-  try {
-    await navigator.clipboard.writeText(lines);
-    showToast('📋 Conditions copied to clipboard!', 'info');
-  } catch(e) {
-    showToast('⚠ Could not copy — try selecting and copying the conditions manually.', 'warn');
-  }
-}
-
-function toggleTheme() {
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const next = isLight ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('sw_theme', next);
-  updateDisplayToggles();
-}
-
-function toggleTextSize() {
-  const isLg = document.documentElement.classList.contains('text-lg');
-  document.documentElement.classList.toggle('text-lg', !isLg);
-  localStorage.setItem('sw_textsize', isLg ? 'compact' : 'large');
-  updateDisplayToggles();
-}
-
-function updateDisplayToggles() {
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const isLg    = document.documentElement.classList.contains('text-lg');
-  const themeBtn = document.getElementById('theme-toggle-btn');
-  const sizeBtn  = document.getElementById('textsize-toggle-btn');
-  if (themeBtn) {
-    themeBtn.textContent = isLight ? '☀️ Light' : '🌙 Dark';
-    themeBtn.style.background   = isLight ? 'rgba(255,200,50,.15)' : 'rgba(80,100,200,.15)';
-    themeBtn.style.borderColor  = isLight ? 'rgba(200,150,0,.4)'   : 'rgba(80,100,200,.4)';
-    themeBtn.style.color        = isLight ? '#953800' : '#9bb0ff';
-  }
-  if (sizeBtn) sizeBtn.textContent = isLg ? 'Aa Large' : 'Aa Compact';
 }
 
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
@@ -3604,565 +3153,9 @@ async function toggleEvacZones() {
   }
 }
 
-// ─── RAIN TIMELINE / DOG WALK PLANNER (Open-Meteo 15-min precip) ─────────────
-const RAIN_WET_MM = 0.1;   // ≥0.1 mm in a 15-min slot counts as rain
-const WALK_MIN_SLOTS = 3;  // a usable walk window is ≥45 min dry
-
-function fmtWalkTime(unix) {
-  return new Date(unix * 1000).toLocaleTimeString('en-US',
-    {hour:'numeric', minute:'2-digit', timeZone:'America/New_York'});
-}
-function fmtWalkDur(mins) {
-  if (mins < 60) return mins + ' min';
-  const h = Math.floor(mins / 60), m = mins % 60;
-  return m ? h + ' h ' + m + ' m' : h + ' h';
-}
-
-async function fetchRainWalk() {
-  try {
-    const r = await fetchWithTimeout(
-      'https://api.open-meteo.com/v1/forecast?latitude=' + CONFIG.lat + '&longitude=' + CONFIG.lon +
-      '&minutely_15=precipitation&hourly=precipitation_probability&current=precipitation,weather_code&forecast_days=2&timeformat=unixtime&timezone=America%2FNew_York',
-      {}, 8000
-    );
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    saveCache('rainwalk', d);
-    renderRainWalk(d, Date.now());
-  } catch(e) {
-    const c = loadCache('rainwalk');
-    if (c) renderRainWalk(c.data, c.ts);
-    else {
-      const v = document.getElementById('rainwalk-verdict');
-      if (v) v.textContent = 'Rain forecast unavailable';
-    }
-  }
-}
-
-function renderRainWalk(d, fetchedTs) {
-  const vEl = document.getElementById('rainwalk-verdict');
-  const tEl = document.getElementById('rainwalk-timeline');
-  const hEl = document.getElementById('rainwalk-hours');
-  const wEl = document.getElementById('rainwalk-windows');
-  const mEl = document.getElementById('rainwalk-meta');
-  if (!vEl || !tEl) return;
-  const times = d.minutely_15 && d.minutely_15.time, mm = d.minutely_15 && d.minutely_15.precipitation;
-  if (!times || !mm) return;
-
-  const now = Date.now() / 1000;
-  const start = times.findIndex(t => t + 900 > now); // slot covering "now"
-  if (start < 0) return;
-  const slots = [];
-  for (let i = start; i < times.length && slots.length < 48; i++) {
-    const v = mm[i] == null ? 0 : mm[i];
-    slots.push({ t: times[i], mm: v, wet: v >= RAIN_WET_MM });
-  }
-  // bridge lone 15-min dry gaps inside a rain run so durations read sanely
-  for (let i = 1; i < slots.length - 1; i++) {
-    if (!slots[i].wet && slots[i-1].wet && slots[i+1].wet) slots[i].wet = true;
-  }
-
-  // hourly probability lookup (unix hour → %)
-  const probByHour = {};
-  ((d.hourly && d.hourly.time) || []).forEach((t, i) => {
-    probByHour[t] = d.hourly.precipitation_probability ? d.hourly.precipitation_probability[i] : null;
-  });
-  const probAt = t => probByHour[Math.floor(t / 3600) * 3600];
-  const RAIN_RISK_PCT = 30;
-
-  // radar truth beats the model: pop-up storms often never appear in the
-  // minutely forecast, so if it is raining right now, slot 0 is wet, period
-  const rwCur = d.current || {};
-  const rainingNow = (rwCur.precipitation != null && rwCur.precipitation > 0) ||
-                     (rwCur.weather_code != null && rwCur.weather_code >= 51);
-  if (rainingNow && slots.length) slots[0].wet = true;
-
-  // ── 12-hour intensity bar ──
-  tEl.innerHTML = '<div style="display:flex;gap:1px;height:26px;align-items:flex-end">' + slots.map(s => {
-    const p = probAt(s.t);
-    const risky = !s.wet && p != null && p >= RAIN_RISK_PCT;
-    const h = s.wet ? Math.max(30, Math.min(100, 30 + (s.mm / 2) * 70)) : risky ? 20 : 12;
-    const col = !s.wet ? (risky ? '#8a6d1f' : '#21262d') : s.mm >= 1.5 ? '#ffa500' : s.mm >= 0.5 ? '#00b8d9' : '#155e75';
-    return '<div style="flex:1;height:' + h + '%;background:' + col + ';border-radius:1px" title="' +
-      fmtWalkTime(s.t) + ' — ' + (s.wet ? s.mm.toFixed(1) + ' mm' : risky ? 'dry, ' + p + '% storm risk' : 'dry') +
-      (p != null && !risky ? ' · ' + p + '%' : '') + '"></div>';
-  }).join('') + '</div>';
-  hEl.innerHTML = [0, 12, 24, 36, 47].map(i =>
-    '<span>' + fmtWalkTime(slots[Math.min(i, slots.length - 1)].t) + '</span>').join('');
-
-  // ── verdict line ──
-  const firstWet = slots.findIndex(s => s.wet);
-  if (firstWet === -1) {
-    let peak = null;
-    slots.forEach(s => { const p = probAt(s.t); if (p != null && (!peak || p > peak.p)) peak = {p, t: s.t}; });
-    if (peak && peak.p >= 50) {
-      vEl.style.color = '#ffa500';
-      vEl.textContent = '🌦 PROBABLY DRY — ' + peak.p + '% storm chance ~' + fmtWalkTime(peak.t);
-    } else {
-      vEl.style.color = '#3fb950';
-      vEl.textContent = '✓ DRY FOR THE NEXT 12 HOURS' +
-        (peak && peak.p >= RAIN_RISK_PCT ? ' — ' + peak.p + '% chance near ' + fmtWalkTime(peak.t) : '');
-    }
-  } else if (firstWet === 0) {
-    let end = 0; while (end < slots.length && slots[end].wet) end++;
-    vEl.style.color = '#00d9ff';
-    vEl.textContent = '🌧 RAINING NOW — ' +
-      ((rainingNow && end <= 1) ? 'radar beat the forecast, recheck soon' :
-       end >= slots.length ? 'rain through the next 12 h' : 'clears ~' + fmtWalkTime(slots[end].t));
-  } else {
-    let end = firstWet; while (end < slots.length && slots[end].wet) end++;
-    vEl.style.color = '#ffa500';
-    vEl.textContent = '☔ RAIN ~' + fmtWalkTime(slots[firstWet].t) +
-      ' (in ' + fmtWalkDur(Math.max(1, Math.round((slots[firstWet].t - now) / 60))) + ')' +
-      ' — lasting ~' + fmtWalkDur((end - firstWet) * 15) + (end >= slots.length ? '+' : '');
-  }
-
-  // ── dog-walk windows: dry stretches ≥45 min ──
-  const wins = [];
-  let i = 0;
-  while (i < slots.length) {
-    if (!slots[i].wet) {
-      let j = i; while (j < slots.length && !slots[j].wet) j++;
-      if (j - i >= WALK_MIN_SLOTS) wins.push({
-        s: slots[i].t, e: j < slots.length ? slots[j].t : slots[j-1].t + 900,
-        open: j >= slots.length, len: (j - i) * 15, startsNow: i === 0
-      });
-      i = j;
-    } else i++;
-  }
-  if (!wins.length) {
-    wEl.innerHTML = '<span style="color:#ff4444">No dry window ≥ 45 min in the next 12 h — umbrella walk 🐕</span>';
-  } else {
-    const bestLen = Math.max.apply(null, wins.map(w => w.len));
-    const winRisky = w => {
-      for (let t = Math.floor(w.s / 3600) * 3600; t < w.e; t += 3600) {
-        const p = probAt(t); if (p != null && p >= RAIN_RISK_PCT) return true;
-      }
-      return false;
-    };
-    wEl.innerHTML = '<span style="color:#8b949e">DOG-WALK WINDOWS — NEXT 12 H (⚡ = storm risk):</span><br>' +
-      wins.slice(0, 3).map(w =>
-        '<span style="color:' + (w.len === bestLen ? '#3fb950' : '#adb5c2') + '">' +
-        (w.len === bestLen ? '★ ' : '&nbsp;&nbsp;') +
-        (w.startsNow ? 'now' : fmtWalkTime(w.s)) + ' – ' +
-        (w.open ? 'beyond 12 h' : fmtWalkTime(w.e)) +
-        ' (' + fmtWalkDur(w.len) + (w.open ? '+' : '') + ')' +
-        (winRisky(w) ? ' ⚡' : '') + '</span>'
-      ).join('<br>');
-  }
-
-  if (mEl) mEl.textContent = (Date.now() - fetchedTs > 90000 ? 'cached ' + cacheAgeLabel(fetchedTs) : 'updated ' + fmtWalkTime(fetchedTs / 1000));
-}
-
 // ─── LIVE BEACH CAMS (simple thumbnail+link cards, no embedding) ─────────────
 function initWebcams() { /* no-op — cams are static thumbnail links now */ }
 function fetchLightning() { /* lightning uses Windy iframe — no polling needed */ }
-
-// ─── SUN TIMES (pure math, no API) ───────────────────────────────────────────
-function sunTimes(date) {
-  const lat = CONFIG.lat, lon = CONFIG.lon;
-  const rad = x => x * Math.PI / 180;
-  // Julian date for UTC midnight of the given date
-  const y = date.getUTCFullYear(), m = date.getUTCMonth() + 1, d = date.getUTCDate();
-  const A = Math.floor(y/100), B = 2 - A + Math.floor(A/4);
-  const JD = Math.floor(365.25*(y+4716)) + Math.floor(30.6001*(m+1)) + d + B - 1524.5;
-  const n = JD - 2451545.0;
-  // Solar coordinates
-  const L = (280.460 + 0.9856474*n) % 360;
-  const g = (357.528  + 0.9856003*n) % 360;
-  const lambda = L + 1.915*Math.sin(rad(g)) + 0.020*Math.sin(rad(2*g));
-  const epsilon = 23.439 - 4e-7*n;
-  const sinDec = Math.sin(rad(epsilon)) * Math.sin(rad(lambda));
-  const dec = Math.asin(sinDec);
-  // Equation of time → solar noon in UTC hours
-  const RA = Math.atan2(Math.cos(rad(epsilon))*Math.sin(rad(lambda)), Math.cos(rad(lambda))) * 180/Math.PI / 15;
-  const EoT = ((L/15 - RA) + 36) % 24 - 12;
-  const solarNoonUTC = 12 - lon/15 - EoT;
-  // Hour angle for given elevation → hours offset from noon
-  const ha = (elev) => {
-    const c = (Math.sin(rad(elev)) - Math.sin(rad(lat))*sinDec) / (Math.cos(rad(lat))*Math.cos(dec));
-    return Math.abs(c) > 1 ? null : Math.acos(c)*180/Math.PI/15;
-  };
-  const H0 = ha(-0.8333), H6 = ha(6);
-  if (!H0) return null;
-  const toDate = utcH => { const r = new Date(date); r.setUTCHours(0,0,0,0); r.setTime(r.getTime()+utcH*3600000); return r; };
-  return {
-    rise:       toDate(solarNoonUTC - H0),
-    goldenMorn: H6 ? toDate(solarNoonUTC - H6) : null,
-    set:        toDate(solarNoonUTC + H0),
-    goldenEve:  H6 ? toDate(solarNoonUTC + H6) : null,
-  };
-}
-
-function renderSunTimes() {
-  const el = document.getElementById('sun-times-row');
-  if (!el) return;
-  const t = sunTimes(new Date());
-  if (!t) { el.style.display = 'none'; return; }
-  const fmt = d => d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/New_York'}).toLowerCase();
-  el.innerHTML =
-    '<span style="color:#facc15">🌅</span> ' + fmt(t.rise) +
-    (t.goldenMorn ? ' <span style="color:#8b949e">→</span> <span style="color:#f97316">✨</span> ' + fmt(t.goldenMorn) : '') +
-    ' &nbsp;·&nbsp; ' +
-    (t.goldenEve  ? '<span style="color:#f97316">✨</span> ' + fmt(t.goldenEve) + ' <span style="color:#8b949e">→</span> ' : '') +
-    '<span style="color:#facc15">🌇</span> ' + fmt(t.set);
-}
-
-// ─── LIGHTNING PROXIMITY ──────────────────────────────────────────────────────
-function renderLightningProximity() {
-  const el = document.getElementById('lightning-prox');
-  if (!el) return;
-  const svrWarnings = currentAlerts.filter(a =>
-    /Severe Thunderstorm Warning/i.test(a.event||'') && a.geometry
-  );
-  if (!svrWarnings.length) {
-    el.style.color = '#3fb950';
-    el.textContent = '⚡ No active severe thunderstorm warnings near Atlantic Beach';
-    return;
-  }
-  let nearest = null, nearestDist = Infinity;
-  for (const w of svrWarnings) {
-    const c = polygonCentroid(w.geometry.coordinates);
-    const d = haversineMiles(CONFIG.lat, CONFIG.lon, c[0], c[1]);
-    if (d < nearestDist) { nearestDist = d; nearest = w; }
-  }
-  const c = polygonCentroid(nearest.geometry.coordinates);
-  const dir = bearingToCompass(bearingDeg(CONFIG.lat, CONFIG.lon, c[0], c[1]));
-  const motion = parseStormMotion(nearest.description || '');
-  const moveTxt = motion ? ' · moving ' + bearingToCompass(motion.bearingDeg) + ' at ' + motion.speedMph + ' mph' : '';
-  const dist = nearestDist.toFixed(0);
-  el.style.color = nearestDist < 20 ? '#ff4444' : '#f97316';
-  el.textContent = '⚡ Severe T-Storm Warning ~' + dist + ' mi ' + dir + ' of Atlantic Beach' + moveTxt;
-}
-
-// ─── SURF QUALITY ─────────────────────────────────────────────────────────────
-function renderSurfQuality(waveHtFt, wavePd) {
-  const el = document.getElementById('surf-quality');
-  if (!el) return;
-  if (waveHtFt == null) { el.innerHTML = ''; return; }
-  const ht = parseFloat(waveHtFt), pd = wavePd ? parseFloat(wavePd) : null;
-  let htLabel, pdLabel, rating, color;
-  if      (ht < 0.5)  htLabel = 'Flat';
-  else if (ht < 1.5)  htLabel = 'Ankle–Knee';
-  else if (ht < 2.5)  htLabel = 'Knee–Waist';
-  else if (ht < 3.5)  htLabel = 'Waist–Chest';
-  else if (ht < 5)    htLabel = 'Chest–Head';
-  else                htLabel = 'Overhead+';
-  if (pd == null)       pdLabel = '';
-  else if (pd >= 12)    pdLabel = ' · long-period groundswell';
-  else if (pd >= 9)     pdLabel = ' · solid period';
-  else if (pd >= 7)     pdLabel = ' · short period';
-  else                  pdLabel = ' · choppy';
-  if      (ht < 0.5)                              { rating = 'FLAT';      color = '#555'; }
-  else if (ht < 1.5 || (pd && pd < 6))            { rating = 'POOR';      color = '#8b949e'; }
-  else if (ht < 2 && pd && pd < 8)                { rating = 'FAIR';      color = '#facc15'; }
-  else if (ht >= 1.5 && ht < 4 && (!pd||pd >= 7)) { rating = 'GOOD';      color = '#3fb950'; }
-  else if (ht >= 4 && pd && pd >= 9)               { rating = 'EXCELLENT'; color = '#00d9ff'; }
-  else                                             { rating = 'FAIR';      color = '#facc15'; }
-  el.innerHTML = 'Surf: <span style="color:' + color + ';font-weight:700">' + rating + '</span>' +
-    ' <span style="color:#8b949e">(' + htLabel + pdLabel + ')</span>';
-}
-
-// ─── WATER TEMP TREND ─────────────────────────────────────────────────────────
-function storeWaterTemp(tempF) {
-  if (tempF == null) return;
-  const key = 'sw_water_temp_history';
-  const hist = JSON.parse(localStorage.getItem(key) || '[]');
-  hist.push({ ts: Date.now(), tempF });
-  // keep last 48 readings (~2 days at 10-min intervals)
-  if (hist.length > 48) hist.splice(0, hist.length - 48);
-  localStorage.setItem(key, JSON.stringify(hist));
-  renderWaterTempTrend(hist);
-}
-
-function renderWaterTempTrend(hist) {
-  const el = document.getElementById('water-temp-trend');
-  if (!el || !hist || hist.length < 2) return;
-  const W = 240, H = 28, pad = 4;
-  const temps = hist.map(h => h.tempF);
-  const mn = Math.min(...temps) - 0.5, mx = Math.max(...temps) + 0.5;
-  const xS = i => pad + (i / (hist.length - 1)) * (W - pad*2);
-  const yS = v => H - pad - ((v - mn) / (mx - mn)) * (H - pad*2);
-  const pts = hist.map((h, i) => xS(i) + ',' + yS(h.tempF)).join(' ');
-  el.innerHTML =
-    '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#8b949e;margin-bottom:2px">Water temp trend (48h)</div>' +
-    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:' + H + 'px;display:block">' +
-      '<polyline points="' + pts + '" fill="none" stroke="#00d9ff" stroke-width="1.5" stroke-linejoin="round"/>' +
-      '<text x="' + pad + '" y="' + (H-1) + '" font-size="6" fill="#4b5563" font-family="Courier New">48h ago</text>' +
-      '<text x="' + (W-28) + '" y="' + (H-1) + '" font-size="6" fill="#4b5563" font-family="Courier New">now</text>' +
-      '<text x="' + (W/2) + '" y="9" font-size="7" fill="#00d9ff" font-family="Courier New" text-anchor="middle">' + temps[temps.length-1].toFixed(1) + '°F</text>' +
-    '</svg>';
-}
-
-// ─── RIP CURRENT FLAG HISTORY ─────────────────────────────────────────────────
-function storeRipLevel(level) {
-  const key = 'sw_rip_history';
-  const today = new Date().toLocaleDateString('en-CA', {timeZone:'America/New_York'});
-  const hist = JSON.parse(localStorage.getItem(key) || '[]');
-  const last = hist[hist.length - 1];
-  if (last && last.date === today) { last.level = level; }
-  else { hist.push({ date: today, level }); }
-  if (hist.length > 14) hist.splice(0, hist.length - 14);
-  localStorage.setItem(key, JSON.stringify(hist));
-  renderRipHistory(hist);
-}
-
-function renderRipHistory(hist) {
-  const el = document.getElementById('rip-history-bar');
-  if (!el) return;
-  if (!hist || !hist.length) { el.innerHTML = ''; return; }
-  const colMap = { LOW:'#22c55e', MOD:'#f97316', HIGH:'#ef4444', EXTREME:'#ff2222' };
-  const squares = hist.map(h => {
-    const col = colMap[h.level] || '#555';
-    const d = new Date(h.date + 'T12:00:00').toLocaleDateString('en-US',{month:'numeric',day:'numeric'});
-    return '<span title="' + d + ': ' + h.level + '" style="display:inline-block;width:14px;height:14px;background:' + col + ';border-radius:2px;opacity:.85"></span>';
-  }).join('');
-  el.innerHTML =
-    '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#8b949e;margin-bottom:4px">Rip risk history (14 days)</div>' +
-    '<div style="display:flex;gap:3px;align-items:center">' + squares + '</div>';
-}
-
-// ─── BEACH CONDITIONS SCORE ───────────────────────────────────────────────────
-async function fetchUV() {
-  try {
-    const r = await fetchWithTimeout(
-      'https://api.open-meteo.com/v1/forecast?latitude=30.34&longitude=-81.40&daily=uv_index_max&timezone=America%2FNew_York&forecast_days=1',
-      {}, 8000
-    );
-    if (!r.ok) return;
-    const d = await r.json();
-    beachUvIndex = d.daily?.uv_index_max?.[0] ?? null;
-    renderBeachScore();
-  } catch(e) { /* UV unavailable — score renders without it */ }
-}
-
-function renderBeachScore() {
-  const el = document.getElementById('beach-score-body');
-  if (!el) return;
-
-  // score safety/comfort factors only — UV is advisory, not a penalty
-  const ripScore = !beachRipLevel ? null :
-    (beachRipLevel === 'EXTREME' || beachRipLevel === 'HIGH') ? 2 :
-    beachRipLevel === 'MOD' ? 1 : 0;
-  const windScore = beachWindMph == null ? null :
-    beachWindMph > 25 ? 2 : beachWindMph > 15 ? 1 : 0;
-  const waveScore = beachWaveHtFt == null ? null :
-    beachWaveHtFt > 4 ? 2 : beachWaveHtFt > 2 ? 1 : 0;
-  // UV: display only — high UV means sunscreen, not a bad beach day
-  const uvScore = beachUvIndex == null ? null :
-    beachUvIndex >= 8 ? 2 : beachUvIndex >= 6 ? 1 : 0;
-
-  const scores = [ripScore, windScore, waveScore].filter(s => s !== null);
-  if (scores.length < 2) {
-    el.innerHTML = '<div style="font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e">Loading conditions…</div>';
-    return;
-  }
-
-  // absolute thresholds — one bad factor can't push to DANGEROUS alone
-  const total = scores.reduce((a, b) => a + b, 0);
-
-  let verdict, vColor, vBg;
-  if      (total === 0)                      { verdict = 'GREAT';    vColor = '#22c55e'; vBg = 'rgba(34,197,94,.1)'; }
-  else if (total === 1)                      { verdict = 'GOOD';     vColor = '#3fb950'; vBg = 'rgba(63,185,80,.1)'; }
-  else if (total === 2)                      { verdict = 'FAIR';     vColor = '#facc15'; vBg = 'rgba(250,204,21,.1)'; }
-  else if (total <= 4)                       { verdict = 'POOR';     vColor = '#f97316'; vBg = 'rgba(249,115,22,.1)'; }
-  else                                       { verdict = 'DANGEROUS';vColor = '#ef4444'; vBg = 'rgba(239,68,68,.1)'; }
-
-  const bar = (score, max) => {
-    if (score === null) return '<span style="color:#555;font-size:.55rem">N/A</span>';
-    const filled = score, empty = max - score;
-    const dot = s => '<span style="color:' + s + '">●</span>';
-    const emp = '<span style="color:#30363d">●</span>';
-    const colors = ['#22c55e','#facc15','#ef4444'];
-    return Array(filled).fill(dot(colors[Math.min(score,2)])).join('') + Array(empty).fill(emp).join('');
-  };
-
-  const row = (label, value, score) =>
-    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">' +
-      '<div style="font-family:\'Courier New\',monospace;font-size:.55rem;color:#8b949e;width:80px;flex-shrink:0">' + label + '</div>' +
-      '<div style="font-family:\'Courier New\',monospace;font-size:.55rem;color:var(--text);flex:1">' + (value || '--') + '</div>' +
-      '<div style="font-size:.65rem;letter-spacing:2px">' + bar(score, 2) + '</div>' +
-    '</div>';
-
-  const ripLabel = beachRipLevel || '--';
-  const windLabel = beachWindMph != null ? beachWindMph + ' mph' : null;
-  const waveLabel = beachWaveHtFt != null ? beachWaveHtFt.toFixed(1) + ' ft' : null;
-  const uvLabel   = beachUvIndex  != null ? beachUvIndex.toFixed(0) + (beachUvIndex >= 11 ? ' · Extreme' : beachUvIndex >= 8 ? ' · V.High' : beachUvIndex >= 6 ? ' · High' : beachUvIndex >= 3 ? ' · Mod' : ' · Low') : null;
-
-  const rows = [
-    ripScore  !== null ? row('RIP CURRENT', ripLabel,  ripScore)  : '',
-    windScore !== null ? row('WIND',        windLabel, windScore) : '',
-    waveScore !== null ? row('WAVE HT',     waveLabel, waveScore) : '',
-    uvScore   !== null ? row('UV INDEX',    uvLabel,   uvScore)   : '',
-  ].join('');
-
-  el.innerHTML =
-    '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:' + vBg + ';margin-bottom:10px">' +
-      '<div style="font-family:\'Courier New\',monospace;font-size:1.1rem;font-weight:700;color:' + vColor + '">' + verdict + '</div>' +
-      '<div style="font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;line-height:1.4">' +
-        (verdict === 'GREAT' ? 'Ideal conditions' : verdict === 'GOOD' ? 'Good day out' : verdict === 'FAIR' ? 'Use caution' : verdict === 'POOR' ? 'Rough conditions' : 'Stay out of water') +
-      '</div>' +
-    '</div>' +
-    rows +
-    '<div style="font-family:\'Courier New\',monospace;font-size:.48rem;color:#555;margin-top:6px">Updated ' + nowEDT() + '</div>';
-}
-
-// ─── CURRENT CONDITIONS — Mayport CO-OPS (wind/temp) + NWS gridpoint (humidity/sky) ──
-// NWS grid for Atlantic Beach FL: JAX/75,66 (hardcoded from api.weather.gov/points/30.34,-81.40)
-async function fetchConditions() {
-  const metaEl = document.getElementById('obs-meta');
-  try {
-    const COOPS = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=8720218&date=latest&units=english&time_zone=lst_ldt&format=json&product=';
-    const [windRes, tempRes, nwsRes] = await Promise.allSettled([
-      fetchWithTimeout(COOPS + 'wind',            {}, 8000),
-      fetchWithTimeout(COOPS + 'air_temperature', {}, 8000),
-      fetchWithTimeout('https://api.weather.gov/gridpoints/JAX/75,66/forecast/hourly',
-                       {headers:{Accept:'application/geo+json'}}, 8000),
-    ]);
-
-    const degToCompass = deg => {
-      if (deg == null) return '--';
-      const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-      return dirs[Math.round(deg / 22.5) % 16];
-    };
-
-    // CO-OPS wind (already in mph for units=english)
-    let windSpd = null, windDir = null, windGust = null, windDr = null;
-    if (windRes.status === 'fulfilled' && windRes.value.ok) {
-      const wj = await windRes.value.json();
-      const wd = wj.data?.[0];
-      if (wd) {
-        windSpd = wd.s != null ? Math.round(parseFloat(wd.s)) : null;
-        windGust = wd.g != null ? Math.round(parseFloat(wd.g)) : null;
-        windDir  = wd.d != null ? parseFloat(wd.d) : null;
-        windDr   = wd.dr || null;
-      }
-    }
-
-    // CO-OPS air temp (°F for units=english)
-    let tempF = null;
-    if (tempRes.status === 'fulfilled' && tempRes.value.ok) {
-      const tj = await tempRes.value.json();
-      const td = tj.data?.[0];
-      if (td?.v != null) tempF = Math.round(parseFloat(td.v));
-    }
-
-    // NWS gridpoint hourly (JAX/75,66 = Atlantic Beach): humidity + sky for current hour
-    let humidity = null, sky = '--', visMi = null;
-    if (nwsRes.status === 'fulfilled' && nwsRes.value.ok) {
-      const nj = await nwsRes.value.json();
-      const period = nj.properties?.periods?.[0];
-      if (period) {
-        humidity = period.relativeHumidity?.value != null ? Math.round(period.relativeHumidity.value) : null;
-        sky = period.shortForecast || '--';
-      }
-    }
-
-    // Heat index (Rothfusz, valid when temp ≥ 80°F and RH ≥ 40%)
-    let feelsLabel = '';
-    if (tempF != null && humidity != null && tempF >= 80 && humidity >= 40) {
-      const T = tempF, R = humidity;
-      const hi = -42.379 + 2.04901523*T + 10.14333127*R - 0.22475541*T*R
-        - 0.00683783*T*T - 0.05481717*R*R + 0.00122874*T*T*R
-        + 0.00085282*T*R*R - 0.00000199*T*T*R*R;
-      const hiR = Math.round(hi);
-      if (Math.abs(hiR - tempF) >= 2) feelsLabel = 'Feels ' + hiR + '°F';
-    }
-
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    beachWindMph = windSpd;
-    set('obs-temp',     tempF != null ? tempF + '°F' : '--');
-    set('obs-feels',    feelsLabel || 'Mayport Station');
-    set('obs-wind',     windSpd != null ? windSpd + ' mph' : '--');
-    set('obs-wind-sub', [windDr || degToCompass(windDir), windGust ? 'G' + windGust + ' mph' : ''].filter(Boolean).join(' · ') || '--');
-    set('obs-humidity', humidity != null ? humidity + '%' : '--');
-    set('obs-sky',      sky);
-    set('obs-vis',      visMi != null ? 'Vis ' + visMi + ' mi' : '');
-    if (metaEl) metaEl.textContent = nowEDT();
-    setPill('pill-obs', 'live', 'OBS');
-    renderBeachScore();
-  } catch(e) {
-    console.warn('fetchConditions:', e);
-    setPill('pill-obs', 'error', 'OBS');
-  }
-}
-
-// ─── RIP CURRENT FORECAST — NWS JAX beach forecast product ──────────────────
-async function fetchRipCurrent() {
-  const body = document.getElementById('rip-body');
-  const metaEl = document.getElementById('rip-meta');
-  // Try RFD (Rip Current Discussion) first, fall back to BHS (Beach Hazard Statement)
-  const productTypes = ['RFD','BHS','CFW'];
-  let text = '', issuedAt = '';
-  for (const type of productTypes) {
-    try {
-      const listR = await fetchWithTimeout(
-        'https://api.weather.gov/products?type=' + type + '&office=JAX&limit=1',
-        {headers:{Accept:'application/ld+json'}}, 8000
-      );
-      if (!listR.ok) continue;
-      const list = await listR.json();
-      const items = list['@graph'] || [];
-      if (!items.length) continue;
-      const prodR = await fetchWithTimeout(items[0]['@id'], {headers:{Accept:'application/json'}}, 8000);
-      if (!prodR.ok) continue;
-      const prod = await prodR.json();
-      text = prod.productText || '';
-      issuedAt = prod.issuanceTime || '';
-      if (text) break;
-    } catch(e) { continue; }
-  }
-
-  if (!body) return;
-
-  if (!text) {
-    body.innerHTML = '<div style="font-family:\'Courier New\',monospace;font-size:.6rem;color:#8b949e">⚠ Forecast unavailable — <a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" style="color:#06b6d4">check NWS JAX</a></div>';
-    return;
-  }
-
-  // Extract rip current section
-  const ripMatch = text.match(/RIP\s*CURR?ENT[S]?[.\s\-:]*([\s\S]*?)(?=\n\n[A-Z$.]|\$\$|&&)/i);
-  const ripText = ripMatch ? ripMatch[1].replace(/\n/g,' ').replace(/\s+/g,' ').trim() : '';
-
-  // Determine risk level + NWS beach flag
-  let level = 'LOW', color = '#22c55e', bg = 'rgba(34,197,94,.1)', border = 'rgba(34,197,94,.3)';
-  let flagHtml = '<span style="display:inline-flex;gap:2px;vertical-align:middle">' +
-    '<span style="display:inline-block;width:10px;height:14px;background:#22c55e;border-radius:1px"></span>' +
-    '</span>';
-  const upper = (ripText || text).toUpperCase();
-  if (/EXTREME/.test(upper)) {
-    level = 'EXTREME'; color = '#ff2222'; bg = 'rgba(255,34,34,.14)'; border = 'rgba(255,34,34,.4)';
-    flagHtml = '<span style="display:inline-flex;gap:2px;vertical-align:middle">' +
-      '<span style="display:inline-block;width:10px;height:14px;background:#ef4444;border-radius:1px"></span>' +
-      '<span style="display:inline-block;width:10px;height:14px;background:#ef4444;border-radius:1px"></span>' +
-      '</span>';
-  } else if (/HIGH/.test(upper)) {
-    level = 'HIGH'; color = '#ef4444'; bg = 'rgba(239,68,68,.12)'; border = 'rgba(239,68,68,.35)';
-    flagHtml = '<span style="display:inline-flex;gap:2px;vertical-align:middle">' +
-      '<span style="display:inline-block;width:10px;height:14px;background:#ef4444;border-radius:1px"></span>' +
-      '</span>';
-  } else if (/MODERATE/.test(upper)) {
-    level = 'MOD'; color = '#f97316'; bg = 'rgba(249,115,22,.12)'; border = 'rgba(249,115,22,.35)';
-    flagHtml = '<span style="display:inline-flex;gap:2px;vertical-align:middle">' +
-      '<span style="display:inline-block;width:10px;height:14px;background:#facc15;border-radius:1px"></span>' +
-      '</span>';
-  }
-  beachRipLevel = level;
-  storeRipLevel(level);
-  renderBeachScore();
-
-  const snippet = ripText.length > 220 ? ripText.substring(0, 220) + '…' : (ripText || 'See full beach forecast for details.');
-  body.innerHTML =
-    '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:6px;background:' + bg + ';border:1px solid ' + border + ';margin-bottom:8px">' +
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;padding-top:2px">' +
-        flagHtml +
-        '<div style="font-family:\'Courier New\',monospace;font-size:.7rem;font-weight:700;color:' + color + '">' + level + '</div>' +
-      '</div>' +
-      '<div style="font-family:\'Courier New\',monospace;font-size:.55rem;color:#c9d1d9;line-height:1.55;flex:1">' + snippet + '</div>' +
-    '</div>' +
-    '<a href="https://www.weather.gov/jax/" target="_blank" rel="noopener" style="font-family:\'Courier New\',monospace;font-size:.52rem;color:#06b6d4">Full beach forecast → NWS JAX</a>';
-  if (metaEl) metaEl.textContent = nowEDT();
-}
 
 
 
@@ -4251,14 +3244,6 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchBuoy();
   fetchQPE();
   fetchSounding();
-  fetchConditions();
-  fetchRipCurrent();
-  fetchUV();
-  fetchRainWalk();
-  renderSunTimes();
-  // restore history from localStorage on load
-  renderRipHistory(JSON.parse(localStorage.getItem('sw_rip_history') || '[]'));
-  renderWaterTempTrend(JSON.parse(localStorage.getItem('sw_water_temp_history') || '[]'));
   initWebcams();
   renderLSRHistory();
   setTimeout(generateBriefing, 2500);
@@ -4271,14 +3256,6 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchBuoy,         10 * 60 * 1000);
   setInterval(fetchQPE,           5 * 60 * 1000);
   setInterval(fetchSounding,     60 * 60 * 1000);
-  setInterval(fetchConditions,   20 * 60 * 1000);
-  setInterval(fetchUV,          120 * 60 * 1000);
-  setInterval(renderSunTimes,   60 * 60 * 1000);
-  setInterval(fetchRipCurrent,  120 * 60 * 1000);
-  setInterval(fetchRainWalk,     15 * 60 * 1000);
-
-  // Restore display preferences (theme already set by early-init script; just sync buttons)
-  updateDisplayToggles();
 
   updateNotifBtn();
   const notifBtn = document.getElementById('notif-btn');
@@ -4337,26 +3314,6 @@ document.addEventListener('DOMContentLoaded', function() {
       <button onclick="closeSettings()" style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:1rem">&#10005;</button>
     </div>
     <div style="font-size:.55rem;color:#555;margin-bottom:12px">Settings are saved to your browser and persist across sessions.</div>
-
-    <!-- DISPLAY PREFERENCES -->
-    <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-      <div style="font-size:.6rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:8px">🎨 DISPLAY</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:.65rem;font-weight:600;color:var(--text)">Theme</div>
-          <div style="font-size:.55rem;color:var(--text-dim)">Toggle dark / light mode</div>
-        </div>
-        <button id="theme-toggle-btn" onclick="toggleTheme()" class="ctrl-btn" style="min-width:90px;justify-content:center">🌙 Dark</button>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0">
-        <div>
-          <div style="font-size:.65rem;font-weight:600;color:var(--text)">Text Size</div>
-          <div style="font-size:.55rem;color:var(--text-dim)">Large bumps all text ~12%</div>
-        </div>
-        <button id="textsize-toggle-btn" onclick="toggleTextSize()" class="ctrl-btn" style="min-width:90px;justify-content:center">Aa Compact</button>
-      </div>
-    </div>
-
     <div style="display:grid;gap:10px">
       <div>
         <label style="font-size:.58rem;color:#8b949e;display:block;margin-bottom:3px">LATITUDE</label>
@@ -4396,7 +3353,6 @@ document.addEventListener('DOMContentLoaded', function() {
         <button onclick="testAlarm('Severe Thunderstorm Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">⛈️ Severe T-storm</button>
         <button onclick="testAlarm('Hurricane Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">🌬️ Hurricane</button>
         <button onclick="testAlarm('Flood Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">🌊 Flood</button>
-        <button onclick="testAlarm('Special Marine Warning')" class="ctrl-btn" style="font-size:.6rem;justify-content:center">⚓ Marine Warning</button>
         <button onclick="testAlarm('Tornado Watch')" class="ctrl-btn" style="font-size:.6rem;justify-content:center;grid-column:1/-1">⚡ Watch / Statement (light chirp)</button>
       </div>
     </div>
