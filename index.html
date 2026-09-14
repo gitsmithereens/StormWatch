@@ -1204,9 +1204,19 @@ window.scrollTo(0, 0);
 // ─── PWA SERVICE WORKER — caches the app shell so a cold load works offline ──
 // Service workers require a secure context (https, or http://localhost) — they're
 // blocked entirely on file:// pages, so this silently no-ops there.
+// Auto-reload once a new worker takes over — otherwise an update only
+// finishes installing quietly in the background and the page keeps showing
+// the old shell until a second manual reload, which is especially easy to
+// miss on an iOS home-screen install with no browser chrome to prompt it.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW registration failed:', e));
+  });
+  let swRefreshed = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swRefreshed) return;
+    swRefreshed = true;
+    location.reload();
   });
 }
 

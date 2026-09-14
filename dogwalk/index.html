@@ -769,7 +769,20 @@ setInterval(refresh, 15 * 60 * 1000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && Date.now() - lastFetch > 5 * 60 * 1000) refresh();
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Without this, an updated service worker only finishes installing in the
+// background — the page keeps showing whatever it already had until a
+// SECOND manual reload hands control to the new worker. That's especially
+// bad on an iOS home-screen app, which has no browser chrome nudging anyone
+// to reload at all. Auto-reload once when a new worker actually takes over.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  let swRefreshed = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swRefreshed) return;
+    swRefreshed = true;
+    location.reload();
+  });
+}
 </script>
 </body>
 </html>
