@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>DogWalk — Rain Window Planner</title>
+<title>DogWalk — Walk Conditions</title>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#0d9488" />
 <link rel="apple-touch-icon" href="apple-touch-icon-v3.png" />
@@ -261,22 +261,24 @@ function render(d, ts) {
   if (cur.apparent_temperature != null) $('now-feels').textContent = Math.round(cur.apparent_temperature) + '°';
   if (cur.wind_speed_10m != null) $('now-wind').textContent = Math.round(cur.wind_speed_10m) + ' mph';
 
-  // pavement estimate + safe-condition alert (uses the user's saved limits)
+  // pavement estimate (the verdict below folds this and feels-like into
+  // the headline; this chip just always shows the number)
   let pav = null;
   if (cur.temperature_2m != null) {
     pav = pavementF(cur.temperature_2m, cur.cloud_cover, cur.is_day === 1);
-    const pawEl = $('now-paw');
-    pawEl.textContent = '~' + pav + '°';
-    pawEl.style.color = pav >= 130 ? 'var(--bad)' : pav >= 110 ? 'var(--wait)' : '';
+    const pavChip = $('now-paw');
+    pavChip.textContent = '~' + pav + '°';
+    pavChip.style.color = pav >= 130 ? 'var(--bad)' : pav >= 110 ? 'var(--wait)' : '';
   }
   const feels = cur.apparent_temperature;
-  let alertMsg = '';
-  if (pav != null && pav >= 130) alertMsg = '🐾 Pavement ~' + pav + '° — too hot for paws, stick to grass';
-  else if (feels != null && feels >= prefs.hot) alertMsg = '🥵 Feels ' + Math.round(feels) + '° — above your ' + prefs.hot + '° heat limit';
-  else if (feels != null && feels <= prefs.cold) alertMsg = '🥶 Feels ' + Math.round(feels) + '° — below your ' + prefs.cold + '° cold limit';
-  const al = $('paw-alert');
-  al.textContent = alertMsg;
-  al.style.display = alertMsg ? 'block' : 'none';
+  // computed for the strip's own detail text; syncConditionStrips() (called
+  // once the verdict is known) decides whether to actually show it
+  const pawEl = $('paw-alert');
+  if (pav != null && pav >= 130) pawEl.dataset.msg = '🐾 Pavement ~' + pav + '° — too hot for paws, stick to grass';
+  else if (feels != null && feels >= prefs.hot) pawEl.dataset.msg = '🥵 Feels ' + Math.round(feels) + '° — above your ' + prefs.hot + '° heat limit';
+  else if (feels != null && feels <= prefs.cold) pawEl.dataset.msg = '🥶 Feels ' + Math.round(feels) + '° — below your ' + prefs.cold + '° cold limit';
+  else if (pav != null && pav >= 110) pawEl.dataset.msg = '🐾 Pavement ~' + pav + '° — warm, stick to grass';
+  else delete pawEl.dataset.msg;
 
   // ── build 48 15-min slots from now ──
   const times = d.minutely_15.time, mm = d.minutely_15.precipitation;
@@ -339,48 +341,42 @@ function render(d, ts) {
   }
   renderTomorrow(times, mm, winRisk);
 
-  // ── verdict ──
+  // ── verdict: one unified "can I walk right now" decision ──
+  // Gather rain facts from the slot/window analysis above, then hand every
+  // signal the app knows about (rain, heat, cold, pavement, air quality,
+  // official warnings) to one priority-ordered decision — see computeVerdict.
   const firstWet = slots.findIndex(s => s.wet);
-  const vm = $('verdict-main'), vs = $('verdict-sub'), ve = $('verdict-emoji');
+  const rainFacts = { walkLen, now };
   if (firstWet === -1) {
     let peak = null;
     slots.forEach(s => { const p = probAt(s.t); if (p != null && (!peak || p > peak.p)) peak = {p, t: s.t}; });
-    if (peak && peak.p >= 50) {
-      ve.textContent = '🌦️'; vm.textContent = 'Probably dry — storms possible'; vm.style.color = 'var(--wait)';
-      vs.textContent = peak.p + '% storm chance near ' + fmtT(peak.t) + ' — pop-up storms can beat this forecast, glance at the radar first';
-    } else if (peak && peak.p >= RISK_PCT) {
-      ve.textContent = '🐕'; vm.textContent = 'Should be dry all day'; vm.style.color = 'var(--good)';
-      vs.textContent = 'No rain in the forecast, but a ' + peak.p + '% storm chance near ' + fmtT(peak.t);
-    } else {
-      ve.textContent = '🐕'; vm.textContent = 'Perfect — dry all day'; vm.style.color = 'var(--good)';
-      vs.textContent = 'No rain expected in the next 12 hours';
-    }
+    rainFacts.clear = true;
+    rainFacts.stormPeak = peak;
   } else if (firstWet === 0) {
     let end = 0; while (end < slots.length && slots[end].wet) end++;
-    ve.textContent = '🌧️'; vm.textContent = 'Hold off — raining now'; vm.style.color = 'var(--bad)';
-    vs.textContent = (rainingNow && end <= 1)
-      ? 'Radar-level rain the forecast missed — check the map below and try again soon'
-      : end >= slots.length ? 'Rain sticks around for the next 12 hours' : 'Should clear up around ' + fmtT(slots[end].t);
+    rainFacts.rainingNow = true;
+    rainFacts.forecastMissedIt = rainingNow && end <= 1;
+    rainFacts.clearsAt = end < slots.length ? slots[end].t : null;
   } else {
     let end = firstWet; while (end < slots.length && slots[end].wet) end++;
-    const minsToRain = Math.max(1, Math.round((slots[firstWet].t - now) / 60));
-    const dur = (end - firstWet) * 15;
-    if (minsToRain < walkLen) {
-      ve.textContent = '⏳'; vm.textContent = 'Quick walk only'; vm.style.color = 'var(--wait)';
-      vs.textContent = 'Rain in ' + fmtDur(minsToRain) + ' (~' + fmtT(slots[firstWet].t) + '), lasting ~' + fmtDur(dur) + ' — tighter than your usual ' + fmtDur(walkLen);
-    } else {
-      ve.textContent = '✅'; vm.textContent = 'Good to walk now'; vm.style.color = 'var(--good)';
-      vs.textContent = fmtDur(minsToRain) + ' before rain arrives ~' + fmtT(slots[firstWet].t) + ', lasting ~' + fmtDur(dur) + (end >= slots.length ? '+' : '');
-    }
+    rainFacts.rainStartsAt = slots[firstWet].t;
+    rainFacts.rainMinsAway = Math.max(1, Math.round((slots[firstWet].t - now) / 60));
+    rainFacts.rainDurMins = (end - firstWet) * 15;
+    rainFacts.rainOpenEnded = end >= slots.length;
+  }
+  // radar projection only matters when it beats what the model already shows
+  if (!rainFacts.rainingNow && radarNowcast && !radarNowcast.now && radarNowcast.soonMin != null &&
+      (rainFacts.rainMinsAway == null || rainFacts.rainMinsAway > radarNowcast.soonMin)) {
+    rainFacts.radarSoonMin = radarNowcast.soonMin;
   }
 
-  // radar projection beats an optimistic model: storm motion says rain is
-  // arriving sooner than any forecast slot shows
-  if (firstWet !== 0 && radarNowcast && !radarNowcast.now && radarNowcast.soonMin != null &&
-      (firstWet === -1 || (slots[firstWet].t - now) / 60 > radarNowcast.soonMin)) {
-    ve.textContent = '🌧️'; vm.textContent = 'Rain approaching'; vm.style.color = 'var(--wait)';
-    vs.textContent = 'Radar projects rain here in about ' + radarNowcast.soonMin + ' min — quick out-and-back only';
-  }
+  const v = computeVerdict({
+    rain: rainFacts, feels, pav, prefs, aqi: aqiState, nws: nwsState, walkLen
+  });
+  const ve = $('verdict-emoji'), vm = $('verdict-main'), vs = $('verdict-sub');
+  ve.textContent = v.emoji; vm.textContent = v.main; vm.style.color = v.color; vs.textContent = v.sub;
+  lastReasonKey = v.reasonKey;
+  syncConditionStrips();
 
   shareText = '🐾 DogWalk — ' + loc.name + '\n' + vm.textContent + ': ' + vs.textContent +
     '\nWindows: ' + $('windows').innerText.replace(/\n/g, ' · ').replace(/ · ★/g, ' | ★') +
@@ -388,6 +384,93 @@ function render(d, ts) {
 
   const age = Math.round((Date.now() - ts) / 60000);
   $('updated').textContent = loc.name + ' · updated ' + (age < 1 ? 'just now' : age + ' min ago');
+}
+
+// ── the unified "can I walk right now" decision ──
+// One headline, picked in safety priority order, so the card people glance
+// at actually reflects every reason a walk could be a bad idea — not just
+// rain. (Retro note, Sep 2026: this app grew heat/pavement/AQI/NWS checks
+// one at a time as separate strips while the headline stayed rain-only —
+// "Perfect, dry all day" while it was 96° out. This function is the fix.)
+let lastReasonKey = 'good';
+function computeVerdict(f) {
+  const { rain, feels, pav, prefs, aqi, nws, walkLen } = f;
+  const RISK_PCT = 30;
+
+  if (nws && nws.severe)
+    return { emoji: '🚨', main: nws.event, color: 'var(--bad)', reasonKey: 'nws',
+      sub: 'Active' + (nws.until ? ' until ' + nws.until : '') + ' — hold off on walks' };
+
+  if (rain.rainingNow)
+    return { emoji: '🌧️', main: 'Hold off — raining now', color: 'var(--bad)', reasonKey: 'rain',
+      sub: rain.forecastMissedIt ? 'Radar-level rain the forecast missed — check the map below and try again soon'
+        : rain.clearsAt ? 'Should clear up around ' + fmtT(rain.clearsAt) : 'Rain sticks around for the next 12 hours' };
+
+  if (pav != null && pav >= 130)
+    return { emoji: '🐾', main: 'Too hot for paws', color: 'var(--bad)', reasonKey: 'pavement-hot',
+      sub: 'Pavement ~' + pav + '° — wait for shade or evening' };
+
+  if (feels != null && feels >= prefs.hot)
+    return { emoji: '🥵', main: 'Too hot to walk', color: 'var(--bad)', reasonKey: 'heat',
+      sub: 'Feels ' + Math.round(feels) + '° — above your ' + prefs.hot + '° limit' };
+
+  if (feels != null && feels <= prefs.cold)
+    return { emoji: '🥶', main: 'Too cold to walk', color: 'var(--bad)', reasonKey: 'cold',
+      sub: 'Feels ' + Math.round(feels) + '° — below your ' + prefs.cold + '° limit' };
+
+  if (aqi != null && aqi >= 151)
+    return { emoji: '😷', main: 'Air quality unhealthy', color: 'var(--bad)', reasonKey: 'aqi',
+      sub: 'AQI ' + Math.round(aqi) + ' — skip the walk today' };
+
+  if (rain.rainMinsAway != null && rain.rainMinsAway < walkLen)
+    return { emoji: '⏳', main: 'Quick walk only', color: 'var(--wait)', reasonKey: 'rain-soon',
+      sub: 'Rain in ' + fmtDur(rain.rainMinsAway) + ' (~' + fmtT(rain.rainStartsAt) + '), lasting ~' + fmtDur(rain.rainDurMins) +
+        ' — tighter than your usual ' + fmtDur(walkLen) };
+
+  if (rain.radarSoonMin != null)
+    return { emoji: '🌦️', main: 'Rain approaching', color: 'var(--wait)', reasonKey: 'radar-soon',
+      sub: 'Radar projects rain here in about ' + rain.radarSoonMin + ' min — quick out-and-back only' };
+
+  if (pav != null && pav >= 110)
+    return { emoji: '🐾', main: 'OK, but pavement is warm', color: 'var(--wait)', reasonKey: 'pavement-warm',
+      sub: '~' + pav + '° — stick to grass, keep it short' };
+
+  if (aqi != null && aqi >= 101)
+    return { emoji: '😷', main: 'OK, but air quality is off', color: 'var(--wait)', reasonKey: 'aqi-moderate',
+      sub: 'AQI ' + Math.round(aqi) + ' — sensitive noses, keep it short' };
+
+  if (rain.clear && rain.stormPeak && rain.stormPeak.p >= 50)
+    return { emoji: '🌦️', main: 'Probably dry — storms possible', color: 'var(--wait)', reasonKey: 'storm-risk',
+      sub: rain.stormPeak.p + '% storm chance near ' + fmtT(rain.stormPeak.t) + ' — pop-up storms can beat this forecast, glance at the radar first' };
+
+  if (rain.clear && rain.stormPeak && rain.stormPeak.p >= RISK_PCT)
+    return { emoji: '🐕', main: 'Should be dry all day', color: 'var(--good)', reasonKey: 'good',
+      sub: 'No rain in the forecast, but a ' + rain.stormPeak.p + '% storm chance near ' + fmtT(rain.stormPeak.t) };
+
+  if (rain.clear)
+    return { emoji: '🐕', main: 'Perfect — dry all day', color: 'var(--good)', reasonKey: 'good',
+      sub: 'No rain expected in the next 12 hours' };
+
+  return { emoji: '✅', main: 'Good to walk now', color: 'var(--good)', reasonKey: 'good',
+    sub: fmtDur(rain.rainMinsAway) + ' before rain arrives ~' + fmtT(rain.rainStartsAt) + ', lasting ~' + fmtDur(rain.rainDurMins) + (rain.rainOpenEnded ? '+' : '') };
+}
+
+// Detail strips (pavement/heat/cold, NWS, AQI) stay useful for the exact
+// numbers, but only when they're not already the headline — otherwise
+// they'd just repeat what the verdict card already said.
+function syncConditionStrips() {
+  const pawEl = $('paw-alert');
+  if (['pavement-hot', 'pavement-warm', 'heat', 'cold'].indexOf(lastReasonKey) >= 0) pawEl.style.display = 'none';
+  else pawEl.style.display = pawEl.dataset.msg ? 'block' : 'none';
+  if (pawEl.dataset.msg) pawEl.textContent = pawEl.dataset.msg;
+
+  const nwsEl = $('nws-alert');
+  if (lastReasonKey === 'nws') nwsEl.style.display = 'none';
+  else if (nwsEl.dataset.msg) { nwsEl.style.display = 'block'; nwsEl.textContent = nwsEl.dataset.msg; }
+
+  const aqiEl = $('aqi-alert');
+  if (lastReasonKey === 'aqi' || lastReasonKey === 'aqi-moderate') aqiEl.style.display = 'none';
+  else if (aqiEl.dataset.msg) { aqiEl.style.display = 'block'; aqiEl.textContent = aqiEl.dataset.msg; }
 }
 
 // ── window finding / rendering helpers ──
@@ -592,7 +675,8 @@ async function shareDay() {
   } catch(e) {}
 }
 
-// ── official NWS alerts (shown only when one is active) ──
+// ── official NWS alerts — also feeds the unified verdict (severe = hard stop) ──
+let nwsState = null;   // {severe, event, until} | null
 async function fetchNWS() {
   const el = $('nws-alert');
   if (!el) return;
@@ -604,21 +688,28 @@ async function fetchNWS() {
     const WALK_HAZARDS = /thunderstorm|tornado|flood|heat|hurricane|tropical|storm surge|wind|winter|ice|freeze|cold|snow|blizzard|air quality|dust|fog/i;
     const alerts = (d.features || []).map(f => f.properties)
       .filter(p => p && p.event && !/test/i.test(p.event) && WALK_HAZARDS.test(p.event));
-    if (!alerts.length) { el.style.display = 'none'; return; }
-    const rank = p => (/warning/i.test(p.event) ? 2 : /watch/i.test(p.event) ? 1 : 0) * 10 +
-      ({ Extreme: 3, Severe: 2, Moderate: 1 }[p.severity] || 0);
-    alerts.sort((a, b) => rank(b) - rank(a));
-    const a0 = alerts[0];
-    const until = a0.ends || a0.expires;
-    el.className = (/warning/i.test(a0.event) && (a0.severity === 'Severe' || a0.severity === 'Extreme')) ? 'strip-danger' : 'strip-warn';
-    el.textContent = '⚠️ ' + a0.event +
-      (until ? ' — until ' + new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '') +
-      (alerts.length > 1 ? ' (+' + (alerts.length - 1) + ' more)' : '');
-    el.style.display = 'block';
+    let next = null;
+    if (alerts.length) {
+      const rank = p => (/warning/i.test(p.event) ? 2 : /watch/i.test(p.event) ? 1 : 0) * 10 +
+        ({ Extreme: 3, Severe: 2, Moderate: 1 }[p.severity] || 0);
+      alerts.sort((a, b) => rank(b) - rank(a));
+      const a0 = alerts[0];
+      const until = a0.ends || a0.expires;
+      const untilStr = until ? new Date(until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+      const severe = /warning/i.test(a0.event) && (a0.severity === 'Severe' || a0.severity === 'Extreme');
+      next = { severe, event: a0.event, until: untilStr };
+      el.className = severe ? 'strip-danger' : 'strip-warn';
+      el.dataset.msg = '⚠️ ' + a0.event + (untilStr ? ' — until ' + untilStr : '') +
+        (alerts.length > 1 ? ' (+' + (alerts.length - 1) + ' more)' : '');
+    } else delete el.dataset.msg;
+    const changed = JSON.stringify(next) !== JSON.stringify(nwsState);
+    nwsState = next;
+    if (changed && lastData) render(lastData, lastTs); else syncConditionStrips();
   } catch(e) {}
 }
 
-// ── air quality (shown only when it's actually bad) ──
+// ── air quality — also feeds the unified verdict at unhealthy levels ──
+let aqiState = null;   // number | null
 async function fetchAQI() {
   const el = $('aqi-alert');
   if (!el) return;
@@ -628,9 +719,11 @@ async function fetchAQI() {
     const aqi = d.current && d.current.us_aqi;
     if (aqi != null && aqi >= 101) {
       el.className = aqi >= 151 ? 'strip-danger' : 'strip-warn';
-      el.textContent = '😷 Air quality ' + Math.round(aqi) + (aqi >= 151 ? ' — unhealthy, skip the long walk' : ' — sensitive noses keep it short');
-      el.style.display = 'block';
-    } else el.style.display = 'none';
+      el.dataset.msg = '😷 Air quality ' + Math.round(aqi) + (aqi >= 151 ? ' — unhealthy, skip the long walk' : ' — sensitive noses keep it short');
+    } else delete el.dataset.msg;
+    const changed = aqi !== aqiState;
+    aqiState = aqi != null ? aqi : null;
+    if (changed && lastData) render(lastData, lastTs); else syncConditionStrips();
   } catch(e) {}
 }
 

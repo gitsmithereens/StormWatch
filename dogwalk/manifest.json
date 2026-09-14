@@ -1,7 +1,7 @@
 {
-  "name": "DogWalk — Rain Window Planner",
+  "name": "DogWalk — Walk Conditions",
   "short_name": "DogWalk",
-  "description": "When and how long it will rain — and the best dry windows to walk the dog.",
+  "description": "Should you walk the dog right now? Rain, heat, cold, pavement, air quality, and storm warnings, all in one verdict.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
