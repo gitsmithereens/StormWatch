@@ -16,14 +16,14 @@
 <style>
   :root {
     --bg:#f4f1ea; --card:#ffffff; --border:#e2ddd2; --text:#1f2937; --dim:#6b7280;
-    --accent:#0d9488; --good:#16a34a; --wait:#d97706; --bad:#dc2626;
+    --accent:#0d9488; --good:#16a34a; --wait:#d97706; --bad:#dc2626; --gold:#a8790a;
     --rain-l:#7dd3fc; --rain-m:#0ea5e9; --rain-h:#f59e0b; --slot-dry:#e5e0d5; --slot-night:#cfc9bb;
     --shadow:0 1px 3px rgba(0,0,0,.08);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg:#101418; --card:#1a2026; --border:#2b333c; --text:#e6edf3; --dim:#94a3b8;
-      --accent:#2dd4bf; --good:#4ade80; --wait:#fbbf24; --bad:#f87171;
+      --accent:#2dd4bf; --good:#4ade80; --wait:#fbbf24; --bad:#f87171; --gold:#e8bb5c;
       --rain-l:#155e75; --rain-m:#0ea5e9; --rain-h:#f59e0b; --slot-dry:#242c34; --slot-night:#1c232a;
       --shadow:0 1px 3px rgba(0,0,0,.4);
     }
@@ -175,7 +175,7 @@
 
   <footer>
     <span id="updated"></span><br>
-    <span style="font-style:italic">Brought to you by Murphy &amp; Gus 🐾 with the help of Claude</span><br>
+    <span style="font-style:italic">Brought to you by <span style="color:var(--gold)">Murphy</span> &amp; Gus 🐾 with the help of Claude</span><br>
     forecast by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · radar by <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a> · <a href="https://ntfy.sh/dogwalk-atlbeach-rain-4187" target="_blank" rel="noopener">🔔 rain alerts</a>
   </footer>
 </div>
