@@ -958,8 +958,10 @@
                         <span class="flex items-center gap-1">
                             <i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-blue-400"></i> TROPICAL WEATHER OUTLOOK
                         </span>
+                        <span id="two-area-count" class="time-val text-[.55rem]"></span>
                     </div>
                     <div class="panel-body flex-1">
+                        <div id="outlook-areas-summary" class="mb-2"></div>
                         <div id="two-content" class="text-[.62rem] text-gray-400"></div>
                     </div>
                 </div>
@@ -1018,6 +1020,15 @@
                                 </span>
                                 <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
                                     <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#ffff00;opacity:.5"></span> Zone C+
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="border:1.5px dashed #ffd700"></span> Outlook Lo
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="border:1.5px dashed #ffa500"></span> Outlook Med
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="border:1.5px dashed #ff4444"></span> Outlook Hi
                                 </span>
                             </div>
                             <span id="hurr-map-label" class="time-val text-[.55rem]"></span>
@@ -1994,6 +2005,101 @@ async function fetchTWO() {
   }
 }
 
+// ─── FETCH: TROPICAL DISTURBANCE / GENESIS AREAS (NHC ArcGIS, CORS-open) ─────
+// Layer 3 = "Seven-Day: Potential Development Region" — polygon per disturbance,
+// carries BOTH the 2-day and 7-day formation chance on the same feature.
+const OUTLOOK_RISK_COLOR = {Low:'#ffd700', Medium:'#ffa500', High:'#ff4444'};
+let currentOutlookAreas = [];
+let _outlookFetchOk = null; // null = not checked yet, true/false = last result
+let _outlookLayer = null;
+
+async function fetchTropicalOutlookAreas() {
+  try {
+    const url = 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/' +
+      'NHC_tropical_weather/MapServer/3/query?where=1%3D1&outFields=*&f=geojson&outSR=4326';
+    const r = await fetchWithTimeout(url, {}, 10000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const gj = await r.json();
+    // Atlantic basin only — matches this dashboard's coverage (includes Gulf & Caribbean per NHC)
+    currentOutlookAreas = (gj.features || []).filter(f =>
+      /atlantic/i.test((f.properties && f.properties.basin) || ''));
+    _outlookFetchOk = true;
+  } catch (e) {
+    _outlookFetchOk = false;
+    // Leave currentOutlookAreas as last-known-good rather than wiping the map on a blip —
+    // the TWO text panel above (independent fetch) will surface its own error if NHC is fully down.
+  }
+  renderOutlookSummary();
+  plotOutlookAreas();
+}
+
+function renderOutlookSummary() {
+  const badge = document.getElementById('two-area-count');
+  const el = document.getElementById('outlook-areas-summary');
+  const n = currentOutlookAreas.length;
+  if (badge) badge.textContent = n ? (n + ' area' + (n > 1 ? 's' : '')) : '';
+  if (!el) return;
+  if (!n) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e;margin-bottom:4px">AREAS OF INTEREST</div>' +
+    currentOutlookAreas.map((f, i) => {
+      const p = f.properties || {};
+      const c2 = OUTLOOK_RISK_COLOR[p.risk2day] || '#8b949e';
+      const c7 = OUTLOOK_RISK_COLOR[p.risk7day] || '#8b949e';
+      const dot = OUTLOOK_RISK_COLOR[p.risk7day || p.risk2day] || '#8b949e';
+      return '<div onclick="flyToOutlookArea(' + i + ')" style="cursor:pointer;display:flex;align-items:center;gap:6px;' +
+        'padding:4px 6px;margin-bottom:3px;background:#1c2128;border:1px solid #30363d;border-radius:5px">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + dot + ';flex-shrink:0"></span>' +
+        '<span style="font-family:\'Courier New\',monospace;font-size:.55rem;color:#c9d1d9">' +
+        'Day 2: <b style="color:' + c2 + '">' + (p.prob2day || '—') + '</b> &bull; ' +
+        'Day 7: <b style="color:' + c7 + '">' + (p.prob7day || '—') + '</b></span>' +
+        '</div>';
+    }).join('');
+}
+
+function plotOutlookAreas() {
+  const map = window._hurricaneMap;
+  if (!map) return;
+  if (_outlookLayer) { map.removeLayer(_outlookLayer); _outlookLayer = null; }
+  if (!currentOutlookAreas.length) return;
+  _outlookLayer = L.layerGroup();
+  currentOutlookAreas.forEach(f => {
+    const p = f.properties || {};
+    const col = OUTLOOK_RISK_COLOR[p.risk7day] || OUTLOOK_RISK_COLOR[p.risk2day] || '#8b949e';
+    L.geoJSON(f, {
+      style: { color: col, weight: 2, dashArray: '5,4', fillColor: col, fillOpacity: .12 },
+      onEachFeature: (feat, layer) => {
+        layer.bindTooltip(
+          'Day 7: ' + (p.prob7day || '—') + ' (' + (p.risk7day || '—') + ')',
+          { className: 'spc-tip', sticky: true }
+        );
+        layer.bindPopup(
+          '<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:180px">' +
+          '<b style="color:' + col + ';font-size:.75rem">&#127744; Tropical Disturbance</b>' +
+          '<div style="color:#8b949e;font-size:.55rem;margin-bottom:4px">' + (p.basin || '') + ' Basin</div>' +
+          '<div>Day 2: <b style="color:' + (OUTLOOK_RISK_COLOR[p.risk2day] || '#8b949e') + '">' +
+            (p.prob2day || '—') + '</b> (' + (p.risk2day || '—') + ')</div>' +
+          '<div>Day 7: <b style="color:' + (OUTLOOK_RISK_COLOR[p.risk7day] || '#8b949e') + '">' +
+            (p.prob7day || '—') + '</b> (' + (p.risk7day || '—') + ')</div>' +
+          '<hr style="border-color:#30363d;margin:5px 0">' +
+          '<a href="https://www.nhc.noaa.gov/gtwo.php?basin=atlc" target="_blank" style="color:#06b6d4">Full TWO &#8594;</a>' +
+          '</div>'
+        );
+      }
+    }).addTo(_outlookLayer);
+  });
+  _outlookLayer.addTo(map);
+}
+
+function flyToOutlookArea(i) {
+  const f = currentOutlookAreas[i];
+  const map = window._hurricaneMap;
+  if (!f || !map) return;
+  try {
+    const b = L.geoJSON(f).getBounds();
+    if (b.isValid()) map.fitBounds(b, { maxZoom: 6 });
+  } catch (e) {}
+}
+
 // ─── RENDER WATCHES & WARNINGS ────────────────────────────────────────────────
 function renderWatchesWarnings(alerts) {
   const el = document.getElementById('ww-list');
@@ -2509,6 +2615,8 @@ function initHurricaneMap() {
     plotStormsOnMap(currentStorms);
     currentStorms.forEach(s => { if (s.trackPoints && s.trackPoints.length > 1) drawStormCone(s); });
   }
+  // Same for tropical disturbance / genesis outlook areas
+  if (currentOutlookAreas && currentOutlookAreas.length) plotOutlookAreas();
 }
 function toggleHurrLayer(layer) {
   const btn = document.getElementById('btn-'+layer);
@@ -4348,6 +4456,7 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchLSRs();
   fetchActiveStorms();
   fetchTWO();
+  fetchTropicalOutlookAreas();
   fetchTide();
   fetchBuoy();
   fetchQPE();
@@ -4377,8 +4486,10 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(renderSunTimes,   60 * 60 * 1000);
   setInterval(fetchRipCurrent,  120 * 60 * 1000);
   setInterval(fetchRainWalk,     15 * 60 * 1000);
+  setInterval(fetchTropicalOutlookAreas, 20 * 60 * 1000);
   fetchRadarNowcast();
   setInterval(fetchRadarNowcast, 10 * 60 * 1000);
+  setInterval(fetchTropicalOutlookAreas, 30 * 60 * 1000);
 
   // Restore display preferences (theme already set by early-init script; just sync buttons)
   updateDisplayToggles();
