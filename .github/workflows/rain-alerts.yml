@@ -10,11 +10,6 @@ on:
     - cron: '*/30 10-23 * * *'   # 6:00 AM - 7:30 PM EDT
     - cron: '*/30 0-2 * * *'     # 8:00 PM - 10:30 PM EDT
   workflow_dispatch:
-    inputs:
-      force_morning_test:
-        description: 'TEMP: run the 8 AM heat/storm block regardless of time (manual validation only)'
-        type: boolean
-        default: false
 
 jobs:
   check:
@@ -71,7 +66,7 @@ jobs:
           # Morning storm-risk heads-up (8:00 AM run only). Deterministic
           # forecasts routinely miss FL pop-up storms entirely, so on days
           # with a meaningful probability, warn once up front.
-          if { [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; } || [ "${{ github.event.inputs.force_morning_test }}" = "true" ]; then
+          if [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; then
             p=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&hourly=precipitation_probability,temperature_2m,apparent_temperature,cloud_cover,is_day&forecast_days=1&temperature_unit=fahrenheit&timeformat=unixtime&timezone=America%2FNew_York")
             risk=$(echo "$p" | jq -r '
               .hourly | [.time, .precipitation_probability] | transpose
