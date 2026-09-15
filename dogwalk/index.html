@@ -37,13 +37,13 @@
   header { display:flex; align-items:center; justify-content:space-between; padding:2px 4px; }
   .logo { font-size:1.25rem; font-weight:800; letter-spacing:-.02em; }
   .logo span { color:var(--accent); }
-  #loc-btn, #set-btn {
+  #loc-btn, #set-btn, #swap-loc-btn {
     border:1px solid var(--border); background:var(--card); color:var(--dim); font:inherit;
     font-size:.78rem; font-weight:600; padding:6px 12px; border-radius:999px; cursor:pointer;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; box-shadow:var(--shadow);
   }
   #loc-btn { max-width:100%; min-width:0; }
-  #set-btn { padding:6px 10px; flex-shrink:0; }
+  #set-btn, #swap-loc-btn { padding:6px 10px; flex-shrink:0; }
   .hdr-right { display:flex; gap:6px; align-items:center; flex:1; min-width:0; justify-content:flex-end; margin-left:10px; }
   .set-row { display:block; font-size:.8rem; color:var(--dim); margin-bottom:10px; }
   .set-row input {
@@ -117,6 +117,7 @@
     <div class="logo">🐾 Dog<span>Walk</span></div>
     <div class="hdr-right">
       <button id="loc-btn" onclick="openLoc()">…</button>
+      <button id="swap-loc-btn" onclick="swapLoc()" aria-label="Switch location" style="display:none">⇄</button>
       <button id="set-btn" onclick="openSet()" aria-label="Safe conditions">⚙</button>
     </div>
   </header>
@@ -217,6 +218,10 @@ let lastData = null, lastTs = 0;
 
 let loc = { lat: 30.34, lon: -81.40, name: 'Atlantic Beach, FL' };
 try { const s = localStorage.getItem('dw_loc'); if (s) loc = JSON.parse(s); } catch(e) {}
+// one-tap quick-switch slot — defaults to Neptune Beach (the household's
+// other real spot) until the device has swapped to something else itself
+let loc2 = { lat: 30.312, lon: -81.396, name: 'Neptune Beach, FL' };
+try { const s2 = localStorage.getItem('dw_loc2'); if (s2) loc2 = JSON.parse(s2); } catch(e) {}
 
 let lastFetch = 0;
 
@@ -732,9 +737,31 @@ async function fetchAQI() {
 function openLoc() { $('loc-overlay').style.display = 'flex'; $('loc-input').focus(); }
 function closeLoc() { $('loc-overlay').style.display = 'none'; $('loc-results').innerHTML = ''; $('loc-input').value = ''; }
 function setLoc(lat, lon, name) {
-  loc = { lat: +lat.toFixed(3), lon: +lon.toFixed(3), name };
+  const nlat = +lat.toFixed(3), nlon = +lon.toFixed(3);
+  // whatever you were just on becomes the new one-tap swap target
+  if (nlat !== loc.lat || nlon !== loc.lon) {
+    loc2 = loc;
+    try { localStorage.setItem('dw_loc2', JSON.stringify(loc2)); } catch(e) {}
+  }
+  loc = { lat: nlat, lon: nlon, name };
   try { localStorage.setItem('dw_loc', JSON.stringify(loc)); } catch(e) {}
-  closeLoc(); refresh(); fetchNWS(); fetchAQI();
+  closeLoc(); refresh(); fetchNWS(); fetchAQI(); syncSwapBtn();
+}
+function swapLoc() {
+  if (!loc2) return;
+  const tmp = loc; loc = loc2; loc2 = tmp;
+  try {
+    localStorage.setItem('dw_loc', JSON.stringify(loc));
+    localStorage.setItem('dw_loc2', JSON.stringify(loc2));
+  } catch(e) {}
+  refresh(); fetchNWS(); fetchAQI(); syncSwapBtn();
+}
+function syncSwapBtn() {
+  const btn = $('swap-loc-btn');
+  if (!btn) return;
+  const usable = loc2 && (loc2.lat !== loc.lat || loc2.lon !== loc.lon);
+  btn.style.display = usable ? 'inline-flex' : 'none';
+  if (usable) btn.title = 'Switch to ' + loc2.name;
 }
 function useMyLocation() {
   if (!navigator.geolocation) return;
@@ -763,6 +790,7 @@ $('loc-input').addEventListener('input', () => {
 
 // refresh every 15 min, and on return-to-app if stale >5 min
 syncWalkLenSeg();
+syncSwapBtn();
 refresh();
 fetchNWS(); fetchAQI();
 setInterval(() => { fetchNWS(); fetchAQI(); }, 15 * 60 * 1000);
