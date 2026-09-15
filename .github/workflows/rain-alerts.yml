@@ -14,13 +14,25 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Atlantic Beach
+            lat: "30.34"
+            lon: "-81.40"
+            topic: dogwalk-atlbeach-rain-4187
+          - name: Neptune Beach
+            lat: "30.312"
+            lon: "-81.396"
+            topic: dogwalk-neptunebeach-rain-5914
     env:
       TZ: America/New_York
-      LAT: "30.34"
-      LON: "-81.40"
-      TOPIC: dogwalk-atlbeach-rain-4187
+      LAT: ${{ matrix.lat }}
+      LON: ${{ matrix.lon }}
+      TOPIC: ${{ matrix.topic }}
     steps:
-      - name: Check forecast and notify
+      - name: Check forecast and notify (${{ matrix.name }})
         run: |
           set -e
           d=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&minutely_15=precipitation&forecast_days=1&timeformat=unixtime&timezone=America%2FNew_York")
