@@ -67,7 +67,7 @@ jobs:
           # forecasts routinely miss FL pop-up storms entirely, so on days
           # with a meaningful probability, warn once up front.
           if [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; then
-            p=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&hourly=precipitation_probability&forecast_days=1&timeformat=unixtime&timezone=America%2FNew_York")
+            p=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&hourly=precipitation_probability,temperature_2m,apparent_temperature,cloud_cover,is_day&forecast_days=1&temperature_unit=fahrenheit&timeformat=unixtime&timezone=America%2FNew_York")
             risk=$(echo "$p" | jq -r '
               .hourly | [.time, .precipitation_probability] | transpose
               | map({t: .[0], p: (.[1] // 0)})
@@ -81,5 +81,38 @@ jobs:
               echo "sent morning risk: $risk"
             else
               echo "no morning risk alert"
+            fi
+
+            # Morning heat/pavement heads-up. Same pavement estimate as the
+            # app's pavementF(): pav = air + max(0, 1.8*air-14 - air) * sun,
+            # sun scaled down by cloud cover, pavement = air at night. Uses
+            # the app's DEFAULT safe-condition limits (feels-like 88F,
+            # pavement 130F) since this backend has no visibility into
+            # anyone's personalized <gear> limits — only each device does.
+            heat=$(echo "$p" | jq -r '
+              def pav(air; cloud; day):
+                if day == 0 then (air | round)
+                else
+                  ((1.8*air - 14) - air) as $over
+                  | (if $over > 0 then $over else 0 end) as $overpos
+                  | (1 - ([cloud,100]|min)/100*0.75) as $sun
+                  | (air + $overpos*$sun) | round
+                end;
+              .hourly as $h
+              | [$h.time, $h.temperature_2m, $h.apparent_temperature, $h.cloud_cover, $h.is_day] | transpose
+              | map({t: .[0], feels: (.[2] | round), pavv: (pav(.[1]; (.[3] // 50); .[4]))})
+              | map(select((.t | strflocaltime("%H") | tonumber) >= 6 and (.t | strflocaltime("%H") | tonumber) < 20))
+              | (max_by(.pavv)) as $peakPav
+              | (max_by(.feels)) as $peakFeels
+              | if $peakPav.pavv >= 130
+                then "Pavement will hit ~\($peakPav.pavv)° around \($peakPav.t | strflocaltime("%I:%M %p") | ltrimstr("0")) today - stick to grass or walk early/late."
+                elif $peakFeels.feels >= 88
+                then "Feels like \($peakFeels.feels)° around \($peakFeels.t | strflocaltime("%I:%M %p") | ltrimstr("0")) today - favor an early or late walk."
+                else empty end')
+            if [ -n "$heat" ]; then
+              curl -s -H "Title: DogWalk" -H "Tags: hot_face" -d "$heat" "https://ntfy.sh/$TOPIC" > /dev/null
+              echo "sent morning heat: $heat"
+            else
+              echo "no morning heat alert"
             fi
           fi
