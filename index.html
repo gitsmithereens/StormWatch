@@ -64,6 +64,21 @@
       .status-pill.live{border-color:#00ff88;color:#00ff88;box-shadow:0 0 6px rgba(0,255,136,.25)}
       .status-pill.error{border-color:#ff4444;color:#ff4444;box-shadow:0 0 6px rgba(255,68,68,.2)}
       .status-pill.offline{border-color:#ffa500;color:#ffa500;box-shadow:0 0 6px rgba(255,165,0,.2)}
+      /* Nor'easter pill is a HAZARD level, not a feed-health light — deliberately not green/red */
+      .status-pill.nor-quiet{border-color:#555;color:#8b949e}
+      .status-pill.nor-watch{border-color:#ffd700;color:#ffd700}
+      .status-pill.nor-active{border-color:#ffa500;color:#ffa500;box-shadow:0 0 6px rgba(255,165,0,.3)}
+      .status-pill.nor-strong{border-color:#ff4444;color:#ff4444;box-shadow:0 0 8px rgba(255,68,68,.35)}
+      /* nor'easter panel severity colors — bright on dark, darker on light so they stay legible */
+      .nor-c-quiet{color:#8b949e}.nor-c-watch,.nor-c-minor{color:#ffd700}.nor-c-moderate{color:#ffa500}.nor-c-strong{color:#ff4444}
+      .nor-v-warn{color:#ffa500!important}.nor-v-bad{color:#ff4444!important}
+      .nor-chip-warn{border-color:#ffa500!important;color:#ffa500}.nor-chip-bad{border-color:#ff4444!important;color:#ff4444}
+      [data-theme="light"] .nor-c-quiet{color:#636c76}
+      [data-theme="light"] .nor-c-watch,[data-theme="light"] .nor-c-minor{color:#7d4e00}
+      [data-theme="light"] .nor-c-moderate{color:#953800}[data-theme="light"] .nor-c-strong{color:#cf222e}
+      [data-theme="light"] .nor-v-warn{color:#953800!important}[data-theme="light"] .nor-v-bad{color:#cf222e!important}
+      [data-theme="light"] .nor-chip-warn{border-color:#953800!important;color:#953800}
+      [data-theme="light"] .nor-chip-bad{border-color:#cf222e!important;color:#cf222e}
       .status-dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse-dot 2s infinite}
       @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
       .tab-btn{padding:4px 10px;font-family:'Courier New',monospace;font-size:.6rem;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s}
@@ -164,6 +179,10 @@
       [data-theme="light"] .status-pill.error   { background:rgba(207,34,46,.07)!important;  border-color:#cf222e!important; color:#cf222e!important; box-shadow:none!important; }
       [data-theme="light"] .status-pill.offline { background:rgba(149,56,0,.07)!important;   border-color:#953800!important; color:#953800!important; box-shadow:none!important; }
       [data-theme="light"] .status-pill.checking{ background:rgba(99,108,118,.07)!important; border-color:#636c76!important; color:#636c76!important; }
+      [data-theme="light"] .status-pill.nor-quiet { background:rgba(99,108,118,.07)!important; border-color:#636c76!important; color:#636c76!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.nor-watch { background:rgba(154,103,0,.08)!important; border-color:#9a6700!important; color:#7d4e00!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.nor-active{ background:rgba(154,87,0,.1)!important;  border-color:#953800!important; color:#953800!important; box-shadow:none!important; }
+      [data-theme="light"] .status-pill.nor-strong{ background:rgba(207,34,46,.07)!important; border-color:#cf222e!important; color:#cf222e!important; box-shadow:none!important; }
       /* dark mode: lift the near-invisible hardcoded dim inline colors */
       :root:not([data-theme="light"]) [style*="color:#555"] { color:#8b949e!important; }
       :root:not([data-theme="light"]) [style*="color: #555"] { color:#8b949e!important; }
@@ -383,6 +402,7 @@
             <span id="pill-buoy" class="status-pill checking"><span class="status-dot"></span>BUOY: CHECKING</span>
             <span id="pill-qpe"  class="status-pill checking"><span class="status-dot"></span>QPE: CHECKING</span>
             <span id="pill-obs"  class="status-pill checking"><span class="status-dot"></span>OBS: CHECKING</span>
+            <span id="pill-noreaster" class="status-pill checking" title="Nor'easter watch — northeast wind, seas and water-level signature"><span class="status-dot"></span>NOR'EASTER: CHECKING</span>
         </div>
         <div id="header-actions" class="flex items-center gap-1.5">
             <button id="notif-btn" class="notif-btn" title="Enable push notifications for new alerts">🔔 ALERTS</button>
@@ -555,6 +575,38 @@
 
             <!-- ========== RIGHT COLUMN ========== -->
             <div data-id="115" id="col-right" class="flex flex-col gap-3 min-w-0">
+
+                <!-- NOR'EASTER WATCH — compact when quiet, expands automatically when there's an event -->
+                <div class="panel" id="panel-noreaster">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1"><i data-lucide="wind" class="w-3.5 h-3.5 text-cyan-400"></i> NOR'EASTER WATCH</span>
+                        <span id="nor-meta" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="nor-status" style="padding:8px 10px;border:1px solid #30363d;border-radius:6px;background:#1c2128;margin-bottom:8px">
+                            <div id="nor-badge" class="nor-c-quiet" style="font-family:'Courier New',monospace;font-size:.72rem;font-weight:700">Checking…</div>
+                            <div id="nor-summary" style="font-family:'Courier New',monospace;font-size:.58rem;line-height:1.55;color:#8b949e;margin-top:3px"></div>
+                            <div id="nor-why" style="font-family:'Courier New',monospace;font-size:.52rem;line-height:1.5;color:#8b949e;margin-top:4px;opacity:.85"></div>
+                        </div>
+                        <div id="nor-metrics" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+
+                        <button id="nor-toggle" class="tab-btn" onclick="norToggleDetails()" style="margin-top:8px;font-size:.55rem;padding:3px 8px">▸ DETAILS</button>
+
+                        <div id="nor-details" style="display:none;margin-top:8px">
+                            <div style="font-family:'Courier New',monospace;font-size:.5rem;color:#8b949e;margin-bottom:3px">NEXT 72 H — GUSTS (COLOR = NORTH-TO-NE FLOW, GRAY = OTHER) · SEAS LINE</div>
+                            <svg id="nor-timeline" viewBox="0 0 300 88" style="width:100%;display:block"></svg>
+                            <div id="nor-alerts" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"></div>
+                            <div id="nor-afd" style="font-family:'Courier New',monospace;font-size:.56rem;line-height:1.55;color:#8b949e;margin-top:8px"></div>
+
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px">
+                                <div style="font-family:'Courier New',monospace;font-size:.5rem;color:#8b949e">WPC SURFACE MAP — WHERE'S THE LOW?</div>
+                                <div id="nor-map-tabs" style="display:flex;gap:3px;flex-wrap:wrap"></div>
+                            </div>
+                            <img id="nor-map-img" alt="WPC surface analysis and forecast chart" loading="lazy" style="width:100%;border-radius:4px;background:#fff;display:block" />
+                            <div style="font-family:'Courier New',monospace;font-size:.5rem;line-height:1.5;color:#8b949e;margin-top:4px">A nor'easter = a strong High to the north squeezing against a Low or front off the coast. Tight isobars (solid lines) between them = strong northeast wind. Valid time is printed on each map.</div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- RAIN TIMELINE / DOG WALK PLANNER PANEL -->
                 <div class="panel" id="panel-rainwalk">
@@ -1541,6 +1593,9 @@ async function fetchAlerts() {
   renderWatchesWarnings(currentAlerts);
   renderTornadoLayer();
   renderTornadoStatus();
+  // its corroborating alerts come from this feed. Isolated: a bug in the nor'easter panel must never
+  // stop the warning banner below from updating.
+  try { renderNoreaster(); } catch (e) { console.warn('nor\'easter render failed:', e); }
   updateRiskBanner();
 }
 
@@ -1789,7 +1844,7 @@ function renderActiveStorms(storms) {
     const pres = s.pressure ? s.pressure + ' mb' : '--';
     const lat  = s.lat ? s.lat.toFixed(1) + '&deg;N' : '';
     const lon  = s.lon ? Math.abs(s.lon).toFixed(1) + '&deg;W' : '';
-    const dist = (s.lat && s.lon) ? calcDistanceMi(CONFIG.lat, CONFIG.lon, s.lat, s.lon) : null;
+    const dist = (s.lat && s.lon) ? Math.round(haversineMiles(CONFIG.lat, CONFIG.lon, s.lat, s.lon)) : null;
     return '<div style="background:#1c2128;border:1px solid '+col+'44;border-radius:6px;padding:8px;margin-bottom:6px">' +
       '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">' +
       '<span style="padding:2px 7px;background:'+col+'22;color:'+col+';border:1px solid '+col+'66;' +
@@ -2398,6 +2453,20 @@ function updateRiskBanner() {
   if (activeWarning) {
     setRiskBanner('danger', '🚨', activeWarning.event.toUpperCase() + (activeWarning.headline ? ' — ' + activeWarning.headline : '') + cacheSuffix);
     return;
+  }
+
+  // A nor'easter has no NWS product of its own, so its coastal advisories would otherwise read
+  // as a generic "N active alerts". Name the event — unless a more urgent unrelated watch
+  // (tornado, severe thunderstorm, special marine…) is up, which must not be masked.
+  const nor = window._norAssessment;
+  if (nor && (nor.level === 'active' || nor.level === 'watch') &&
+      !currentAlerts.some(a => (a.priority || 0) >= 6 && !NOR_ALERT_RE.test(a.event))) {
+    try {
+      const hot = nor.level === 'active' && nor.severity && nor.severity !== 'minor';
+      const others = currentAlerts.length ? ' · ' + currentAlerts.length + ' active NWS alert' + (currentAlerts.length > 1 ? 's' : '') : '';
+      setRiskBanner(hot ? 'warning' : 'monitor', '🌬', norBannerText(nor) + others + cacheSuffix);
+      return;
+    } catch (e) { console.warn('nor\'easter banner text failed, falling through:', e); }
   }
 
   // Watches/Special Marine Warning (priority 6-8) are a real step up — orange.
@@ -3332,6 +3401,569 @@ async function fetchBuoy() {
     const ripEl = document.getElementById('buoy-rip');
     if (ripEl) ripEl.innerHTML = '<span class="cached-badge">⚠ OFFLINE</span>';
   }
+}
+
+// ─── NOR'EASTER WATCH ─────────────────────────────────────────────────────────
+// Nobody publishes a "track" for a nor'easter (NHC doesn't follow them), so this
+// detects the *signature* instead: persistent northeast-sector wind, building seas
+// and elevated water from the 72 h model forecast — corroborated by NWS alerts and
+// the JAX forecast discussion, with WPC surface charts to actually see the High
+// squeezing against the coastal Low.
+const NOR = {
+  // Wind-FROM directions (°) that count, wrapping through north. Deliberately includes N: this coast's
+  // shoreline runs roughly NNW–SSE, so northerly wind is the alongshore flow that stacks water against
+  // the beach — and NWS's own grid put the Sep 2026 event at 0–20°, not 45°.
+  sector: [345, 100],
+  flowMph: 12, flowGust: 22,     // an in-sector hour counts as "flow" at/above either (strength is scored separately)
+  minHours: 9, gapHours: 3,      // flow must persist this long; brief lulls inside it are bridged
+  spanBackH: 12, spanFwdH: 72,
+  marineZone: 'AMZ450',          // NWS coastal waters: Fernandina Beach to St. Augustine, out 20 NM
+  // Mayport NWS flood stages in MLLW. CO-OPS lists 15.83/16.33/17.33 ft in station datum;
+  // station datum minus MLLW measured at 9.078 ft (Sep 2026).
+  flood: { minor: 6.75, moderate: 7.25, major: 8.25 }
+};
+const NOR_CARD = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const norCard = d => (d == null || isNaN(d)) ? '--' : NOR_CARD[Math.round(d / 22.5) % 16];
+const norInSector = d => d != null && !isNaN(d) && (d >= NOR.sector[0] || d <= NOR.sector[1]);
+const NOR_ALERT_RE = /coastal flood|high surf|small craft|gale|storm warning|storm watch|hurricane force|high wind|wind advisory|hazardous seas|storm surge/i;
+function norAlertTier(ev) {
+  if (!NOR_ALERT_RE.test(ev || '')) return 0;
+  if (/warning/i.test(ev) && /coastal flood|high wind|gale|storm|hurricane force/i.test(ev)) return 3;
+  return 2;
+}
+function norAlertFamily(ev) {
+  if (/coastal flood|storm surge/i.test(ev)) return 'flood';
+  if (/high surf/i.test(ev)) return 'surf';
+  if (/small craft|gale|storm warning|storm watch|hurricane force|hazardous seas/i.test(ev)) return 'marine';
+  if (/wind/i.test(ev)) return 'wind';
+  return 'other';
+}
+
+const norWindPts  = (s, g) => Math.max(s >= 36 ? 3 : s >= 28 ? 2 : s >= 20 ? 1 : 0, g >= 52 ? 3 : g >= 42 ? 2 : g >= 32 ? 1 : 0);
+const norSeasPts  = ft => ft >= 12 ? 3 : ft >= 8 ? 2 : ft >= 5 ? 1 : 0;
+const norSurgePts = ft => ft >= 2.4 ? 3 : ft >= 1.7 ? 2 : ft >= 1.0 ? 1 : 0;
+const norSevFromTotal = t => t >= 9 ? 'strong' : t >= 5 ? 'moderate' : t >= 3 ? 'minor' : null;
+
+// Runs of northerly-to-northeast flow at/above the (loose) flow thresholds, merged across short
+// lulls. That finds *when*; how *strong* it is comes from the peaks inside the run, so a long
+// breezy run is timed correctly without being scored as a big event.
+function norFindWindows(hrs) {
+  const hot = hrs.map(h => norInSector(h.wdir) && ((h.wspd || 0) >= NOR.flowMph || (h.gust || 0) >= NOR.flowGust));
+  const runs = [];
+  let cur = null;
+  hrs.forEach((h, i) => {
+    if (!hot[i]) return;
+    if (cur && h.t - hrs[cur.end].t <= (NOR.gapHours + 1) * 3600) cur.end = i;
+    else { cur = { start: i, end: i }; runs.push(cur); }
+  });
+  return runs.map(r => {
+    const seg = hrs.slice(r.start, r.end + 1);
+    const ne = seg.filter(h => norInSector(h.wdir));
+    const t0 = hrs[r.start].t, t1 = hrs[r.end].t + 3600;
+    const peakSustained = Math.max(0, ...ne.map(h => h.wspd || 0));
+    let pk = ne[0], peakGust = 0;
+    ne.forEach(h => { const g = Math.max(h.gust || 0, h.wspd || 0); if (g > peakGust) { peakGust = g; pk = h; } });
+    // Score gusts on the 3rd-highest hour, not the single peak: one convective gust (a 53 mph spike
+    // inside a 23 mph event once scored a full 3 wind points) shouldn't decide the rating.
+    const gs = ne.map(h => Math.max(h.gust || 0, h.wspd || 0)).sort((a, b) => b - a);
+    const gustSteady = gs.length ? gs[Math.min(2, gs.length - 1)] : 0;
+    // seas lag the wind, so look a little either side of the wind window
+    const waves = hrs.filter(h => h.t >= t0 - 3 * 3600 && h.t <= t1 + 6 * 3600 && h.wave != null).map(h => h.wave);
+    return { start: t0, end: t1, hours: (t1 - t0) / 3600, peakSustained, peakGust,
+             peakT: pk ? pk.t : t0, peakWave: waves.length ? Math.max(...waves) : 0,
+             windPts: norWindPts(peakSustained, gustSteady) };
+  }).filter(w => w.hours >= NOR.minHours);
+}
+
+// Pure: no DOM, no fetching — so past events can be replayed through it.
+// inp: { nowSec, hours:[{t,wspd,gust,wdir,pres,wave,wavePd}], surge, obs, alerts:[{event,src}], afd }
+//
+// Design rule learned the hard way (Sep 24 2026): never let a single wind forecast veto strong
+// observed evidence. The default model said NNW 12 mph while Mayport water sat 1.6 ft above the
+// tide with a flood-stage high coming and three NWS coastal advisories up. So this weighs
+// independent lines of evidence (forecast wind, observed wind, seas, water level, NWS alerts,
+// forecaster text) and requires only that *some* northerly-to-northeast flow exists — which
+// keeps hurricane-swell days (big surf, offshore wind) from being mislabeled as nor'easters.
+function assessNoreaster(inp) {
+  const now = inp.nowSec;
+  const hrs = (inp.hours || []).filter(h => h.t >= now - NOR.spanBackH * 3600 && h.t <= now + NOR.spanFwdH * 3600)
+                               .sort((a, b) => a.t - b.t);
+  const alerts = (inp.alerts || []).map(a => ({ event: a.event, src: a.src, expires: a.expires,
+      tier: norAlertTier(a.event), family: norAlertFamily(a.event) })).filter(a => a.tier > 0);
+  const aTier = alerts.reduce((m, a) => Math.max(m, a.tier), 0);
+  const families = new Set(alerts.map(a => a.family));
+  const surge = inp.surge || null, obs = inp.obs || null;
+
+  let cur = null, back6 = null;
+  hrs.forEach(h => {
+    if (!cur || Math.abs(h.t - now) < Math.abs(cur.t - now)) cur = h;
+    if (!back6 || Math.abs(h.t - (now - 6 * 3600)) < Math.abs(back6.t - (now - 6 * 3600))) back6 = h;
+  });
+  const pressureTrend = (cur && back6 && cur.pres != null && back6.pres != null && cur !== back6) ? cur.pres - back6.pres : null;
+
+  // strongest flow window that's ongoing or ahead (one that ended >6 h ago is over)
+  const win = norFindWindows(hrs).filter(w => w.end >= now - 6 * 3600)
+    .sort((a, b) => b.windPts - a.windPts || a.start - b.start)[0] || null;
+  const obsNE = !!(obs && norInSector(obs.dir) && obs.mph >= 12);
+  const curNE = !!(cur && norInSector(cur.wdir) && (cur.wspd || 0) >= 12);
+  const flowOK = !!win || obsNE || curNE;
+
+  const ev = [];
+  const add = (k, pts, text) => { if (pts > 0) ev.push({ k, pts, text }); return pts; };
+  const seasNow = cur && cur.wave != null ? cur.wave : 0;
+  const seasNext24 = Math.max(seasNow, ...hrs.filter(h => h.t >= now && h.t <= now + 24 * 3600 && h.wave != null).map(h => h.wave));
+  const seasPeak = win ? Math.max(win.peakWave, seasNow) : seasNext24;
+  const pWind  = win ? add('wind', win.windPts, 'wind to ' + Math.round(win.peakSustained) + ' mph, gusts ' + Math.round(win.peakGust)) : 0;
+  const pObs   = obsNE ? add('obs', obs.mph >= 22 ? 2 : 1, 'Mayport ' + norCard(obs.dir) + ' ' + Math.round(obs.mph) + ' mph') : 0;
+  const pSeas  = add('seas', norSeasPts(seasPeak), 'seas ' + seasPeak.toFixed(1) + ' ft');
+  // Water: surge above the tide (intensity) and the projected high tide vs flood stage (impact) are
+  // the same phenomenon, so take the larger rather than adding both. (Adding both once flipped a
+  // moderate advisory-only event to "strong" on a 0.07 ft change.)
+  const proj = surge && surge.nextHigh ? surge.nextHigh.proj : null;
+  const surgeP = surge ? norSurgePts(surge.now) : 0;
+  const floodP = proj == null ? 0 : (proj >= NOR.flood.major ? 4 : proj >= NOR.flood.moderate ? 3 : proj >= NOR.flood.minor ? 2 : 0);
+  const pWater = add('water', Math.max(surgeP, floodP),
+    [surge && 'water ' + (surge.now >= 0 ? '+' : '') + surge.now.toFixed(1) + ' ft above tide',
+     proj != null && floodP > 0 && 'next high tide ~' + proj.toFixed(1) + ' ft vs ' + NOR.flood.minor + ' ft flood stage'].filter(Boolean).join(', '));
+  const pAlert = add('alerts', aTier === 3 ? 3 : Math.min(2, families.size), 'NWS: ' + Array.from(new Set(alerts.map(a => a.event))).join(', '));
+  const pAfd   = (inp.afd && inp.afd.mention) ? add('afd', 1, 'forecasters mention a nor\'easter') : 0;
+  const total  = pWind + pObs + pSeas + pWater + pAlert + pAfd;
+
+  let severity = flowOK ? norSevFromTotal(total) : null;
+  if (severity) {
+    // Anchor to NWS's own call: a warning-level product means strong; advisories alone cap it at
+    // moderate unless the physical numbers themselves are extreme.
+    const extreme = (win && win.windPts >= 3) || norSeasPts(seasPeak) >= 3 || !!(surge && surge.now >= 2.4);
+    if (aTier === 3) severity = 'strong';
+    else if (aTier === 2 && severity === 'strong' && !extreme) severity = 'moderate';
+  }
+  // what's already happening (vs. only forecast): observed wind, seas now, water now, alerts in effect
+  const nowEv = pObs + norSeasPts(seasNow) + surgeP + pAlert;
+  let level = 'quiet';
+  if (severity) {
+    if (win && now >= win.start - 3600 && now <= win.end) level = 'active';
+    else if (nowEv >= 2) level = 'active';
+    else if (win && now < win.start - 3600) level = 'watch';
+    else if (win && now > win.end) level = 'easing';
+  }
+
+  return { level, severity, window: win, weakWindow: (win && !severity) ? win : null,
+           evidence: ev, total, points: { wind: pWind, obs: pObs, seas: pSeas, water: pWater, alerts: pAlert, afd: pAfd, total },
+           alerts, alertTier: aTier, now: { cur, obs, surge, pressureTrend },
+           afdMention: !!(inp.afd && inp.afd.mention) };
+}
+
+// ── data assembly ──────────────────────────────────────────────────────────────
+function norBuildHours(fc, mar) {
+  const map = new Map();
+  if (fc && fc.hourly) {
+    const h = fc.hourly, NBM = '_ncep_nbm_conus', BM = '_best_match';
+    const arr = k => Array.isArray(h[k]) ? h[k] : null;
+    h.time.forEach((t, i) => {
+      // Wind, gust and direction all come from ONE model per hour: the National Blend of Models when
+      // it has a value (NWS's calibrated baseline — the default blend ran ~2x too light on this coast
+      // on Sep 24 2026), otherwise the default blend. Also handles a plain single-model response.
+      const nbm = arr('wind_speed_10m' + NBM);
+      const sfx = (nbm && nbm[i] != null) ? NBM : (arr('wind_speed_10m' + BM) ? BM : '');
+      const pick = base => { const a = arr(base + sfx); return a ? a[i] : null; };
+      const presA = arr('pressure_msl' + BM) || arr('pressure_msl');   // the Blend carries no pressure
+      map.set(t, { t, wspd: pick('wind_speed_10m'), gust: pick('wind_gusts_10m'), wdir: pick('wind_direction_10m'),
+                   pres: presA ? presA[i] : null });
+    });
+  }
+  if (mar && mar.hourly) {
+    const h = mar.hourly;
+    h.time.forEach((t, i) => {
+      let o = map.get(t); if (!o) { o = { t }; map.set(t, o); }
+      o.wave = h.wave_height[i]; o.wavePd = h.wave_period[i];
+    });
+  }
+  return Array.from(map.values()).sort((a, b) => a.t - b.t);
+}
+
+function norEasternKey(ms) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(ms));
+  const g = t => p.find(x => x.type === t).value;
+  return g('year') + '-' + g('month') + '-' + g('day') + ' ' + (g('hour') === '24' ? '00' : g('hour')) + ':' + g('minute');
+}
+
+// Storm surge = observed water level minus the astronomical tide prediction. Matched on
+// the identical local-time strings CO-OPS returns for both, so there's no timezone math.
+function norComputeSurge(obsLvl, pred6, hilo, nowKey) {
+  if (!obsLvl || !pred6) return null;
+  const pm = new Map(pred6.map(p => [p.t, parseFloat(p.v)]));
+  const res = [];
+  obsLvl.forEach(o => {
+    const v = parseFloat(o.v), p = pm.get(o.t);
+    if (isFinite(v) && p != null && isFinite(p)) res.push(v - p);
+  });
+  if (res.length < 10) return null;
+  const mean = (a, i, n) => { let s = 0; for (let k = 0; k < n; k++) s += a[i - k]; return s / n; };
+  const last = res.length - 1;
+  const now = mean(res, last, 5);                               // ~30 min, smooths seiche noise
+  let max24 = -9;
+  for (let i = Math.max(4, res.length - 240); i <= last; i++) max24 = Math.max(max24, mean(res, i, 5));
+  const trend = res.length > 70 ? now - mean(res, last - 60, 5) : null;   // vs ~6 h earlier
+  const nh = (hilo || []).find(h => h.type === 'H' && h.t > nowKey) || null;
+  return { now, max24, trend,
+           nextHigh: nh ? { t: nh.t, pred: parseFloat(nh.v), proj: parseFloat(nh.v) + now } : null };
+}
+
+// Mayport wind: last ~30 min, knots → mph, circular-mean direction.
+function norObsWind(data) {
+  if (!data || !data.length) return null;
+  const s = data.slice(-5).filter(d => isFinite(parseFloat(d.s)) && isFinite(parseFloat(d.d)));
+  if (!s.length) return null;
+  const KT = 1.15078;
+  const mph = s.reduce((a, d) => a + parseFloat(d.s), 0) / s.length * KT;
+  const gust = Math.max(...s.map(d => parseFloat(d.g) || 0)) * KT;
+  let sx = 0, sy = 0;
+  s.forEach(d => { const r = parseFloat(d.d) * Math.PI / 180; sx += Math.sin(r); sy += Math.cos(r); });
+  const dir = (Math.atan2(sx, sy) * 180 / Math.PI + 360) % 360;
+  return { mph, gustMph: gust, dir, t: s[s.length - 1].t };
+}
+
+function norParseAFD(text) {
+  const t = text || '';
+  const m = t.match(/\.KEY MESSAGES\.\.\.([\s\S]*?)(?:\n&&|\n\.[A-Z][A-Z \/\-]+\.\.\.)/);
+  const bullets = (m ? m[1] : '').split(/\n(?=- )/).filter(b => b.trim().startsWith('- '))
+    .map(b => b.trim().replace(/^- /, '').replace(/\s*\n\s*/g, ' ').trim());
+  const coastal = /coastal flood|high surf|northeast(?:erly)? wind|onshore|beach erosion|small craft|nor'?easter|northeaster/i;
+  const issued = (t.match(/\n(\d{3,4} [AP]M [A-Z]{3} [A-Za-z]{3} [A-Za-z]{3} \d+ \d{4})/) || [])[1] || null;
+  return { issued, mention: /nor'?easter|northeaster/i.test(t), note: bullets.find(b => coastal.test(b)) || null };
+}
+
+// fc / mar are the raw hourly feeds, kept separately so either can refresh (or fail) on its
+// own; `hours` is always rebuilt from them and is what everything else reads.
+let _nor = { fc: null, mar: null, hours: null, surge: null, obs: null, marAlerts: [], afd: null, srf: null, ts: {} };
+function norSave() {
+  saveCache('noreaster', { fc: _nor.fc, mar: _nor.mar, surge: _nor.surge, obs: _nor.obs, marAlerts: _nor.marAlerts, afd: _nor.afd, srf: _nor.srf, ts: _nor.ts });
+}
+// A stale or malformed cache (say, written by an older version of this code) must never take the
+// page down — this runs inside the startup block, where a throw would abort every fetch after it.
+const norValidFeed = f => !!(f && f.hourly && Array.isArray(f.hourly.time));
+function norRestore() {
+  try {
+    const c = loadCache('noreaster');
+    if (!c || !c.data) return;
+    const d = c.data;
+    if (!norValidFeed(d.fc) && !norValidFeed(d.mar)) return;
+    Object.assign(_nor, d, { fc: norValidFeed(d.fc) ? d.fc : null, mar: norValidFeed(d.mar) ? d.mar : null });
+    _nor.hours = norBuildHours(_nor.fc, _nor.mar);
+  } catch (e) {
+    console.warn('nor\'easter cache discarded:', e);
+    try { localStorage.removeItem('sw_cache_noreaster'); } catch (e2) {}
+    _nor.fc = _nor.mar = _nor.hours = null;
+  }
+}
+let _norAfdTs = 0, _norUserToggled = false, _norDetailsOpen = false, _norMapIdx = 0, _norMapLoaded = false;
+window._norAssessment = null;
+
+async function fetchNoreaster() {
+  const lat = CONFIG.lat, lon = CONFIG.lon, tz = 'America%2FNew_York';
+  const J = (u, ms) => fetchWithTimeout(u, {}, ms || 12000).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  const dayKey = off => norEasternKey(Date.now() + off * 86400000).slice(0, 10).replace(/-/g, '');
+  const co = (product, extra) => 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?station=8720218&product=' + product +
+    '&time_zone=lst_ldt&units=english&format=json' + extra;
+  const [fc, mar, lvl, pred, hilo, wnd, mal] = await Promise.allSettled([
+    J('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl&models=ncep_nbm_conus,best_match' +
+      '&past_hours=12&forecast_hours=84&wind_speed_unit=mph&timeformat=unixtime&timezone=' + tz),
+    J('https://marine-api.open-meteo.com/v1/marine?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=wave_height,wave_direction,wave_period&past_hours=12&forecast_hours=84&length_unit=imperial&timeformat=unixtime&timezone=' + tz),
+    J(co('water_level', '&datum=MLLW&begin_date=' + dayKey(-1) + '&end_date=' + dayKey(0))),
+    J(co('predictions', '&datum=MLLW&interval=6&begin_date=' + dayKey(-1) + '&end_date=' + dayKey(2))),
+    J(co('predictions', '&datum=MLLW&interval=hilo&begin_date=' + dayKey(0) + '&end_date=' + dayKey(2))),
+    J(co('wind', '&begin_date=' + dayKey(-1) + '&end_date=' + dayKey(0))),
+    J('https://api.weather.gov/alerts/active?zone=' + NOR.marineZone)
+  ]);
+  const ok = r => r.status === 'fulfilled' ? r.value : null;
+  const now = Date.now();
+  // Keep last-known-good for any source that failed; only replace what actually arrived.
+  // only accept a feed that actually has the expected shape (a 200 carrying an error body would
+  // otherwise overwrite good data with garbage)
+  if (norValidFeed(ok(fc)))  { _nor.fc  = { hourly: ok(fc).hourly };  _nor.ts.fc  = now; }
+  if (norValidFeed(ok(mar))) { _nor.mar = { hourly: ok(mar).hourly }; _nor.ts.mar = now; }
+  if (norValidFeed(ok(fc)) || norValidFeed(ok(mar))) _nor.hours = norBuildHours(_nor.fc, _nor.mar);
+  if (ok(lvl) && ok(pred)) {
+    _nor.surge = norComputeSurge(ok(lvl).data, ok(pred).predictions, ok(hilo) && ok(hilo).predictions, norEasternKey(now));
+    _nor.ts.lvl = now;
+  }
+  if (ok(wnd)) { _nor.obs = norObsWind(ok(wnd).data); _nor.ts.wnd = now; }
+  if (ok(mal)) {
+    _nor.marAlerts = (ok(mal).features || []).map(f => ({ event: f.properties.event, expires: f.properties.expires, src: 'marine' }));
+    _nor.ts.mal = now;
+  }
+  if (_nor.hours) norSave();
+  renderNoreaster();
+  if (now - _norAfdTs > 55 * 60 * 1000) fetchNorAFD();
+}
+
+// Latest NWS JAX text product of a given type (AFD, SRF…), or null.
+async function norLatestProduct(type) {
+  const list = await fetchWithTimeout('https://api.weather.gov/products/types/' + type + '/locations/JAX', {}, 10000).then(r => r.json());
+  const id = list && list['@graph'] && list['@graph'][0] && list['@graph'][0].id;
+  if (!id) return null;
+  const prod = await fetchWithTimeout('https://api.weather.gov/products/' + id, {}, 10000).then(r => r.json());
+  return prod.productText || null;
+}
+
+// The Surf Zone Forecast: the forecasters' own numbers for wind, surf and rip risk. First block only.
+function norParseSRF(text) {
+  const t = text || '';
+  const block = (t.match(/\n\.[A-Z][A-Z ]+\.\.\.\n([\s\S]*?)(?=\n\.[A-Z][A-Z ]+\.\.\.\n|$)/) || [])[1] || '';
+  const clean = s => s ? s.replace(/\s+/g, ' ').trim().replace(/\.+$/, '') : null;
+  const label = (t.match(/\n\.([A-Z][A-Z ]+)\.\.\.\n/) || [])[1] || 'TODAY';
+  return {
+    when: label.toLowerCase(),
+    risk: clean((block.match(/Rip Current Risk\**\.+\s*([^\n]+)/i) || [])[1]),
+    surf: clean((block.match(/Surf Height\.+\s*([^\n]+)/i) || [])[1]),
+    winds: clean((block.match(/Winds\.+\s*([\s\S]*?)(?=\n[A-Z])/) || [])[1])
+  };
+}
+
+async function fetchNorAFD() {   // AFD + SRF, both optional bonuses — the detector works without them
+  _norAfdTs = Date.now();
+  const [afd, srf] = await Promise.allSettled([norLatestProduct('AFD'), norLatestProduct('SRF')]);
+  if (afd.status === 'fulfilled' && afd.value) { _nor.afd = norParseAFD(afd.value); _nor.ts.afd = Date.now(); }
+  if (srf.status === 'fulfilled' && srf.value) { _nor.srf = norParseSRF(srf.value); _nor.ts.srf = Date.now(); }
+  if (_nor.hours) norSave();
+  renderNoreaster();
+}
+
+// ── rendering ──────────────────────────────────────────────────────────────────
+const norEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const norFmtT = sec => {
+  const d = new Date(sec * 1000), z = { timeZone: 'America/New_York' };
+  return d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, z)) + ' ' +
+         d.toLocaleTimeString('en-US', Object.assign({ hour: 'numeric' }, z));
+};
+const norFmtKeyT = key => {   // "YYYY-MM-DD HH:mm" (naive local) → "Thu 9:12 PM", no timezone math
+  const m = key.match(/(\d+)-(\d+)-(\d+) (\d+):(\d+)/);
+  if (!m) return key;
+  const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  return d.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
+const NOR_MAPS = [
+  { l: 'NOW',  u: 'https://www.wpc.ncep.noaa.gov/sfc/usfntsfcwbg.gif' },
+  { l: 'D1',   u: 'https://www.wpc.ncep.noaa.gov/basicwx/92fndfd.gif' },
+  { l: 'D1.5', u: 'https://www.wpc.ncep.noaa.gov/basicwx/94fndfd.gif' },
+  { l: 'D2',   u: 'https://www.wpc.ncep.noaa.gov/basicwx/96fndfd.gif' },
+  { l: 'D2.5', u: 'https://www.wpc.ncep.noaa.gov/basicwx/98fndfd.gif' },
+  { l: 'D3',   u: 'https://www.wpc.ncep.noaa.gov/basicwx/99fndfd.gif' }
+];
+function norSetMap(i) {
+  _norMapIdx = i; _norMapLoaded = true;
+  const img = document.getElementById('nor-map-img');
+  // 30-minute cache-bust bucket: WPC re-issues these a few times a day under the same filename
+  if (img) img.src = NOR_MAPS[i].u + '?b=' + Math.floor(Date.now() / 1800000);
+  const tabs = document.getElementById('nor-map-tabs');
+  if (tabs) tabs.innerHTML = NOR_MAPS.map((m, k) =>
+    '<button class="tab-btn' + (k === i ? ' active' : '') + '" onclick="norSetMap(' + k + ')" style="font-size:.5rem;padding:2px 6px">' + m.l + '</button>').join('');
+}
+function norApplyDetails(open) {
+  _norDetailsOpen = open;
+  const d = document.getElementById('nor-details'), b = document.getElementById('nor-toggle');
+  if (d) d.style.display = open ? 'block' : 'none';
+  if (b) b.textContent = (open ? '▾' : '▸') + ' DETAILS';
+  if (open && !_norMapLoaded) norSetMap(_norMapIdx);
+}
+function norToggleDetails() { _norUserToggled = true; norApplyDetails(!_norDetailsOpen); }
+
+// tone: '' | 'warn' | 'bad' — theme-aware classes, not inline colors
+function norChip(label, value, sub, tone) {
+  return '<div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:6px 8px;text-align:center">' +
+    '<div class="text-[.5rem] text-gray-600 mb-1">' + label + '</div>' +
+    '<div class="data-val' + (tone ? ' nor-v-' + tone : '') + '" style="font-size:.9rem">' + value + '</div>' +
+    '<div class="text-[.5rem] text-gray-600" style="margin-top:2px;line-height:1.35">' + sub + '</div></div>';
+}
+
+function norSummary(res) {
+  const w = res.window;
+  if (!res.severity) {
+    if (res.weakWindow) return 'Breezy northerly-to-northeast flow (gusts to ~' + Math.round(res.weakWindow.peakGust) + ' mph) — below nor\'easter thresholds.';
+    if (res.alerts.length) return 'Coastal hazard alerts are up, but there\'s no northerly-to-northeast wind behind them — likely swell from a distant storm, not a nor\'easter.';
+    return 'No nor\'easter signature in the next 72 h.';
+  }
+  if (!w) return 'Coastal impacts are under way, but the wind forecast shows no long-lasting northerly-to-northeast flow — trust the observations and NWS alerts over the model.';
+  const lastHot = w.end >= (res.horizonSec || Infinity) - 2 * 3600;
+  const peak = 'peak ' + norFmtT(w.peakT) + ': gusts ~' + Math.round(w.peakGust) + ' mph' + (w.peakWave >= 3 ? ', seas ~' + Math.round(w.peakWave) + ' ft' : '');
+  if (res.level === 'watch') {
+    const inH = Math.max(1, Math.round((w.start - Date.now() / 1000) / 3600));
+    return 'Northerly-to-northeast wind expected from ' + norFmtT(w.start) + ' (in ~' + inH + ' h) — ' + peak + '.';
+  }
+  if (res.level === 'easing') return 'The wind event ended ' + norFmtT(w.end) + ' — seas and water take longer to subside. Its ' + peak + '.';
+  return 'Northerly-to-northeast flow ' + (lastHot ? 'continuing past the 72 h outlook' : 'easing ~' + norFmtT(w.end)) + ' — ' + peak + '.';
+}
+const norWhy = res => (res.evidence && res.evidence.length ? 'Why: ' + res.evidence.map(e => e.text).join(' · ') : '') +
+  (res.tropical && res.severity ? ' · ⚠ Tropical system ' + res.tropical.name + ' is ~' + Math.round(res.tropical.mi) + ' mi away and may be feeding this — see the Hurricane tab.' : '');
+
+function norBadge(res) {
+  if (res.level === 'quiet') return { text: 'QUIET', cls: 'nor-c-quiet' };
+  const sev = res.severity ? ' — ' + res.severity.toUpperCase() : '';
+  if (res.level === 'watch') return { text: 'NOR\'EASTER EXPECTED' + sev, cls: 'nor-c-watch' };
+  if (res.level === 'easing') return { text: 'NOR\'EASTER EASING' + sev, cls: 'nor-c-watch' };
+  return { text: 'NOR\'EASTER ACTIVE' + sev, cls: 'nor-c-' + (res.severity || 'minor') };
+}
+
+function norDrawTimeline(hrs, win, nowSec) {
+  const svg = document.getElementById('nor-timeline');
+  if (!svg) return;
+  const view = hrs.filter(h => h.t >= nowSec - 6 * 3600 && h.t <= nowSec + NOR.spanFwdH * 3600);
+  if (view.length < 8) { svg.innerHTML = ''; return; }
+  const W = 300, n = view.length, bw = W / n, GUST_MAX = 60, WAVE_MAX = 15;
+  const X = t => ((t - view[0].t) / 3600) * bw;
+  let out = '';
+  if (win) {   // shade the event window
+    const x0 = Math.max(0, X(win.start)), x1 = Math.min(W, X(win.end));
+    if (x1 > x0) out += '<rect x="' + x0.toFixed(1) + '" y="2" width="' + (x1 - x0).toFixed(1) + '" height="78" fill="#ffa500" opacity=".10"/>';
+  }
+  view.forEach((h, i) => {
+    const g = Math.max(h.gust || 0, h.wspd || 0);
+    const ne = norInSector(h.wdir);
+    const col = !ne ? '#4b5563' : g >= 40 ? '#ff4444' : g >= 30 ? '#ffa500' : g >= 20 ? '#ffd700' : '#6b7280';
+    const ht = Math.max(1, Math.min(1, g / GUST_MAX) * 34);
+    out += '<rect x="' + (i * bw + .2).toFixed(1) + '" y="' + (40 - ht).toFixed(1) + '" width="' + Math.max(1, bw - .4).toFixed(1) +
+      '" height="' + ht.toFixed(1) + '" fill="' + col + '"><title>' + norEsc(norFmtT(h.t) + ' — ' + norCard(h.wdir) + ' ' + Math.round(h.wspd || 0) +
+      ' mph, gust ' + Math.round(h.gust || 0) + (h.wave != null ? ', seas ' + h.wave.toFixed(1) + ' ft' : '')) + '</title></rect>';
+  });
+  // seas line + soft fill along the bottom band
+  const pts = view.filter(h => h.wave != null).map(h => (X(h.t) + bw / 2).toFixed(1) + ',' + (78 - Math.min(1, h.wave / WAVE_MAX) * 30).toFixed(1));
+  if (pts.length > 2) {
+    out += '<polygon points="' + pts.join(' ') + ' ' + pts[pts.length - 1].split(',')[0] + ',78 ' + pts[0].split(',')[0] + ',78" fill="#00d9ff" opacity=".15"/>' +
+           '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#00d9ff" stroke-width="1.3" stroke-linejoin="round"/>';
+  }
+  // now marker + day ticks
+  const xn = X(nowSec);
+  out += '<line x1="' + xn.toFixed(1) + '" y1="2" x2="' + xn.toFixed(1) + '" y2="80" stroke="#8b949e" stroke-width=".8" stroke-dasharray="2,2"/>';
+  const hrFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false });
+  view.forEach((h, i) => {
+    const hr = +hrFmt.format(new Date(h.t * 1000)) % 24;
+    if (hr === 0 && i > 0) {
+      const x = i * bw;
+      out += '<line x1="' + x.toFixed(1) + '" y1="2" x2="' + x.toFixed(1) + '" y2="80" stroke="#30363d" stroke-width=".6"/>' +
+        '<text x="' + (x + 2).toFixed(1) + '" y="87" font-size="6.5" fill="#8b949e" font-family="Courier New">' +
+        new Date(h.t * 1000).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'America/New_York' }) + '</text>';
+    }
+  });
+  out += '<text x="2" y="87" font-size="6.5" fill="#8b949e" font-family="Courier New">now</text>' +
+         '<text x="' + (W - 2) + '" y="9" font-size="6" fill="#8b949e" text-anchor="end" font-family="Courier New">60 mph</text>' +
+         '<text x="' + (W - 2) + '" y="55" font-size="6" fill="#00d9ff" text-anchor="end" font-family="Courier New">15 ft seas</text>';
+  svg.innerHTML = out;
+}
+
+function norSetPill(res) {
+  const el = document.getElementById('pill-noreaster');
+  if (!el) return;
+  let cls = 'nor-quiet', label = 'QUIET';
+  if (res.level === 'watch') { cls = 'nor-watch'; label = 'EXPECTED'; }
+  else if (res.level === 'easing') { cls = 'nor-watch'; label = 'EASING'; }
+  else if (res.level === 'active') {   // minor stays a soft yellow; only moderate+ earns orange, strong red
+    cls = res.severity === 'strong' ? 'nor-strong' : res.severity === 'minor' ? 'nor-watch' : 'nor-active';
+    label = 'ACTIVE' + (res.severity ? ' · ' + res.severity.toUpperCase() : '');
+  }
+  el.className = 'status-pill ' + cls;
+  el.innerHTML = '<span class="status-dot"></span>NOR\'EASTER: ' + label;
+  el.title = norSummary(res);
+}
+
+function norBannerText(res) {
+  const w = res.window, sev = res.severity ? ' (' + res.severity + ')' : '';
+  const bits = w ? 'gusts to ' + Math.round(w.peakGust) + ' mph' + (w.peakWave >= 3 ? ', seas ' + Math.round(w.peakWave) + ' ft' : '')
+                 : res.evidence.filter(e => e.k === 'water' || e.k === 'seas' || e.k === 'obs').map(e => e.text).join(', ');
+  if (res.level === 'watch') return 'NOR\'EASTER EXPECTED' + sev + ' — wind from ' + norFmtT(w.start) + ', ' + bits;
+  return 'NOR\'EASTER ACTIVE' + sev + ' — ' + bits + (w && res.level === 'active' ? ', easing ~' + norFmtT(w.end) : '');
+}
+
+function renderNoreaster() {
+  const badge = document.getElementById('nor-badge');
+  if (!badge) return;
+  if (!_nor.hours || !_nor.hours.length) {
+    badge.textContent = 'Checking…';
+    return;
+  }
+  const nowSec = Math.floor(Date.now() / 1000);
+  const landAlerts = (typeof currentAlerts !== 'undefined' ? currentAlerts : []).map(a => ({ event: a.event, expires: a.expires, src: 'land' }));
+  const res = assessNoreaster({ nowSec, hours: _nor.hours, surge: _nor.surge, obs: _nor.obs,
+                                alerts: landAlerts.concat(_nor.marAlerts || []), afd: _nor.afd });
+  const lastT = _nor.hours.length ? _nor.hours[_nor.hours.length - 1].t : 0;
+  res.horizonSec = Math.min(lastT, nowSec + NOR.spanFwdH * 3600);
+  // A hurricane's wind field is indistinguishable from a nor'easter to this detector (replaying Ian,
+  // Nicole and Milton all scored "strong"). That's fair, but say so rather than let it read as a
+  // classic coastal storm.
+  res.tropical = (typeof currentStorms !== 'undefined' ? currentStorms : []).filter(s => s.lat && s.lon)
+    .map(s => ({ name: s.name, mi: haversineMiles(CONFIG.lat, CONFIG.lon, s.lat, s.lon) }))
+    .filter(s => s.mi < 900).sort((a, b) => a.mi - b.mi)[0] || null;
+  window._norAssessment = res;
+
+  const b = norBadge(res);
+  badge.textContent = b.text; badge.className = b.cls;
+  const sum = document.getElementById('nor-summary');
+  if (sum) sum.textContent = norSummary(res);
+  const why = document.getElementById('nor-why');
+  if (why) why.textContent = norWhy(res);
+  const meta = document.getElementById('nor-meta');
+  if (meta) {
+    const ts = _nor.ts.fc || _nor.ts.mar;
+    meta.innerHTML = !ts ? '' : (Date.now() - ts > 3 * 3600 * 1000
+      ? '<span class="cached-badge">⚠ cached ' + cacheAgeLabel(ts) + '</span>'
+      : new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' EDT');
+  }
+
+  // metric chips
+  const cur = res.now.cur, obs = res.now.obs, sg = res.now.surge;
+  const wind = obs
+    ? norChip('WIND (MAYPORT)', norCard(obs.dir) + ' ' + Math.round(obs.mph) + ' mph', 'gust ' + Math.round(obs.gustMph) + ' mph', norInSector(obs.dir) && obs.mph >= 18 ? 'warn' : '')
+    : norChip('WIND (MODEL)', cur ? norCard(cur.wdir) + ' ' + Math.round(cur.wspd || 0) + ' mph' : '--', cur ? 'gust ' + Math.round(cur.gust || 0) + ' mph' : '', '');
+  const peakWave = Math.max(0, ..._nor.hours.filter(h => h.t >= nowSec && h.t <= nowSec + NOR.spanFwdH * 3600 && h.wave != null).map(h => h.wave));
+  const seas = norChip('SEAS', cur && cur.wave != null ? cur.wave.toFixed(1) + ' ft' : '--',
+    (cur && cur.wavePd ? Math.round(cur.wavePd) + ' s · ' : '') + (peakWave ? 'peak ' + peakWave.toFixed(1) + ' ft/72h' : ''),
+    cur && cur.wave >= 8 ? 'bad' : cur && cur.wave >= 5 ? 'warn' : '');
+  let water;
+  if (sg) {
+    const nh = sg.nextHigh, proj = nh ? nh.proj : null;
+    const c = (proj != null && proj >= NOR.flood.minor) ? 'bad' : sg.now >= 1.7 ? 'bad' : sg.now >= 1.0 ? 'warn' : '';
+    water = norChip('WATER vs TIDE', (sg.now >= 0 ? '+' : '') + sg.now.toFixed(1) + ' ft',
+      nh ? 'high ' + norFmtKeyT(nh.t) + ' → ~' + proj.toFixed(1) + ' ft' + (proj >= NOR.flood.minor ? ' ⚠ flood stage ' + NOR.flood.minor : '') : 'above predicted tide', c);
+  } else water = norChip('WATER vs TIDE', '--', '', '');
+  const pt = res.now.pressureTrend;
+  const pres = norChip('PRESSURE', cur && cur.pres != null ? Math.round(cur.pres) + ' hPa' : '--',
+    pt == null ? '' : (pt > 0.4 ? '▲ +' : pt < -0.4 ? '▼ ' : '▬ ') + pt.toFixed(1) + ' / 6 h', '');
+  const mEl = document.getElementById('nor-metrics');
+  if (mEl) mEl.innerHTML = wind + seas + water + pres;
+
+  norDrawTimeline(_nor.hours, res.window && res.severity ? res.window : null, nowSec);
+
+  // official alerts (deduped)
+  const seen = new Set();
+  const alEl = document.getElementById('nor-alerts');
+  if (alEl) {
+    const chips = res.alerts.filter(a => { const k = a.event + a.src; if (seen.has(k)) return false; seen.add(k); return true; })
+      .map(a => '<span class="nor-chip-' + (a.tier === 3 ? 'bad' : 'warn') + '" style="font-family:\'Courier New\',monospace;font-size:.5rem;padding:2px 6px;border-radius:10px;border:1px solid">' +
+        norEsc(a.event) + (a.src === 'marine' ? ' (waters)' : '') + '</span>');
+    alEl.innerHTML = chips.length ? chips.join('') :
+      '<span style="font-family:\'Courier New\',monospace;font-size:.5rem;color:#8b949e">No coastal-hazard alerts in effect</span>';
+  }
+  // the forecasters' own words and numbers, for a reality check against the model-derived values above
+  const afdEl = document.getElementById('nor-afd');
+  if (afdEl) {
+    const a = _nor.afd, s = _nor.srf;
+    const srfLine = (s && (s.winds || s.surf || s.risk))
+      ? '<div style="margin-bottom:5px"><b style="color:#e6edf3">NWS surf forecast (' + norEsc(s.when) + '):</b> ' +
+        [s.winds && norEsc(s.winds), s.surf && 'surf ' + norEsc(s.surf), s.risk && 'rip current risk ' + norEsc(s.risk.toLowerCase())].filter(Boolean).join(' · ') + '</div>'
+      : '';
+    const afdLine = !a ? '' :
+      (a.note ? '<b style="color:#e6edf3">NWS JAX discussion:</b> ' + norEsc(a.note) : '') +
+      (a.mention ? ' <b class="nor-c-moderate">Forecasters mention a nor\'easter.</b>' : '') +
+      ' <a href="https://forecast.weather.gov/product.php?site=JAX&issuedby=JAX&product=AFD" target="_blank" rel="noopener" style="color:#06b6d4">Full discussion →</a>';
+    afdEl.innerHTML = srfLine + afdLine;
+  }
+
+  norSetPill(res);
+  if (!_norUserToggled) norApplyDetails(res.level !== 'quiet');
+  if (typeof updateRiskBanner === 'function') updateRiskBanner();
 }
 
 // ─── LSR HISTORY LOG ──────────────────────────────────────────────────────────
@@ -4310,13 +4942,15 @@ async function fetchConditions() {
 async function fetchRipCurrent() {
   const body = document.getElementById('rip-body');
   const metaEl = document.getElementById('rip-meta');
-  // Try RFD (Rip Current Discussion) first, fall back to BHS (Beach Hazard Statement)
-  const productTypes = ['RFD','BHS','CFW'];
+  // SRF (Surf Zone Forecast) is JAX's real rip-current product — it states the risk outright.
+  // RFD/BHS stay as fallbacks. CFW (coastal flood) is deliberately NOT here: its text says
+  // "HIGH TIDE", which the keyword logic below misreads as a HIGH rip-current risk.
+  const productTypes = ['SRF','RFD','BHS'];
   let text = '', issuedAt = '';
   for (const type of productTypes) {
     try {
       const listR = await fetchWithTimeout(
-        'https://api.weather.gov/products?type=' + type + '&office=JAX&limit=1',
+        'https://api.weather.gov/products?type=' + type + '&office=KJAX&limit=1',   // NWS API now rejects 3-letter office ids (400)
         {headers:{Accept:'application/ld+json'}}, 8000
       );
       if (!listR.ok) continue;
@@ -4348,7 +4982,10 @@ async function fetchRipCurrent() {
   let flagHtml = '<span style="display:inline-flex;gap:2px;vertical-align:middle">' +
     '<span style="display:inline-block;width:10px;height:14px;background:#22c55e;border-radius:1px"></span>' +
     '</span>';
-  const upper = (ripText || text).toUpperCase();
+  // The SRF states the level in an explicit field ("Rip Current Risk*....High."). Read that rather
+  // than keyword-hunting: its tide lines say "High 07:22 AM" and would always match /HIGH/.
+  const riskField = (text.match(/Rip Current Risk\**\.+\s*(Low|Moderate|High|Extreme)/i) || [])[1];
+  const upper = riskField ? riskField.toUpperCase() : (ripText || text).toUpperCase();
   if (/EXTREME/.test(upper)) {
     level = 'EXTREME'; color = '#ff2222'; bg = 'rgba(255,34,34,.14)'; border = 'rgba(255,34,34,.4)';
     flagHtml = '<span style="display:inline-flex;gap:2px;vertical-align:middle">' +
@@ -4370,7 +5007,14 @@ async function fetchRipCurrent() {
   storeRipLevel(level);
   renderBeachScore();
 
-  const snippet = ripText.length > 220 ? ripText.substring(0, 220) + '…' : (ripText || 'See full beach forecast for details.');
+  let snippetSrc = ripText;
+  if (riskField) {   // SRF: lead with the advisory banner if there is one, then the surf height
+    const banner = (text.match(/\.\.\.([^\n]*?RIP CURRENT[^\n]*?)(?:\.\.\.|\n)/) || [])[1];
+    const surf = (text.match(/Surf Height\.+\s*([^\n]+)/i) || [])[1];
+    snippetSrc = (banner ? banner.trim().replace(/\.+$/, '') + '. ' : 'Rip current risk ' + riskField.toLowerCase() + '. ') +
+                 (surf ? 'Surf ' + surf.trim().replace(/\.+$/, '') + ' today.' : '');
+  }
+  const snippet = snippetSrc.length > 220 ? snippetSrc.substring(0, 220) + '…' : (snippetSrc || 'See full beach forecast for details.');
   body.innerHTML =
     '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:6px;background:' + bg + ';border:1px solid ' + border + ';margin-bottom:8px">' +
       '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap;padding-top:2px">' +
@@ -4475,6 +5119,8 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchRipCurrent();
   fetchUV();
   fetchRainWalk();
+  try { norRestore(); renderNoreaster(); } catch (e) { console.warn('nor\'easter restore failed:', e); }   // paint last-known-good instantly, then refresh
+  fetchNoreaster().catch(e => console.warn('nor\'easter fetch failed:', e));
   renderSunTimes();
   // restore history from localStorage on load
   renderRipHistory(JSON.parse(localStorage.getItem('sw_rip_history') || '[]'));
@@ -4499,7 +5145,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(fetchTropicalOutlookAreas, 20 * 60 * 1000);
   fetchRadarNowcast();
   setInterval(fetchRadarNowcast, 10 * 60 * 1000);
-  setInterval(fetchTropicalOutlookAreas, 30 * 60 * 1000);
+  setInterval(fetchNoreaster,    15 * 60 * 1000);
 
   // Restore display preferences (theme already set by early-init script; just sync buttons)
   updateDisplayToggles();
