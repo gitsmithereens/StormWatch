@@ -3409,6 +3409,11 @@ async function fetchBuoy() {
 // and elevated water from the 72 h model forecast — corroborated by NWS alerts and
 // the JAX forecast discussion, with WPC surface charts to actually see the High
 // squeezing against the coastal Low.
+//
+// The block between the NOR-CORE markers is PURE (no DOM, no page globals). The 8 AM ntfy workflow
+// (.github/scripts/noreaster-alert.js) extracts and runs this exact text under Node, so the alert
+// and the panel can't drift apart. Keep it pure, and keep the marker lines intact.
+// <<NOR-CORE-START>>
 const NOR = {
   // Wind-FROM directions (°) that count, wrapping through north. Deliberately includes N: this coast's
   // shoreline runs roughly NNW–SSE, so northerly wind is the alongshore flow that stacks water against
@@ -3633,6 +3638,7 @@ function norParseAFD(text) {
   const issued = (t.match(/\n(\d{3,4} [AP]M [A-Z]{3} [A-Za-z]{3} [A-Za-z]{3} \d+ \d{4})/) || [])[1] || null;
   return { issued, mention: /nor'?easter|northeaster/i.test(t), note: bullets.find(b => coastal.test(b)) || null };
 }
+// <<NOR-CORE-END>>
 
 // fc / mar are the raw hourly feeds, kept separately so either can refresh (or fail) on its
 // own; `hours` is always rebuilt from them and is what everything else reads.

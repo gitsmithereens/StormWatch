@@ -10,6 +10,15 @@ on:
     - cron: '*/30 10-23 * * *'   # 6:00 AM - 7:30 PM EDT
     - cron: '*/30 0-2 * * *'     # 8:00 PM - 10:30 PM EDT
   workflow_dispatch:
+    inputs:
+      force_noreaster:
+        description: 'TEMP: run the 8 AM nor easter check regardless of time (validation only)'
+        type: boolean
+        default: false
+      noreaster_dry:
+        description: 'TEMP: print the nor easter message instead of sending it'
+        type: boolean
+        default: false
 
 jobs:
   check:
@@ -42,7 +51,16 @@ jobs:
       TOPIC: ${{ matrix.topic }}
       HOT_LIMIT: ${{ matrix.hot }}
       COLD_LIMIT: ${{ matrix.cold }}
+      DRY_RUN: ${{ github.event.inputs.noreaster_dry }}
     steps:
+      # Only the nor'easter step needs the repo (it runs the detector straight out of index.html).
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            index.html
+            .github/scripts
+          sparse-checkout-cone-mode: false
+
       - name: Check forecast and notify (${{ matrix.name }})
         run: |
           set -e
@@ -131,4 +149,16 @@ jobs:
             else
               echo "no morning heat alert"
             fi
+          fi
+
+      # Morning nor'easter heads-up (8:00 AM run only). Runs the dashboard's own detector, so it sees
+      # exactly what the panel sees. Separate step + continue-on-error: a flaky feed here must never
+      # fail the rain/storm/heat step above or paint the run red.
+      - name: Nor'easter heads-up (${{ matrix.name }})
+        continue-on-error: true
+        run: |
+          if { [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; } || [ "${{ github.event.inputs.force_noreaster }}" = "true" ]; then
+            node .github/scripts/noreaster-alert.js
+          else
+            echo "not the 8 AM run - skipping nor'easter check"
           fi
