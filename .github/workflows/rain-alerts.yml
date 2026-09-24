@@ -10,15 +10,6 @@ on:
     - cron: '*/30 10-23 * * *'   # 6:00 AM - 7:30 PM EDT
     - cron: '*/30 0-2 * * *'     # 8:00 PM - 10:30 PM EDT
   workflow_dispatch:
-    inputs:
-      force_noreaster:
-        description: 'TEMP: run the 8 AM nor easter check regardless of time (validation only)'
-        type: boolean
-        default: false
-      noreaster_dry:
-        description: 'TEMP: print the nor easter message instead of sending it'
-        type: boolean
-        default: false
 
 jobs:
   check:
@@ -51,7 +42,6 @@ jobs:
       TOPIC: ${{ matrix.topic }}
       HOT_LIMIT: ${{ matrix.hot }}
       COLD_LIMIT: ${{ matrix.cold }}
-      DRY_RUN: ${{ github.event.inputs.noreaster_dry }}
     steps:
       # Only the nor'easter step needs the repo (it runs the detector straight out of index.html).
       - uses: actions/checkout@v4
@@ -157,7 +147,7 @@ jobs:
       - name: Nor'easter heads-up (${{ matrix.name }})
         continue-on-error: true
         run: |
-          if { [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; } || [ "${{ github.event.inputs.force_noreaster }}" = "true" ]; then
+          if [ "$(date +%H)" = "08" ] && [ "$(date +%M)" -lt 30 ]; then
             node .github/scripts/noreaster-alert.js
           else
             echo "not the 8 AM run - skipping nor'easter check"
