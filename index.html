@@ -3447,7 +3447,12 @@ function norAlertFamily(ev) {
 const norWindPts  = (s, g) => Math.max(s >= 36 ? 3 : s >= 28 ? 2 : s >= 20 ? 1 : 0, g >= 52 ? 3 : g >= 42 ? 2 : g >= 32 ? 1 : 0);
 const norSeasPts  = ft => ft >= 12 ? 3 : ft >= 8 ? 2 : ft >= 5 ? 1 : 0;
 const norSurgePts = ft => ft >= 2.4 ? 3 : ft >= 1.7 ? 2 : ft >= 1.0 ? 1 : 0;
-const norSevFromTotal = t => t >= 9 ? 'strong' : t >= 5 ? 'moderate' : t >= 3 ? 'minor' : null;
+// Before an event arrives the only evidence is forecast wind + seas (max 6 of the 16 points — surge, alerts
+// and observed wind only appear once impacts start), so "expected" events use lower cutoffs. Found when the
+// ntfy alert stayed silent for a forecast 30 mph / 46 mph-gust / 10 ft nor'easter that rated only "minor".
+const norSevFromTotal = (t, forecastOnly) => forecastOnly
+  ? (t >= 6 ? 'strong' : t >= 4 ? 'moderate' : t >= 3 ? 'minor' : null)
+  : (t >= 9 ? 'strong' : t >= 5 ? 'moderate' : t >= 3 ? 'minor' : null);
 
 // Runs of northerly-to-northeast flow at/above the (loose) flow thresholds, merged across short
 // lulls. That finds *when*; how *strong* it is comes from the peaks inside the run, so a long
@@ -3534,7 +3539,10 @@ function assessNoreaster(inp) {
   const pAfd   = (inp.afd && inp.afd.mention) ? add('afd', 1, 'forecasters mention a nor\'easter') : 0;
   const total  = pWind + pObs + pSeas + pWater + pAlert + pAfd;
 
-  let severity = flowOK ? norSevFromTotal(total) : null;
+  // what's already happening (vs. only forecast): observed wind, seas now, water now, alerts in effect
+  const nowEv = pObs + norSeasPts(seasNow) + surgeP + pAlert;
+  const forecastOnly = !!win && now < win.start - 3600 && nowEv < 2;
+  let severity = flowOK ? norSevFromTotal(total, forecastOnly) : null;
   if (severity) {
     // Anchor to NWS's own call: a warning-level product means strong; advisories alone cap it at
     // moderate unless the physical numbers themselves are extreme.
@@ -3542,8 +3550,6 @@ function assessNoreaster(inp) {
     if (aTier === 3) severity = 'strong';
     else if (aTier === 2 && severity === 'strong' && !extreme) severity = 'moderate';
   }
-  // what's already happening (vs. only forecast): observed wind, seas now, water now, alerts in effect
-  const nowEv = pObs + norSeasPts(seasNow) + surgeP + pAlert;
   let level = 'quiet';
   if (severity) {
     if (win && now >= win.start - 3600 && now <= win.end) level = 'active';

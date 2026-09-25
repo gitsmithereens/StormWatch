@@ -3,8 +3,8 @@
 //
 // Runs the SAME detector the dashboard panel uses: the pure block between the NOR-CORE markers in
 // index.html is extracted and evaluated here, so the alert and the panel can't drift apart.
-// Inputs mirror the panel's: NBM/default-blend wind + hindcast-free marine seas for this location,
-// Mayport water level vs tide + wind, land and marine-zone NWS alerts, and the JAX forecast discussion.
+// Inputs mirror the panel's: NBM/default-blend wind + marine seas for this location, Mayport water
+// level vs tide + wind, land and marine-zone NWS alerts, and the JAX forecast discussion.
 //
 // Sends only when a moderate-or-stronger event is expected or under way (minor ones are routine
 // breezy-northeast days, and the panel already shows those). Best-effort throughout: a flaky API
@@ -34,22 +34,46 @@ const soft = async (label, fn) => {
   try { return await fn(); } catch (e) { console.log('  (' + label + ' unavailable: ' + e.message + ')'); return null; }
 };
 
+// <<COMPOSE-START>>
+// Pure message composition, kept in its own marked block so it can be exercised without Node.
 const fmtT = sec => {
   const d = new Date(sec * 1000), z = { timeZone: 'America/New_York' };
-  return d.toLocaleDateString('en-US', { ...z, weekday: 'short' }) + ' ' + d.toLocaleTimeString('en-US', { ...z, hour: 'numeric' });
+  return d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, z)) + ' ' +
+         d.toLocaleTimeString('en-US', Object.assign({ hour: 'numeric' }, z));
 };
-const ascii = s => s.replace(/[  ]/g, ' ').replace(/[^\x20-\x7E]/g, '');   // ntfy treats non-ASCII bodies as file attachments
+// ntfy treats a non-ASCII body as a file attachment; newer ICU also puts U+202F before AM/PM
+const ascii = s => s.replace(new RegExp('[' + String.fromCharCode(0x202f, 0xa0) + ']', 'g'), ' ').replace(/[^\x20-\x7E]/g, '');
+const STORM_LABEL = { HU: 'Hurricane', TS: 'Tropical Storm', TD: 'Tropical Depression', STS: 'Subtropical Storm',
+                      STD: 'Subtropical Depression', PTC: 'Potential Tropical Cyclone' };
+
+// res: assessNoreaster() result; storm: {name, cls, mi} | null. Returns the ASCII message body.
+function composeMessage(res, NOR, storm, nowSec) {
+  const w = res.window, sg = res.now.surge;
+  const peak = w ? 'gusts ~' + Math.round(w.peakGust) + ' mph' + (w.peakWave >= 3 ? ', seas ~' + Math.round(w.peakWave) + ' ft' : '') : null;
+  let msg;
+  if (res.level === 'watch') {
+    msg = 'Nor\'easter expected (' + res.severity + '): north-to-northeast wind from ' + fmtT(w.start) + ', ' + peak + '.';
+  } else {
+    msg = 'Nor\'easter active (' + res.severity + '): ' + (peak
+      ? peak + (w.end < nowSec + 70 * 3600 ? ', easing ~' + fmtT(w.end) : ', lasting past 72 h')
+      : res.evidence.filter(e => e.k === 'seas' || e.k === 'obs').map(e => e.text).join(', '));
+    if (sg && sg.now >= 0.8) msg += '. Water +' + sg.now.toFixed(1) + ' ft' +
+      (sg.nextHigh && sg.nextHigh.proj >= NOR.flood.minor ? ', high tide ~' + sg.nextHigh.proj.toFixed(1) + ' ft (flood stage ' + NOR.flood.minor + ')' : '');
+    msg += '.';
+  }
+  if (storm) msg += ' ' + (STORM_LABEL[storm.cls] || 'Tropical system') + ' ' + storm.name + ' ~' + Math.round(storm.mi) + ' mi away may be feeding this.';
+  return ascii(msg);
+}
+// <<COMPOSE-END>>
 
 const haversineMiles = (lat1, lon1, lat2, lon2) => {
   const R = 3958.8, rad = d => d * Math.PI / 180;
   const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
-const STORM_LABEL = { HU: 'Hurricane', TS: 'Tropical Storm', TD: 'Tropical Depression', STS: 'Subtropical Storm',
-                      STD: 'Subtropical Depression', PTC: 'Potential Tropical Cyclone' };
 
 // Nearest ATLANTIC tropical system within 900 mi (same rule as the dashboard panel), or null. A hurricane's
-// wind field reads as a nor'easter to the detector, so say so in one short sentence.
+// wind field reads as a nor'easter to the detector, so the message says so in one short sentence.
 async function nearbyStorm() {
   if (process.env.FAKE_STORM) {   // "Name,lat,lon,CLASS" - test hook, removed after validation
     const [name, lat, lon, cls] = process.env.FAKE_STORM.split(',');
@@ -98,7 +122,8 @@ async function main() {
     .concat(((marAl && marAl.features) || []).map(f => ({ event: f.properties.event, src: 'marine' })));
   const afd = afdText ? core.norParseAFD(afdText) : null;
 
-  const res = core.assessNoreaster({ nowSec: Math.floor(now / 1000), hours, surge, obs, alerts, afd });
+  const nowSec = Math.floor(now / 1000);
+  const res = core.assessNoreaster({ nowSec, hours, surge, obs, alerts, afd });
   console.log('assessment: level=' + res.level + ' severity=' + res.severity + ' total=' + res.total + ' (' + hours.length + ' hourly rows)');
   res.evidence.forEach(e => console.log('  +' + e.pts + ' ' + e.k + ': ' + e.text));
 
@@ -114,21 +139,8 @@ async function main() {
     console.log('no nor\'easter alert needed'); return;
   }
 
-  const w = res.window, sg = res.now.surge;
-  const peak = w ? 'gusts ~' + Math.round(w.peakGust) + ' mph' + (w.peakWave >= 3 ? ', seas ~' + Math.round(w.peakWave) + ' ft' : '') : null;
-  let msg;
-  if (res.level === 'watch') {
-    msg = 'Nor\'easter expected (' + res.severity + '): north-to-northeast wind from ' + fmtT(w.start) + ', ' + peak + '. Plan walks and beach trips around it.';
-  } else {
-    msg = 'Nor\'easter active (' + res.severity + '): ' + (peak ? peak + (w.end < Date.now() / 1000 + 70 * 3600 ? ', easing ~' + fmtT(w.end) : ', lasting past 72 h')
-      : res.evidence.filter(e => e.k === 'seas' || e.k === 'obs').map(e => e.text).join(', '));
-    if (sg && sg.now >= 0.8) msg += '. Water +' + sg.now.toFixed(1) + ' ft' +
-      (sg.nextHigh && sg.nextHigh.proj >= core.NOR.flood.minor ? ', high tide ~' + sg.nextHigh.proj.toFixed(1) + ' ft (flood stage ' + core.NOR.flood.minor + ')' : '');
-    msg += '.';
-  }
   const storm = await soft('NHC storms', nearbyStorm);
-  if (storm) msg += ' ' + (STORM_LABEL[storm.cls] || 'Tropical system') + ' ' + storm.name + ' ~' + Math.round(storm.mi) + ' mi away may be feeding this.';
-  msg = ascii(msg);
+  const msg = composeMessage(res, core.NOR, storm, nowSec);
 
   if (DRY_RUN === 'true') { console.log('DRY RUN - would send: ' + msg); return; }
   const r = await fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', body: msg, headers: { Title: 'DogWalk', Tags: 'ocean' } });
