@@ -75,10 +75,6 @@ const haversineMiles = (lat1, lon1, lat2, lon2) => {
 // Nearest ATLANTIC tropical system within 900 mi (same rule as the dashboard panel), or null. A hurricane's
 // wind field reads as a nor'easter to the detector, so the message says so in one short sentence.
 async function nearbyStorm() {
-  if (process.env.FAKE_STORM) {   // "Name,lat,lon,CLASS" - test hook, removed after validation
-    const [name, lat, lon, cls] = process.env.FAKE_STORM.split(',');
-    return { name, cls, mi: haversineMiles(+LAT, +LON, +lat, +lon) };
-  }
   const j = await getJson('https://www.nhc.noaa.gov/CurrentStorms.json');
   const near = (j.activeStorms || []).filter(s => /^al/i.test(s.id) && isFinite(s.latitudeNumeric) && isFinite(s.longitudeNumeric))
     .map(s => ({ name: s.name, cls: s.classification, mi: haversineMiles(+LAT, +LON, s.latitudeNumeric, s.longitudeNumeric) }))
@@ -128,16 +124,7 @@ async function main() {
   res.evidence.forEach(e => console.log('  +' + e.pts + ' ' + e.k + ': ' + e.text));
 
   const worthy = (res.level === 'watch' || res.level === 'active') && (res.severity === 'moderate' || res.severity === 'strong');
-  if (!worthy) {
-    if (process.env.FORCE_SEND === 'true') {   // delivery test only, removed after validation
-      const ping = 'Test: nor\'easter heads-ups are set up. You will get one at 8 AM when a moderate or stronger one is expected or under way.';
-      if (DRY_RUN === 'true') { console.log('DRY RUN - would send test ping: ' + ping); return; }
-      const rp = await fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', body: ping, headers: { Title: 'DogWalk', Tags: 'ocean' } });
-      console.log('sent test ping (HTTP ' + rp.status + ')');
-      return;
-    }
-    console.log('no nor\'easter alert needed'); return;
-  }
+  if (!worthy) { console.log('no nor\'easter alert needed'); return; }
 
   const storm = await soft('NHC storms', nearbyStorm);
   const msg = composeMessage(res, core.NOR, storm, nowSec);
