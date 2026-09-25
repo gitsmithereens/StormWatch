@@ -122,8 +122,8 @@ async function main() {
   } else {
     msg = 'Nor\'easter active (' + res.severity + '): ' + (peak ? peak + (w.end < Date.now() / 1000 + 70 * 3600 ? ', easing ~' + fmtT(w.end) : ', lasting past 72 h')
       : res.evidence.filter(e => e.k === 'seas' || e.k === 'obs').map(e => e.text).join(', '));
-    if (sg && sg.now >= 0.8) msg += '. Water +' + sg.now.toFixed(1) + ' ft above tide' +
-      (sg.nextHigh && sg.nextHigh.proj >= core.NOR.flood.minor ? ', next high tide ~' + sg.nextHigh.proj.toFixed(1) + ' ft vs ' + core.NOR.flood.minor + ' ft flood stage' : '');
+    if (sg && sg.now >= 0.8) msg += '. Water +' + sg.now.toFixed(1) + ' ft' +
+      (sg.nextHigh && sg.nextHigh.proj >= core.NOR.flood.minor ? ', high tide ~' + sg.nextHigh.proj.toFixed(1) + ' ft (flood stage ' + core.NOR.flood.minor + ')' : '');
     msg += '.';
   }
   const storm = await soft('NHC storms', nearbyStorm);
