@@ -40,6 +40,28 @@ const fmtT = sec => {
 };
 const ascii = s => s.replace(/[  ]/g, ' ').replace(/[^\x20-\x7E]/g, '');   // ntfy treats non-ASCII bodies as file attachments
 
+const haversineMiles = (lat1, lon1, lat2, lon2) => {
+  const R = 3958.8, rad = d => d * Math.PI / 180;
+  const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+const STORM_LABEL = { HU: 'Hurricane', TS: 'Tropical Storm', TD: 'Tropical Depression', STS: 'Subtropical Storm',
+                      STD: 'Subtropical Depression', PTC: 'Potential Tropical Cyclone' };
+
+// Nearest ATLANTIC tropical system within 900 mi (same rule as the dashboard panel), or null. A hurricane's
+// wind field reads as a nor'easter to the detector, so say so in one short sentence.
+async function nearbyStorm() {
+  if (process.env.FAKE_STORM) {   // "Name,lat,lon,CLASS" - test hook, removed after validation
+    const [name, lat, lon, cls] = process.env.FAKE_STORM.split(',');
+    return { name, cls, mi: haversineMiles(+LAT, +LON, +lat, +lon) };
+  }
+  const j = await getJson('https://www.nhc.noaa.gov/CurrentStorms.json');
+  const near = (j.activeStorms || []).filter(s => /^al/i.test(s.id) && isFinite(s.latitudeNumeric) && isFinite(s.longitudeNumeric))
+    .map(s => ({ name: s.name, cls: s.classification, mi: haversineMiles(+LAT, +LON, s.latitudeNumeric, s.longitudeNumeric) }))
+    .filter(s => s.mi < 900).sort((a, b) => a.mi - b.mi);
+  return near[0] || null;
+}
+
 async function main() {
   const now = Date.now();
   const dayKey = off => core.norEasternKey(now + off * 86400000).slice(0, 10).replace(/-/g, '');
@@ -81,7 +103,16 @@ async function main() {
   res.evidence.forEach(e => console.log('  +' + e.pts + ' ' + e.k + ': ' + e.text));
 
   const worthy = (res.level === 'watch' || res.level === 'active') && (res.severity === 'moderate' || res.severity === 'strong');
-  if (!worthy) { console.log('no nor\'easter alert needed'); return; }
+  if (!worthy) {
+    if (process.env.FORCE_SEND === 'true') {   // delivery test only, removed after validation
+      const ping = 'Test: nor\'easter heads-ups are set up. You will get one at 8 AM when a moderate or stronger one is expected or under way.';
+      if (DRY_RUN === 'true') { console.log('DRY RUN - would send test ping: ' + ping); return; }
+      const rp = await fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', body: ping, headers: { Title: 'DogWalk', Tags: 'ocean' } });
+      console.log('sent test ping (HTTP ' + rp.status + ')');
+      return;
+    }
+    console.log('no nor\'easter alert needed'); return;
+  }
 
   const w = res.window, sg = res.now.surge;
   const peak = w ? 'gusts ~' + Math.round(w.peakGust) + ' mph' + (w.peakWave >= 3 ? ', seas ~' + Math.round(w.peakWave) + ' ft' : '') : null;
@@ -95,6 +126,8 @@ async function main() {
       (sg.nextHigh && sg.nextHigh.proj >= core.NOR.flood.minor ? ', next high tide ~' + sg.nextHigh.proj.toFixed(1) + ' ft vs ' + core.NOR.flood.minor + ' ft flood stage' : '');
     msg += '.';
   }
+  const storm = await soft('NHC storms', nearbyStorm);
+  if (storm) msg += ' ' + (STORM_LABEL[storm.cls] || 'Tropical system') + ' ' + storm.name + ' ~' + Math.round(storm.mi) + ' mi away may be feeding this.';
   msg = ascii(msg);
 
   if (DRY_RUN === 'true') { console.log('DRY RUN - would send: ' + msg); return; }
