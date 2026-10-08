@@ -69,6 +69,16 @@
       .status-pill.nor-watch{border-color:#ffd700;color:#ffd700}
       .status-pill.nor-active{border-color:#ffa500;color:#ffa500;box-shadow:0 0 6px rgba(255,165,0,.3)}
       .status-pill.nor-strong{border-color:#ff4444;color:#ff4444;box-shadow:0 0 8px rgba(255,68,68,.35)}
+      /* hurricane tracker hazard levels (far < near < threat < direct) — bright on dark, darker on light */
+      .ht-far{color:#8b949e;border-color:#555}.ht-near{color:#ffd700;border-color:#ffd700}
+      .ht-threat{color:#ffa500;border-color:#ffa500}.ht-direct{color:#ff4444;border-color:#ff4444;box-shadow:0 0 8px rgba(255,68,68,.3)}
+      .hb-far{border-left-color:#555!important}.hb-near{border-left-color:#ffd700!important}
+      .hb-threat{border-left-color:#ffa500!important}.hb-direct{border-left-color:#ff4444!important}
+      [data-theme="light"] .ht-far{color:#636c76;border-color:#636c76}[data-theme="light"] .ht-near{color:#7d4e00;border-color:#9a6700}
+      [data-theme="light"] .ht-threat{color:#953800;border-color:#953800}[data-theme="light"] .ht-direct{color:#cf222e;border-color:#cf222e;box-shadow:none}
+      [data-theme="light"] .hb-near{border-left-color:#9a6700!important}[data-theme="light"] .hb-threat{border-left-color:#953800!important}
+      [data-theme="light"] .hb-direct{border-left-color:#cf222e!important}
+      [data-theme="light"] .hcat{filter:brightness(.5) saturate(1.5)}
       /* nor'easter panel severity colors — bright on dark, darker on light so they stay legible */
       .nor-c-quiet{color:#8b949e}.nor-c-watch,.nor-c-minor{color:#ffd700}.nor-c-moderate{color:#ffa500}.nor-c-strong{color:#ff4444}
       .nor-v-warn{color:#ffa500!important}.nor-v-bad{color:#ff4444!important}
@@ -403,6 +413,7 @@
             <span id="pill-qpe"  class="status-pill checking"><span class="status-dot"></span>QPE: CHECKING</span>
             <span id="pill-obs"  class="status-pill checking"><span class="status-dot"></span>OBS: CHECKING</span>
             <span id="pill-noreaster" class="status-pill checking" title="Nor'easter watch — northeast wind, seas and water-level signature"><span class="status-dot"></span>NOR'EASTER: CHECKING</span>
+            <span id="pill-tropical" class="status-pill checking" title="Atlantic tropical cyclones and what they mean for you"><span class="status-dot"></span>TROPICAL: CHECKING</span>
         </div>
         <div id="header-actions" class="flex items-center gap-1.5">
             <button id="notif-btn" class="notif-btn" title="Enable push notifications for new alerts">🔔 ALERTS</button>
@@ -972,10 +983,23 @@
 
     <!-- ====== HURRICANE VIEW ====== -->
     <div id="hurricane-view" style="display:none" class="p-3 lg:p-4">
+        <!-- STATUS STRIP — one line per active storm: where it is, what it means for you -->
+        <div id="hurr-strip" style="display:none"></div>
         <div class="dash-grid" style="grid-template-columns:26fr 44fr 30fr">
 
-            <!-- LEFT: NHC Active Storms + TWO -->
+            <!-- LEFT: Impact on you + NHC Active Storms + TWO -->
             <div class="flex flex-col gap-3 min-w-0">
+
+                <!-- IMPACT ON ATLANTIC BEACH (shown only while a storm is active) -->
+                <div class="panel" id="hurr-impact-panel" style="display:none">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="crosshair" class="w-3.5 h-3.5 text-amber-400"></i> IMPACT ON ATLANTIC BEACH
+                        </span>
+                        <span id="hurr-impact-ts" class="time-val text-[.55rem]"></span>
+                    </div>
+                    <div class="panel-body" id="hurr-impact-body"></div>
+                </div>
 
                 <!-- NHC Active Storms -->
                 <div class="panel">
@@ -1029,11 +1053,14 @@
                         </span>
                         <!-- Layer toggles -->
                         <div class="flex gap-1 flex-wrap">
-                            <button id="btn-track" class="tab-btn" onclick="toggleHurrLayer('track')">Track</button>
-                            <button id="btn-cone" class="tab-btn" onclick="toggleHurrLayer('cone')">Cone</button>
-                            <button id="btn-wind" class="tab-btn" onclick="toggleHurrLayer('wind')">Wind</button>
+                            <button id="btn-track" class="tab-btn active" onclick="hurrToggle('track')" title="NHC forecast track, colored by forecast intensity, with times">Track</button>
+                            <button id="btn-cone" class="tab-btn active" onclick="hurrToggle('cone')" title="NHC cone of uncertainty (where the center may go, about 2 of 3 times)">Cone</button>
+                            <button id="btn-warn" class="tab-btn active" onclick="hurrToggle('warn')" title="Hurricane / tropical-storm watches and warnings along the coast">Warn</button>
+                            <button id="btn-wind" class="tab-btn active" onclick="hurrToggle('wind')" title="Current 34 / 50 / 64-kt wind field">Wind</button>
+                            <button id="btn-past" class="tab-btn active" onclick="hurrToggle('past')" title="Where the storm has been">Past</button>
+                            <button id="btn-arrival" class="tab-btn" onclick="hurrToggle('arrival')" title="Most likely arrival time of tropical-storm-force winds">Arrival</button>
+                            <button id="btn-fit" class="tab-btn" onclick="hurrFit(true)" title="Zoom to the storm and Atlantic Beach">⌖ Fit</button>
                             <button id="btn-evac" class="tab-btn" onclick="toggleEvacZones()" title="Duval County evacuation zones">🚗 EVAC</button>
-                            <button id="btn-radii" class="tab-btn" onclick="toggleWindRadii()" title="Show 34/50/64kt wind radius rings">💨 RADII</button>
                         </div>
                     </div>
                     <div class="panel-body p-0">
@@ -1082,6 +1109,18 @@
                                 <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
                                     <span class="inline-block w-2.5 h-2.5 rounded-full" style="border:1.5px dashed #ff4444"></span> Outlook Hi
                                 </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block" style="width:12px;height:4px;border-radius:2px;background:#ff2d2d"></span> Hurr Warn
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block" style="width:12px;height:4px;border-radius:2px;background:#ff69d9"></span> Hurr Watch
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block" style="width:12px;height:4px;border-radius:2px;background:#2f6bff"></span> TS Warn
+                                </span>
+                                <span class="flex items-center gap-1 text-[.45rem] text-gray-600" style="font-family:'Courier New',monospace">
+                                    <span class="inline-block" style="width:12px;height:4px;border-radius:2px;background:#ffe14d"></span> TS Watch
+                                </span>
                             </div>
                             <span id="hurr-map-label" class="time-val text-[.55rem]"></span>
                         </div>
@@ -1092,32 +1131,10 @@
                 <div class="panel">
                     <div class="panel-header">
                         <span class="flex items-center gap-1">
-                            <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-yellow-400"></i> 2025 ATLANTIC SEASON STATS
+                            <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-yellow-400"></i> ATLANTIC ACTIVITY — LIVE
                         </span>
                     </div>
-                    <div class="panel-body">
-                        <div class="grid grid-cols-4 gap-2 text-center">
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
-                                <div class="data-val text-base">14</div>
-                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">Named</div>
-                            </div>
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
-                                <div class="data-val text-base">7</div>
-                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">Hurricanes</div>
-                            </div>
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
-                                <div class="data-val text-base">4</div>
-                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">Major (Cat3+)</div>
-                            </div>
-                            <div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px">
-                                <div class="data-val text-base" style="color:#ffa500">ABOVE</div>
-                                <div class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">vs Normal</div>
-                            </div>
-                        </div>
-                        <div class="mt-3 text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace">
-                            ⚠ Season stats are estimates — check <a href="https://www.nhc.noaa.gov/" target="_blank" class="text-cyan-500 hover:underline">nhc.noaa.gov</a> for official counts.
-                        </div>
-                    </div>
+                    <div class="panel-body" id="hurr-season-body"></div>
                 </div>
             </div>
 
@@ -1134,6 +1151,22 @@
                     </div>
                     <div class="panel-body">
                         <div id="ww-list" class="text-[.62rem] text-gray-400 space-y-1"></div>
+                        <div id="hurr-ww-nhc"></div>
+                    </div>
+                </div>
+
+                <!-- NHC / WPC official graphics (rain, flood risk, wind odds, arrival, surge, key messages) -->
+                <div class="panel" id="hurr-gfx-panel" style="display:none">
+                    <div class="panel-header">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="image" class="w-3.5 h-3.5 text-cyan-400"></i> OFFICIAL GRAPHICS — <span id="hurr-gfx-name"></span>
+                        </span>
+                        <a id="hurr-gfx-link" href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener" class="text-[.55rem] text-cyan-500 hover:underline" style="font-family:'Courier New',monospace">hurricanes.gov →</a>
+                    </div>
+                    <div class="panel-body">
+                        <div id="hurr-gfx-tabs" style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px"></div>
+                        <div id="hurr-gfx-box" style="min-height:90px"></div>
+                        <div id="hurr-gfx-note" class="text-[.5rem] text-gray-600" style="font-family:'Courier New',monospace;margin-top:4px"></div>
                     </div>
                 </div>
 
@@ -1371,8 +1404,8 @@ function switchTab(tab) {
     if (tabH) tabH.classList.add('active');
     initHurricaneMap();
     showSpagTab('two');
-    // Leaflet mis-sizes when initialized in a hidden container — fix after reveal
-    setTimeout(() => { if (window._hurricaneMap) window._hurricaneMap.invalidateSize(); }, 50);
+    // Leaflet mis-sizes when initialized in a hidden container — fix after reveal, then frame the storm
+    setTimeout(() => { if (window._hurricaneMap) { window._hurricaneMap.invalidateSize(); try { hurrFit(false); } catch (e) {} } }, 80);
   }
 }
 
@@ -1657,86 +1690,549 @@ async function fetchLSRs() {
   renderLSRHistory();
 }
 
-// ─── FETCH: NHC STORMS via NWS API (TCP products) ────────────────────────────
-// NWS API is fully CORS-friendly. TCP = Tropical Cyclone Public Advisory.
-// If active storms exist, NHC issues TCP products. No TCP = no active storms.
-async function fetchActiveStorms() {
-  let products = [];
-  let fetchOk = false; // distinguish "checked, no storms" from "couldn't check at all"
+// ─── HURRICANE TRACKER ────────────────────────────────────────────────────────
+// Source of truth is NHC's own GIS service (the same ArcGIS server that feeds hurricanes.gov): per-storm
+// forecast points/track/cone, watch-warning coastline, past track, current wind field and wind radii. That feed
+// updates with every advisory INCLUDING the hourly intermediates, and doesn't depend on parsing advisory text.
+// The advisory-text parser (parseTCMText) stays as a fallback for when the map service is down.
+//
+// The block between the HURR-CORE markers is PURE (no DOM, no page globals) so it can be exercised in isolation
+// and reused by an alert script, like the nor'easter core. Keep it pure and keep the marker lines intact.
+// <<HURR-CORE-START>>
+const HURR = {
+  svc: 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather/MapServer',
+  bins: [1, 2, 3, 4, 5],
+  layerNames: {
+    points: 'Forecast Points', track: 'Forecast Track', cone: 'Forecast Cone', ww: 'Watch-Warning',
+    pastPts: 'Past Points', pastTrk: 'Past Track', advWind: 'Advisory Wind Field', fcstRadii: 'Forecast Wind Radii',
+    arrEarly: 'Earliest Reasonable Arrival Time', arrLikely: 'Most Likely Arrival Time'
+  },
+  // Each storm "bin" is a block of 26 layers (AT1 starts at 4, AT2 at 30, ...). Only a fallback: ids are
+  // normally resolved by NAME from the service's own layer list, so a reshuffle can't silently break this.
+  offsets: { points: 2, track: 3, cone: 4, ww: 5, pastPts: 7, pastTrk: 8, fcstRadii: 12, advWind: 13, arrEarly: 15, arrLikely: 16 },
+  // NHC's own colors for the watch/warning coastline graphic
+  wwStyle: {
+    HWR: { label: 'Hurricane Warning',      color: '#ff2d2d', rank: 4 },
+    HWA: { label: 'Hurricane Watch',        color: '#ff69d9', rank: 3 },
+    TWR: { label: 'Tropical Storm Warning', color: '#2f6bff', rank: 2 },
+    TWA: { label: 'Tropical Storm Watch',   color: '#ffe14d', rank: 1 }
+  },
+  // Phrases that put a sentence of NHC's hazard text in our region. Matched sentence by sentence, so a
+  // paragraph about the Panhandle that merely contains "Florida" doesn't count. (hurrMentionsRegion also
+  // discards "southwestern/northern/central Georgia", which isn't us.)
+  region: /north(?:ern)?(?:[- ]central)? Florida|northeast(?:ern)? Florida|Florida(?:'s)? (?:east|Atlantic) coast|east coast of Florida|Florida [Pp]eninsula|Atlantic coast|Georgia|\bthe Southeast\b(?! Bahamas)|southeast(?:ern)? (?:U\.S\.|United States)|Carolinas|Jacksonville|St\.? Johns|Duval/i,
+  placeRe: /JACKSONVILLE|MAYPORT|FERNANDINA|ST\.? AUGUSTINE|CECIL/i
+};
 
-  try {
-    const r = await fetchWithTimeout(
-      'https://api.weather.gov/products?type=TCM&office=KNHC&limit=20',
-      {headers:{Accept:'application/geo+json'}}, 12000
-    );
-    if (r.ok) {
-      const j = await r.json();
-      products = j['@graph'] || [];
-      fetchOk = true;
-    }
-  } catch(e) {}
+const hurrMph = kt => Math.round(kt * 1.15078 / 5) * 5;           // NHC rounds winds to the nearest 5 mph
+const hurrSpeedMph = kt => Math.round(kt * 1.15078);               // motion is rounded to the nearest 1 mph
+const hurrRad = d => d * Math.PI / 180;
+const hurrCompass = d => ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(((d % 360) + 360) % 360 / 22.5) % 16];
 
-  if (!fetchOk) {
-    // Genuine fetch failure — must not look identical to a real, confirmed "no storms" state.
-    renderActiveStormsOffline();
-    setPill('pill-nhc','error','NHC');
-    updateRiskBanner();
-    return;
-  }
-
-  // No storms found — show quiet basin (normal off-season state)
-  if (!products.length) {
-    currentStorms = [];
-    renderActiveStorms([]);
-    setPill('pill-nhc','live','NHC');
-    renderWatchesWarnings(currentAlerts);
-    updateRiskBanner();
-    return;
-  }
-
-  // Filter to Atlantic TCM only (WTNT2x = Marine/Forecast Advisory for Atlantic storms)
-  // Each Atlantic storm has a unique WTNT2x code; deduplicate to get only the latest per storm
-  const seen = new Set();
-  const unique = products.filter(p => {
-    const wmo = p.wmoCollectiveId || '';
-    if (!/^WTNT2\d$/.test(wmo)) return false;
-    if (seen.has(wmo)) return false;
-    seen.add(wmo); return true;
-  });
-
-  // productName is always the generic "Public Tropical Cyclone Advisory" string —
-  // skip quick cards and go straight to full text fetch for accurate names
-  renderActiveStorms([]);
-  setPill('pill-nhc','live','NHC');
-
-  // Fetch full advisory text for details
-  const stormData = [];
-  await Promise.all(unique.slice(0,6).map(async prod => {
-    try {
-      const pr = await fetchWithTimeout(prod['@id'], {headers:{Accept:'application/geo+json'}}, 12000);
-      if (!pr.ok) return;
-      const pj = await pr.json();
-      const parsed = parseTCMText(pj.productText || '');
-      if (parsed && parsed.name) stormData.push(parsed);
-    } catch(e) {}
-  }));
-
-  currentStorms = stormData;
-  if (stormData.length) renderActiveStorms(stormData);
-  renderWatchesWarnings(currentAlerts);
-  updateRiskBanner();
+function hurrMiles(a, b) {   // a, b = [lat, lon]
+  const R = 3958.8, dLat = hurrRad(b[0] - a[0]), dLon = hurrRad(b[1] - a[1]);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(hurrRad(a[0])) * Math.cos(hurrRad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+function hurrBearing(a, b) {   // initial bearing from a to b, degrees 0-360
+  const p1 = hurrRad(a[0]), p2 = hurrRad(b[0]), dl = hurrRad(b[1] - a[1]);
+  const y = Math.sin(dl) * Math.cos(p2), x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-function quickParseProductName(name) {
-  if (!name) return null;
-  const m = name.match(/(HURRICANE|TROPICAL STORM|TROPICAL DEPRESSION|SUBTROPICAL STORM)\s+(\w+)/i);
+const HURR_CATS = [
+  { min: 137, key: '5',  label: 'CAT 5',               color: '#ff00ff' },
+  { min: 113, key: '4',  label: 'CAT 4',               color: '#ff4444' },
+  { min: 96,  key: '3',  label: 'CAT 3',               color: '#ff8800' },
+  { min: 83,  key: '2',  label: 'CAT 2',               color: '#ffd700' },
+  { min: 64,  key: '1',  label: 'CAT 1',               color: '#aabbff' },
+  { min: 34,  key: 'TS', label: 'TROPICAL STORM',      color: '#00d9ff' },
+  { min: 0,   key: 'TD', label: 'TROPICAL DEPRESSION', color: '#00ced1' }
+];
+// stage = NHC's own wording for the point (e.g. "Hurricane", "Post-Tropical Cyclone") when it has one
+function hurrCat(kt, stage) {
+  if (/post|remnant|extratrop|dissipat|low\b/i.test(stage || '')) return { key: 'PT', label: 'POST-TROPICAL', color: '#8b949e' };
+  const n = Number(kt) || 0;
+  return HURR_CATS.find(c => n >= c.min);
+}
+
+// Point-in-polygon on GeoJSON Polygon/MultiPolygon (pt = [lon, lat]); holes respected.
+function hurrInRing(pt, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function hurrInPoly(pt, geom) {
+  if (!geom || !geom.coordinates) return null;
+  const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : null;
+  if (!polys) return null;
+  return polys.some(p => hurrInRing(pt, p[0]) && !p.slice(1).some(h => hurrInRing(pt, h)));
+}
+
+// 'DD/HHMM' (UTC) -> epoch ms, picking whichever month/year puts it nearest refMs (handles month rollover)
+function hurrValidEpoch(vt, refMs) {
+  const m = /^(\d{2})\/(\d{2})(\d{2})$/.exec(vt || '');
   if (!m) return null;
-  let classification = 'TS';
-  if (/HURRICANE/i.test(m[1]))   classification = '1';
-  if (/DEPRESSION/i.test(m[1]))  classification = 'TD';
-  return {name:m[2], type:m[1], classification,
-          windMph:null, windKt:null, pressure:null,
-          lat:null, lon:null, movement:'', trackPoints:[]};
+  const ref = new Date(refMs);
+  let best = null;
+  [-1, 0, 1].forEach(dm => {
+    const d = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + dm, +m[1], +m[2], +m[3]));
+    if (d.getUTCDate() !== +m[1]) return;
+    if (best == null || Math.abs(d.getTime() - refMs) < Math.abs(best - refMs)) best = d.getTime();
+  });
+  return best;
+}
+
+function hurrSplitName(full) {
+  const m = /^(Major Hurricane|Hurricane|Tropical Storm|Tropical Depression|Subtropical Storm|Subtropical Depression|Post-Tropical Cyclone|Potential Tropical Cyclone|Remnants of)\s+(.+)$/i.exec((full || '').trim());
+  return m ? { type: m[1], name: m[2] } : { type: '', name: (full || '').trim() };
+}
+
+// Forecast points layer -> sorted array. NHC marks missing numeric values as 9999, and the lat/lon
+// *properties* are rounded to whole degrees - the true position is the geometry.
+function hurrPoints(fc, refMs) {
+  return ((fc && fc.features) || []).map(f => {
+    const p = f.properties || {}, c = f.geometry && f.geometry.coordinates;
+    if (!c || !isFinite(c[0]) || !isFinite(c[1])) return null;
+    const kt = Number(p.maxwind), ok = v => v != null && isFinite(v) && Number(v) < 1000;
+    return {
+      tau: Number(p.tau) || 0, lat: c[1], lon: c[0], kt: isFinite(kt) ? kt : 0, mph: hurrMph(kt || 0),
+      gustMph: ok(p.gust) ? hurrMph(Number(p.gust)) : null,
+      mslp: ok(p.mslp) ? Number(p.mslp) : null,
+      dir: ok(p.tcdir) ? Number(p.tcdir) : null, spdMph: ok(p.tcspd) ? hurrSpeedMph(Number(p.tcspd)) : null,
+      stage: p.tcdvlp || '', label: p.datelbl || '', t: hurrValidEpoch(p.validtime, refMs),
+      cat: hurrCat(kt, p.tcdvlp)
+    };
+  }).filter(Boolean).sort((a, b) => a.tau - b.tau);
+}
+
+// d = { points, track, cone, ww, pastPts, pastTrk, advWind, radii } raw layer responses (any may be null)
+function hurrBuildStorm(bin, d, refMs) {
+  const pts = hurrPoints(d.points, refMs);
+  if (!pts.length) return null;
+  const p0 = d.points.features[0].properties || {};
+  const idm = /^(al|ep|cp)(\d{2})(\d{4})/i.exec(p0.idp_source || '');
+  const basin = idm ? idm[1].toUpperCase() : String(p0.basin || 'AL').toUpperCase();
+  const num = idm ? +idm[2] : (p0.stormnum != null ? +p0.stormnum : null);
+  const year = idm ? +idm[3] : new Date(refMs).getUTCFullYear();
+  const nm = hurrSplitName(p0.stormname);
+  const now = pts[0];
+  now.t = refMs;   // the tau-0 point IS the current position; its validtime is just the advisory's base time
+  const gj = fc => ((fc && fc.features) || []);
+  const geomOf = fc => { const f = gj(fc)[0]; return f && f.geometry ? f.geometry : null; };
+  const mvText = now.dir != null && now.spdMph != null ? hurrCompass(now.dir) + ' at ' + now.spdMph + ' mph' : '';
+  return {
+    source: 'gis', bin, basin, num, year,
+    id: num != null ? basin + String(num).padStart(2, '0') + year : null,
+    name: nm.name, type: nm.type || (now.cat.key === 'TS' ? 'Tropical Storm' : now.cat.key === 'TD' ? 'Tropical Depression' : now.cat.key === 'PT' ? 'Post-Tropical Cyclone' : 'Hurricane'),
+    lat: now.lat, lon: now.lon, windKt: now.kt, windMph: now.mph, windGust: now.gustMph, pressure: now.mslp,
+    movement: mvText, moveDir: now.dir, classification: now.cat.key, cat: now.cat,
+    advisory: { number: p0.advisnum || null, text: p0.advdate || null },
+    trackPoints: pts.map(p => Object.assign({ hr: p.tau, wind: p.mph, classification: p.cat.key }, p)),
+    cone: geomOf(d.cone), trackLine: geomOf(d.track),
+    ww: gj(d.ww).filter(f => f.geometry).map(f => ({ code: (f.properties || {}).tcww || '', geom: f.geometry })),
+    pastPts: gj(d.pastPts).filter(f => f.geometry && f.geometry.type === 'Point').map(f => ({ lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], kt: Number((f.properties || {}).intensity) || 0, type: (f.properties || {}).stormtype || '', dtg: (f.properties || {}).dtg })),
+    pastLines: gj(d.pastTrk).filter(f => f.geometry).map(f => ({ type: (f.properties || {}).stormtype || '', geom: f.geometry })),
+    advWind: gj(d.advWind).filter(f => f.geometry).map(f => ({ kt: Number((f.properties || {}).radii), geom: f.geometry })),
+    radii: (((d.radii && d.radii.features) || []).map(f => f.attributes || f.properties || {})).filter(r => r.radii != null),
+    ts: refMs
+  };
+}
+
+// Interpolated quadrant radius (miles) of the 34/50/64-kt wind field at forecast hour `tau`, in the
+// direction `bearing` (degrees, from the storm center toward the point of interest). null = not forecast.
+function hurrRadiusMi(radii, kt, tau, bearing) {
+  const rows = (radii || []).filter(r => Number(r.radii) === kt).sort((a, b) => a.tau - b.tau);
+  if (!rows.length) return null;
+  const q = bearing < 90 ? 'ne' : bearing < 180 ? 'se' : bearing < 270 ? 'sw' : 'nw';
+  const v = r => Number(r[q]) || 0;
+  let nm;
+  if (tau <= rows[0].tau) nm = v(rows[0]);
+  else if (tau >= rows[rows.length - 1].tau) nm = tau - rows[rows.length - 1].tau > 6 ? null : v(rows[rows.length - 1]);
+  else {
+    const i = rows.findIndex((r, k) => k + 1 < rows.length && tau >= r.tau && tau <= rows[k + 1].tau);
+    const a = rows[i], b = rows[i + 1], f = (tau - a.tau) / ((b.tau - a.tau) || 1);
+    nm = v(a) + (v(b) - v(a)) * f;
+  }
+  return nm == null ? null : nm * 1.15078;
+}
+
+// Closest approach of the forecast track (sampled finely between forecast points) to `home` = [lat, lon]
+function hurrClosest(pts, home) {
+  if (!pts || !pts.length) return null;
+  let best = null;
+  const consider = (lat, lon, tau, kt, t) => {
+    const mi = hurrMiles([lat, lon], home);
+    if (!best || mi < best.mi) best = { mi, lat, lon, tau, kt, t };
+  };
+  if (pts.length === 1) consider(pts[0].lat, pts[0].lon, pts[0].tau, pts[0].kt, pts[0].t);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    for (let s = 0; s <= 40; s++) {
+      const f = s / 40, L = (x, y) => x + (y - x) * f;
+      consider(L(a.lat, b.lat), L(a.lon, b.lon), L(a.tau, b.tau), L(a.kt, b.kt), a.t != null && b.t != null ? L(a.t, b.t) : null);
+    }
+  }
+  return best;
+}
+
+// How much does this storm matter to `home` ({lat, lon})? Levels: far < near < threat < direct.
+//   direct = hurricane-force winds forecast to reach home        threat = tropical-storm-force winds forecast
+//   to reach home, or home is inside the cone                    near   = indirect effects likely (center within
+//   ~500 mi, or NHC's own text mentions this region)            far    = no meaningful effect expected
+function hurrAssess(s, home, regionMentioned) {
+  const h = [home.lat, home.lon], here = [s.lat, s.lon];
+  const distNow = hurrMiles(here, h);
+  const bearingToStorm = hurrBearing(h, here);
+  const inCone = s.cone ? hurrInPoly([home.lon, home.lat], s.cone) : null;
+  const ca = hurrClosest(s.trackPoints, h);
+  let reach = null;
+  if (ca) {
+    const toHome = hurrBearing([ca.lat, ca.lon], h);
+    const r = kt => hurrRadiusMi(s.radii, kt, ca.tau, toHome);
+    reach = { r34: r(34), r50: r(50), r64: r(64), bearing: toHome };
+  }
+  const ts = !!(reach && reach.r34 != null && reach.r34 >= ca.mi);
+  const hu = !!(reach && reach.r64 != null && reach.r64 >= ca.mi);
+  let level = 'far';
+  if (hu) level = 'direct';
+  else if (ts || inCone === true) level = 'threat';
+  else if ((ca && ca.mi <= 500) || distNow <= 500 || regionMentioned) level = 'near';
+  return { distNow, bearingToStorm, compass: hurrCompass(bearingToStorm), inCone, ca, reach, ts, hu, level };
+}
+
+// ---- NHC text products -------------------------------------------------------------------------------------
+const hurrSquash = s => String(s || '').replace(/\s+/g, ' ').trim();
+
+// Public Advisory (TCP): the watches/warnings in effect and the "hazards affecting land" paragraphs
+function hurrParseAdvisory(text) {
+  const t = String(text || '').replace(/\r/g, '');
+  const out = { title: null, number: null, issued: null, ww: [], hazards: [], next: null };
+  const tm = /^\s*((?:Major )?(?:Hurricane|Tropical Storm|Tropical Depression|Post-Tropical Cyclone|Potential Tropical Cyclone|Subtropical Storm|Subtropical Depression)\s+\w+)\s+((?:Intermediate )?Advisory Number\s+\w+)/im.exec(t);
+  if (tm) { out.title = hurrSquash(tm[1]); out.number = hurrSquash(tm[2]); }
+  const im = /^\s*(\d{3,4}\s+[AP]M\s+[A-Z]{3,4}\s+[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4})\s*$/m.exec(t);
+  if (im) out.issued = hurrSquash(im[1]);
+
+  const wi = t.search(/SUMMARY OF WATCHES AND WARNINGS IN EFFECT/i);
+  if (wi >= 0) {
+    let block = t.slice(wi);
+    const end = block.search(/\n\s*(?:A|An)\s+[A-Za-z ]+?\s+means\b|\n\s*DISCUSSION AND OUTLOOK|\n\s*HAZARDS AFFECTING LAND/i);
+    if (end > 0) block = block.slice(0, end);
+    block.split(/\n\s*\n/).forEach(par => {
+      const m = /^\s*(?:A|An)\s+([A-Za-z ]+?(?:Warning|Watch))\s+is in effect for\.*([\s\S]*)$/i.exec(par);
+      if (!m) return;
+      const areas = m[2].split('*').map(hurrSquash).filter(Boolean);
+      if (areas.length) out.ww.push({ type: hurrSquash(m[1]), areas });
+    });
+  }
+
+  const hi = t.search(/HAZARDS AFFECTING LAND/i);
+  if (hi >= 0) {
+    let blk = t.slice(hi).replace(/^HAZARDS AFFECTING LAND\s*-*\s*/i, '');
+    const ne = /NEXT ADVISORY\s*-*\s*([^\n]+)/i.exec(blk);
+    if (ne) { out.next = hurrSquash(ne[1]); blk = blk.slice(0, ne.index); }
+    const re = /(?:^|\n)[ \t]*([A-Z][A-Z ]{2,24}):[ \t]*/g, marks = [];
+    let m;
+    while ((m = re.exec(blk))) marks.push({ label: hurrSquash(m[1]), start: m.index + m[0].length, idx: m.index });
+    marks.forEach((mk, i) => {
+      const raw = blk.slice(mk.start, i + 1 < marks.length ? marks[i + 1].idx : blk.length);
+      const txt = hurrSquash(raw);
+      if (txt) out.hazards.push({ key: mk.label, text: txt });
+    });
+  }
+  return out;
+}
+
+// Sentence splitter without regex lookbehind (a lookbehind literal is a SyntaxError on iOS < 16.4 and would
+// take down the whole page). "U.S." is protected so it doesn't end a sentence.
+function hurrSentences(text) {
+  const s = String(text || '').replace(/U\.S\./g, 'U․S․').replace(/\b(St|Mt|Ft|Dr)\./g, '$1․');
+  const out = [], re = /[.!?]\s+(?=[A-Z])/g;
+  let last = 0, m;
+  while ((m = re.exec(s))) { out.push(s.slice(last, m.index + 1)); last = m.index + m[0].length; }
+  out.push(s.slice(last));
+  return out.map(x => x.replace(/․/g, '.').trim()).filter(Boolean);
+}
+// The matched phrase if the sentence is about our region, else null
+function hurrMentionsRegion(sn) {
+  const re = new RegExp(HURR.region.source, 'gi');
+  let m;
+  while ((m = re.exec(sn))) {
+    const before = sn.slice(Math.max(0, m.index - 22), m.index);
+    if (/^georgia$/i.test(m[0]) && /(?:southwest(?:ern)?|northwest(?:ern)?|west(?:ern)?|north(?:ern)?|central)\s+$/i.test(before)) continue;
+    return m[0];
+  }
+  return null;
+}
+// Sentences (from the hazard paragraphs and key messages) that mention our region.
+function hurrRegionHits(adv, keyMessages) {
+  const hits = [];
+  ((adv && adv.hazards) || []).forEach(hz => hurrSentences(hz.text).forEach(sn => {
+    const w = hurrMentionsRegion(sn);
+    if (w) hits.push({ label: hz.key, text: sn, match: w });
+  }));
+  (keyMessages || []).forEach((km, i) => hurrSentences(km).forEach(sn => {
+    const w = hurrMentionsRegion(sn);
+    if (w) hits.push({ label: 'KEY MESSAGE ' + (i + 1), text: sn, match: w });
+  }));
+  return hits;
+}
+
+// Forecast Discussion (TCD): the numbered key messages and the forecast-position table
+function hurrParseDiscussion(text) {
+  const t = String(text || '').replace(/\r/g, '');
+  const out = { keyMessages: [], positions: [] };
+  const ki = t.search(/Key Messages:?/i);
+  if (ki >= 0) {
+    let blk = t.slice(ki).replace(/^Key Messages:?\s*/i, '');
+    const e = blk.search(/\n\s*FORECAST POSITIONS AND MAX WINDS|\n\s*\$\$/i);
+    if (e >= 0) blk = blk.slice(0, e);
+    blk.split(/\n\s*(?=\d+\.\s)/).forEach(s => {
+      const m = /^\s*\d+\.\s*([\s\S]+)$/.exec(s);
+      if (m) out.keyMessages.push(hurrSquash(m[1]));
+    });
+  }
+  const re = /^\s*(INIT|\d+H)\s+(\d{2})\/(\d{4})Z\s+([\d.]+)([NS])\s+([\d.]+)([EW])\s+(\d+)\s*KT\s+(\d+)\s*MPH([^\n]*)/gm;
+  let m;
+  while ((m = re.exec(t))) {
+    out.positions.push({ tau: m[1] === 'INIT' ? 0 : parseInt(m[1], 10), vt: m[2] + '/' + m[3],
+      lat: (m[5] === 'S' ? -1 : 1) * parseFloat(m[4]), lon: (m[7] === 'W' ? -1 : 1) * parseFloat(m[6]),
+      kt: +m[8], mph: +m[9], flags: hurrSquash(m[10]).replace(/^\.+/, '') });
+  }
+  return out;
+}
+
+// The first forecast point NHC flags INLAND: landfall happens between it and the point before it
+function hurrLandfall(positions, refMs) {
+  const ps = (positions || []).slice().sort((a, b) => a.tau - b.tau);
+  const i = ps.findIndex(p => /INLAND/i.test(p.flags));
+  if (i < 1) return null;
+  const ep = p => hurrValidEpoch(p.vt, refMs);
+  return { from: ep(ps[i - 1]), to: ep(ps[i]), afterTau: ps[i - 1].tau, beforeTau: ps[i].tau, kt: ps[i - 1].kt };
+}
+
+// Wind-speed probability table: chances of >=34/50/64 kt at named places (only listed when >=3% over 5 days)
+function hurrPlaceProb(text, placeRe) {
+  const out = {};
+  String(text || '').split('\n').forEach(line => {
+    const m = /^([A-Z][A-Z0-9 .\/'\-]{2,17}?)\s+(34|50|64)\s+(.+?)\s*$/.exec(line);
+    if (!m || !placeRe.test(m[1])) return;
+    const cps = Array.from(m[3].matchAll(/\(\s*(\d+|X)\s*\)/g));
+    let v = null;
+    if (cps.length) v = cps[cps.length - 1][1] === 'X' ? 0 : +cps[cps.length - 1][1];
+    else { const f = m[3].trim().split(/\s+/)[0]; v = f === 'X' ? 0 : parseInt(f, 10); }
+    const place = m[1].trim();
+    out[place] = out[place] || {};
+    out[place][m[2]] = v;
+  });
+  return out;
+}
+
+// Resolve layer ids by NAME from the service root listing; fall back to the documented block arithmetic
+function hurrResolveLayers(root) {
+  const byName = {};
+  ((root && root.layers) || []).forEach(l => { byName[l.name] = l.id; });
+  const out = {};
+  HURR.bins.forEach(n => {
+    const o = {}, base = 4 + 26 * (n - 1);
+    Object.keys(HURR.layerNames).forEach(k => {
+      const id = byName['AT' + n + ' ' + HURR.layerNames[k]];
+      o[k] = id != null ? id : base + HURR.offsets[k];
+    });
+    out[n] = o;
+  });
+  return out;
+}
+
+// Local forecast during the storm window from an Open-Meteo hourly response (inches, mph)
+function hurrLocalForecast(om, nowSec) {
+  const h = om && om.hourly;
+  if (!h || !Array.isArray(h.time)) return null;
+  const pick = base => { const k = Object.keys(h).find(x => x === base || x.indexOf(base + '_') === 0); return k ? h[k] : null; };
+  const pr = pick('precipitation'), gu = pick('wind_gusts_10m');
+  if (!pr) return null;
+  const idx = h.time.map((t, i) => i).filter(i => h.time[i] >= nowSec - 1800);
+  const tot = hrs => +idx.filter(i => h.time[i] < nowSec + hrs * 3600).reduce((s, i) => s + (pr[i] || 0), 0).toFixed(2);
+  let pk = null;
+  if (gu) idx.forEach(i => { if (gu[i] != null && (!pk || gu[i] > pk.mph)) pk = { mph: Math.round(gu[i]), t: h.time[i] }; });
+  const hoursOfData = idx.filter(i => pr[i] != null).length;
+  return { rain24: tot(24), rain48: tot(48), rain72: tot(72), rain120: tot(120), peakGust: pk, hoursOfData };
+}
+// <<HURR-CORE-END>>
+
+const HS = {
+  storms: [], texts: {}, local: null, localTs: 0, src: 'none', ts: 0, err: null, cacheTs: 0, busy: false,
+  sel: null, vis: { track: true, cone: true, warn: true, wind: true, past: true, arrival: false },
+  layers: {}, fitFor: '', gfx: null, layerIds: null, layerIdsTs: 0, arrival: {}
+};
+try { Object.assign(HS.vis, JSON.parse(localStorage.getItem('sw_hurr_vis') || '{}')); } catch (e) {}
+
+async function hurrJson(url, ms, opts) {
+  const r = await fetchWithTimeout(url, opts || {}, ms || 12000);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  if (j && j.error) throw new Error('service error ' + (j.error.code || ''));   // ArcGIS reports failures as HTTP 200 + {error}
+  return j;
+}
+const hurrQuery = (id, extra, ms) => hurrJson(HURR.svc + '/' + id +
+  '/query?where=1%3D1&outFields=*&f=geojson&outSR=4326&geometryPrecision=3' + (extra || ''), ms || 12000);
+
+// Active Atlantic storms from NHC's map service. Each storm occupies a "bin" (AT1-AT5): probe each bin's
+// forecast-points layer, then pull the rest for the bins that have a storm in them.
+async function hurrFetchGIS() {
+  const now = Date.now();
+  if (!HS.layerIds || now - HS.layerIdsTs > 864e5) {
+    try { HS.layerIds = hurrResolveLayers(await hurrJson(HURR.svc + '?f=json', 15000)); HS.layerIdsTs = now; }
+    catch (e) { if (!HS.layerIds) HS.layerIds = hurrResolveLayers(null); }   // by-name lookup failed: use the block arithmetic
+  }
+  const L = HS.layerIds;
+  const probes = await Promise.allSettled(HURR.bins.map(n => hurrQuery(L[n].points, '', 10000)));
+  if (probes.every(p => p.status === 'rejected')) throw new Error('NHC map service unreachable');
+  const partial = probes.some(p => p.status === 'rejected');   // can't rule out a storm in the bin that failed
+  const storms = [];
+  await Promise.all(HURR.bins.map(async (n, i) => {
+    const pr = probes[i];
+    if (pr.status !== 'fulfilled' || !pr.value.features || !pr.value.features.length) return;
+    const l = L[n], opt = p => p.then(v => v, () => null);   // everything beyond the points is a bonus
+    const [track, cone, ww, pastPts, pastTrk, advWind, radii] = await Promise.all([
+      opt(hurrQuery(l.track)), opt(hurrQuery(l.cone, '&maxAllowableOffset=0.02')), opt(hurrQuery(l.ww)),
+      opt(hurrQuery(l.pastPts)), opt(hurrQuery(l.pastTrk)), opt(hurrQuery(l.advWind, '&maxAllowableOffset=0.02')),
+      opt(hurrJson(HURR.svc + '/' + l.fcstRadii + '/query?where=1%3D1&outFields=radii,tau,ne,se,sw,nw&returnGeometry=false&f=json'))
+    ]);
+    const s = hurrBuildStorm(n, { points: pr.value, track, cone, ww, pastPts, pastTrk, advWind, radii }, now);
+    if (s) storms.push(s);
+  }));
+  return { storms: storms.sort((a, b) => a.bin - b.bin), partial };
+}
+
+// Fallback: Marine/Forecast Advisory text via the NWS API. Only advisories from the last 14 h count: a storm
+// that has dissipated keeps its last advisory in that list for days and must not be shown as active.
+function hurrFromTCM(p, wmo, raw, issuedMs) {
+  if (!p || p.lat == null || p.lon == null) return null;
+  const title = s => String(s || '').toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+  const idm = /\b(AL|EP|CP)(\d{2})(\d{4})\b/.exec(raw);
+  const kt = p.windKt || 0, cat = hurrCat(kt, /POST|REMNANT/i.test(p.type) ? 'post' : '');
+  const adv = /FORECAST\/ADVISORY NUMBER\s+(\w+)/i.exec(raw), when = /^\s*(\d{4} UTC [A-Z]{3} [A-Z]{3} \d{1,2} \d{4})/m.exec(raw);
+  const tp = p.trackPoints.map(q => { const c = hurrCat(q.kt || 0, ''); return {
+    tau: q.hr, hr: q.hr, lat: q.lat, lon: q.lon, kt: q.kt || 0, mph: hurrMph(q.kt || 0), wind: hurrMph(q.kt || 0), gustMph: null, mslp: null,
+    dir: null, spdMph: null, stage: '', label: '', t: q.hr === 0 ? Date.now() : issuedMs + q.hr * 3600e3, cat: c, classification: c.key, inland: !!q.inland }; });
+  return { source: 'tcm', bin: +(/WTNT2(\d)/.exec(wmo) || [])[1] || null, basin: idm ? idm[1] : 'AL', num: idm ? +idm[2] : null,
+    year: idm ? +idm[3] : new Date().getUTCFullYear(), id: idm ? idm[0] : null,
+    name: title(p.name), type: title(p.type), lat: p.lat, lon: p.lon, windKt: kt, windMph: hurrMph(kt),
+    windGust: p.windGust ? Math.round(p.windGust / 5) * 5 : null, pressure: p.pressure, movement: title(p.movement || ''), moveDir: null,
+    classification: cat.key, cat, advisory: { number: adv ? adv[1] : null, text: when ? when[1] : null }, trackPoints: tp,
+    cone: null, trackLine: null, ww: [], pastPts: [], pastLines: [], advWind: [], radii: [], ts: Date.now() };
+}
+async function hurrFetchTCM() {
+  const H = { headers: { Accept: 'application/geo+json' } };
+  const r = await fetchWithTimeout('https://api.weather.gov/products?type=TCM&office=KNHC&limit=40', H, 12000);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const products = (await r.json())['@graph'] || [];
+  const oldest = Date.now() - 14 * 3600e3, seen = new Set(), pick = [];
+  products.forEach(p => {
+    const w = p.wmoCollectiveId || '';
+    if (!/^WTNT2\d$/.test(w) || seen.has(w) || Date.parse(p.issuanceTime) < oldest) return;
+    seen.add(w); pick.push(p);
+  });
+  const storms = [];
+  await Promise.all(pick.slice(0, 5).map(async p => {
+    try {
+      const pr = await fetchWithTimeout(p['@id'], H, 12000);
+      if (!pr.ok) return;
+      const txt = (await pr.json()).productText || '';
+      const s = hurrFromTCM(parseTCMText(txt), p.wmoCollectiveId, txt, Date.parse(p.issuanceTime));
+      if (s) storms.push(s);
+    } catch (e) {}
+  }));
+  return { storms };
+}
+
+// GIS is authoritative when it answered for every bin. If it only partly answered, add whatever the text feed
+// knows that GIS doesn't; if it failed outright, the text feed is all there is.
+function hurrMerge(gis, tcm) {
+  if (gis && !gis.partial) return gis.storms;
+  const out = gis ? gis.storms.slice() : [];
+  const have = new Set(out.map(s => s.name.toLowerCase()));
+  ((tcm && tcm.storms) || []).forEach(s => { if (!have.has(s.name.toLowerCase())) out.push(s); });
+  return out;
+}
+
+// Public Advisory (hazards, watches/warnings), Discussion (key messages, landfall) and wind probabilities
+// for each storm's bin. Re-downloads a product only when NHC has issued a new one.
+async function hurrFetchTexts(storms) {
+  const bins = storms.map(s => s.bin).filter(Boolean);
+  Object.keys(HS.texts).forEach(k => { if (bins.indexOf(+k) < 0) delete HS.texts[k]; });   // storm gone: drop its text
+  if (!bins.length) return;
+  const H = { headers: { Accept: 'application/ld+json' } };
+  const list = type => fetchWithTimeout('https://api.weather.gov/products?type=' + type + '&office=KNHC&limit=40', H, 12000)
+    .then(r => r.ok ? r.json() : null).then(j => (j && j['@graph']) || []).catch(() => []);
+  const [tcp, tcd, pws] = await Promise.all([list('TCP'), list('TCD'), list('PWS')]);
+  const oldest = Date.now() - 20 * 3600e3;
+  const newest = (arr, wmo) => arr.find(p => p.wmoCollectiveId === wmo && Date.parse(p.issuanceTime) >= oldest) || null;
+  const body = async p => { try { const r = await fetchWithTimeout(p['@id'], H, 12000); return r.ok ? ((await r.json()).productText || '') : null; } catch (e) { return null; } };
+  await Promise.all(bins.map(async n => {
+    const T = HS.texts[n] || (HS.texts[n] = {});
+    const pa = newest(tcp, 'WTNT3' + n), pd = newest(tcd, 'WTNT4' + n), pp = newest(pws, 'FONT1' + n);
+    if (pa && pa['@id'] !== T.advId) { const t = await body(pa); if (t != null) { T.adv = hurrParseAdvisory(t); T.advId = pa['@id']; T.advIssued = pa.issuanceTime; } }
+    if (pd && pd['@id'] !== T.disId) { const t = await body(pd); if (t != null) { T.dis = hurrParseDiscussion(t); T.disId = pd['@id']; T.disIssued = pd.issuanceTime; } }
+    if (pp && pp['@id'] !== T.pwsId) { const t = await body(pp); if (t != null) { T.pws = hurrPlaceProb(t, HURR.placeRe); T.pwsId = pp['@id']; } }
+    if (!pa) { T.adv = null; T.advId = null; }
+    if (!pd) { T.dis = null; T.disId = null; }
+    if (!pp) { T.pws = null; T.pwsId = null; }
+  }));
+}
+
+// Rain and gusts at home over the storm window (NWS's National Blend of Models, same source as the nor'easter panel)
+async function hurrFetchLocal() {
+  if (HS.local && Date.now() - HS.localTs < 25 * 60e3) return;
+  const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + CONFIG.lat + '&longitude=' + CONFIG.lon +
+    '&hourly=precipitation,wind_gusts_10m&models=ncep_nbm_conus&forecast_days=6&precipitation_unit=inch&wind_speed_unit=mph&timeformat=unixtime&timezone=America%2FNew_York';
+  try {
+    const r = await fetchWithTimeout(u, {}, 10000);
+    if (!r.ok) return;
+    const l = hurrLocalForecast(await r.json(), Math.floor(Date.now() / 1000));
+    if (l && l.hoursOfData > 24) { HS.local = l; HS.localTs = Date.now(); }
+  } catch (e) {}
+}
+
+function hurrImpact(s) {
+  const T = HS.texts[s.bin] || {};
+  const hits = hurrRegionHits(T.adv, T.dis && T.dis.keyMessages);
+  const a = hurrAssess(s, { lat: CONFIG.lat, lon: CONFIG.lon }, hits.length > 0);
+  return Object.assign(a, { hits, landfall: T.dis ? hurrLandfall(T.dis.positions, s.ts) : null, T });
+}
+const HURR_RANK = { direct: 3, threat: 2, near: 1, far: 0 };
+
+async function refreshStorms() {
+  if (HS.busy) return;
+  HS.busy = true;
+  try {
+    let gisErr = null, tcmErr = null;
+    const [gis, tcm] = await Promise.all([
+      hurrFetchGIS().catch(e => { gisErr = e; return null; }),
+      hurrFetchTCM().catch(e => { tcmErr = e; return null; })
+    ]);
+    let storms, src;
+    if (gis || tcm) {
+      storms = hurrMerge(gis, tcm); src = gis && !gis.partial ? 'gis' : gis ? 'mixed' : 'tcm'; HS.err = null;
+      try { saveCache('hurr', { storms }); } catch (e) {}
+    } else {
+      const c = loadCache('hurr');
+      if (c && c.data && Array.isArray(c.data.storms) && Date.now() - c.ts < 12 * 3600e3) { storms = c.data.storms; src = 'cache'; HS.cacheTs = c.ts; }
+      else { storms = []; src = 'none'; }
+      HS.err = (gisErr && gisErr.message) || (tcmErr && tcmErr.message) || 'NHC unreachable';
+    }
+    HS.storms = storms; HS.src = src; HS.ts = Date.now();
+    if (src !== 'cache') await hurrFetchTexts(storms).catch(e => console.warn('storm text fetch failed:', e));
+    storms.forEach(s => { s.impact = hurrImpact(s); });
+    if (storms.some(s => s.impact.level !== 'far')) await hurrFetchLocal();
+    hurrApply();
+  } catch (e) {
+    console.warn('storm refresh failed:', e);
+  } finally { HS.busy = false; }
 }
 
 function parseTCMText(text) {
@@ -1820,193 +2316,402 @@ function parseTCMText(text) {
 }
 
 
-// ── renderActiveStorms / renderActiveStormsOffline ────────────────────────────
-function renderActiveStorms(storms) {
-  const cnt  = document.getElementById('nhc-storm-count');
-  const list = document.getElementById('nhc-storms-list');
-  if (cnt) cnt.textContent = storms.length
-    ? storms.length + ' Active Storm' + (storms.length > 1 ? 's' : '')
-    : 'No active storms';
+// ── rendering ─────────────────────────────────────────────────────────────────
+const hurrEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const HURR_PLACE = 'Atlantic Beach';
+const HURR_LVL = {
+  far:    { label: 'NO DIRECT THREAT' },
+  near:   { label: 'INDIRECT EFFECTS POSSIBLE' },
+  threat: { label: 'TROPICAL-STORM CONDITIONS POSSIBLE' },
+  direct: { label: 'HURRICANE CONDITIONS POSSIBLE' }
+};
+const hurrCatShort = c => ({ '5': 'C5', '4': 'C4', '3': 'C3', '2': 'C2', '1': 'C1', 'TS': 'TS', 'TD': 'TD', 'PT': 'PT' }[c.key] || c.key);
+const hurrId = s => s.id || s.name;
+const hurrTitle = s => (s.type ? s.type + ' ' : '') + s.name;
+const hurrMono = "font-family:'Courier New',monospace;";
+function hurrWhen(ms) {   // "Fri 2 PM", Eastern
+  if (!ms || !isFinite(ms)) return '';
+  const d = new Date(ms), z = { timeZone: 'America/New_York' };
+  return d.toLocaleDateString('en-US', Object.assign({ weekday: 'short' }, z)) + ' ' + d.toLocaleTimeString('en-US', Object.assign({ hour: 'numeric' }, z));
+}
+function hurrAgo(ms) { return ms ? cacheAgeLabel(ms) : ''; }
+function hurrWorst() {
+  return HS.storms.slice().sort((a, b) => (HURR_RANK[b.impact.level] - HURR_RANK[a.impact.level]) || (a.impact.distNow - b.impact.distNow))[0] || null;
+}
+function hurrSel() { return HS.storms.find(s => hurrId(s) === HS.sel) || hurrWorst(); }
+
+// One line about where the storm is relative to us and what it means
+function hurrYouLine(s) {
+  const a = s.impact, parts = [];
+  parts.push(Math.round(a.distNow) + ' mi ' + a.compass + ' of ' + HURR_PLACE);
+  if (a.inCone === true) parts.push('YOU ARE INSIDE THE NHC CONE');
+  else if (a.inCone === false) parts.push('outside the NHC cone');
+  if (a.ca && a.ca.tau >= 1) parts.push('closest forecast approach ~' + Math.round(a.ca.mi) + ' mi' + (a.ca.t ? ' (' + hurrWhen(a.ca.t) + ')' : ''));
+  return parts.join(' · ');
+}
+function hurrImpactSentence(s) {
+  const a = s.impact, r = a.reach;
+  if (a.level === 'direct') return 'Hurricane-force winds (74+ mph) are forecast to reach ' + HURR_PLACE + (a.ca && a.ca.t ? ' around ' + hurrWhen(a.ca.t) : '') + '.';
+  if (a.level === 'threat') return a.ts ? 'Tropical-storm-force winds (39+ mph) are forecast to reach ' + HURR_PLACE + (a.ca && a.ca.t ? ' around ' + hurrWhen(a.ca.t) : '') + '.'
+    : 'You are inside the cone: the track could shift toward you. Watch for NWS watches.';
+  if (a.level === 'near') {
+    const gap = r && r.r34 != null && a.ca ? Math.round(a.ca.mi - r.r34) : null;
+    return 'Outer bands, rain, surf and rip currents are possible' + (gap != null && gap > 0 ? '; the 34-kt wind field is forecast to stay ~' + gap + ' mi short of you.' : '.');
+  }
+  return 'No direct impact expected here.';
+}
+
+function hurrRenderStrip() {
+  const el = document.getElementById('hurr-strip');
+  if (!el) return;
+  if (!HS.storms.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = HS.storms.map(s => {
+    const l = s.impact.level, c = s.cat;
+    return '<div class="hb-' + l + '" onclick="hurrSelect(\'' + hurrEsc(hurrId(s)) + '\')" style="cursor:pointer;background:#1c2128;border:1px solid #30363d;border-left:4px solid #555;border-radius:6px;padding:8px 12px;margin-bottom:8px">' +
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;' + hurrMono + '">' +
+      '<span class="hcat" style="padding:2px 7px;border-radius:4px;border:1px solid ' + c.color + '66;background:' + c.color + '22;color:' + c.color + ';font-size:.52rem;font-weight:700">' + c.label + '</span>' +
+      '<b style="color:#e6edf3;font-size:.72rem">' + hurrEsc(hurrTitle(s).toUpperCase()) + '</b>' +
+      '<span style="color:#8b949e;font-size:.58rem">' + s.windMph + ' mph (' + s.windKt + ' kt)' + (s.pressure ? ' · ' + s.pressure + ' mb' : '') + (s.movement ? ' · ' + hurrEsc(s.movement) : '') + '</span>' +
+      '<span class="ht-' + l + '" style="margin-left:auto;padding:2px 8px;border:1px solid;border-radius:10px;font-size:.5rem;font-weight:700">' + HURR_LVL[l].label + '</span></div>' +
+      '<div style="' + hurrMono + 'font-size:.6rem;color:#c9d1d9;margin-top:5px;line-height:1.5">' + hurrEsc(hurrYouLine(s)) + '</div>' +
+      '<div style="' + hurrMono + 'font-size:.58rem;color:#8b949e;margin-top:2px;line-height:1.5">' + hurrEsc(hurrImpactSentence(s)) + '</div></div>';
+  }).join('');
+}
+
+function hurrCardHtml(s) {
+  const c = s.cat, col = c.color, T = s.impact.T || {}, pos = {};
+  ((T.dis && T.dis.positions) || []).forEach(p => { pos[p.tau] = p.flags; });
+  const rows = s.trackPoints.filter(p => p.tau > 0).map((p, i, arr) => {
+    const prev = i === 0 ? s.trackPoints[0] : arr[i - 1];
+    const trend = p.kt > prev.kt + 2 ? '<span style="color:#ff8800">▲</span>' : p.kt < prev.kt - 2 ? '<span style="color:#00d9ff">▼</span>' : '<span style="color:#555">▬</span>';
+    const fl = (s.source === 'tcm' ? (p.inland ? 'INLAND' : '') : (pos[p.tau] || '')).replace(/^POST-TROP\/?/, 'POST-TROP ').trim();
+    return '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;' + hurrMono + 'font-size:.52rem">' +
+      '<span style="flex:0 0 52px;color:#8b949e">' + hurrEsc(hurrWhen(p.t)) + '</span>' +
+      '<span style="flex:0 0 22px;color:' + p.cat.color + ';font-weight:700">' + hurrCatShort(p.cat) + '</span>' +
+      '<span style="flex:0 0 52px;color:#c9d1d9">' + p.mph + ' mph</span>' + trend +
+      '<span style="color:#8b949e;font-size:.46rem">' + hurrEsc(fl) + '</span></div>';
+  }).join('');
+  const adv = s.advisory && (s.advisory.number || s.advisory.text) ? 'Advisory ' + (s.advisory.number || '') + (s.advisory.text ? ' · ' + s.advisory.text : '') : '';
+  const link = (href, label, strong) => '<a href="' + href + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="flex:1;display:block;padding:3px;border-radius:4px;text-decoration:none;' + hurrMono + 'font-size:.52rem;text-align:center;' +
+    (strong ? 'background:' + col + '22;border:1px solid ' + col + '44;color:' + col : 'background:#21262d;border:1px solid #30363d;color:#8b949e') + '">' + label + ' &#8594;</a>';
+  const b = s.bin;
+  const links = b ? link('https://www.nhc.noaa.gov/text/MIATCPAT' + b + '.shtml', 'Advisory', true) + link('https://www.nhc.noaa.gov/text/MIATCDAT' + b + '.shtml', 'Discussion') + link('https://www.nhc.noaa.gov/graphics_at' + b + '.shtml', 'Graphics')
+    : link('https://www.nhc.noaa.gov/', 'Advisory', true) + link('https://www.nhc.noaa.gov/cyclones/', 'Track');
+  const sel = hurrId(s) === (hurrSel() && hurrId(hurrSel()));
+  return '<div onclick="hurrSelect(\'' + hurrEsc(hurrId(s)) + '\')" style="cursor:pointer;background:#1c2128;border:1px solid ' + (sel ? col : col + '44') + ';border-radius:6px;padding:8px;margin-bottom:6px">' +
+    '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap">' +
+    '<span style="padding:2px 7px;background:' + col + '22;color:' + col + ';border:1px solid ' + col + '66;border-radius:4px;' + hurrMono + 'font-size:.52rem;font-weight:700">' + c.label + '</span>' +
+    '<span style="color:#e6edf3;font-weight:700;font-size:.68rem">' + hurrEsc(hurrTitle(s)) + '</span>' +
+    (s.source === 'tcm' ? '<span title="NHC map service unavailable; showing the advisory text instead (no official cone/warnings on the map)" style="' + hurrMono + 'font-size:.45rem;color:#ffa500;border:1px solid #ffa50066;border-radius:3px;padding:0 4px">TEXT FEED</span>' : '') + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:5px">' +
+    [['WINDS', s.windMph + ' mph (' + s.windKt + ' kt)' + (s.windGust ? '<br><span style="color:#8b949e;font-weight:400">gusts ' + s.windGust + ' mph</span>' : ''), col],
+     ['PRESSURE', s.pressure ? s.pressure + ' mb' : '--', '#c9d1d9'],
+     ['FROM YOU', Math.round(s.impact.distNow) + ' mi ' + s.impact.compass, s.impact.distNow < 500 ? '#ff4444' : s.impact.distNow < 800 ? '#ffa500' : '#c9d1d9']].map(x =>
+      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center"><div style="' + hurrMono + 'font-size:.45rem;color:#8b949e">' + x[0] + '</div>' +
+      '<div style="' + hurrMono + 'font-size:.55rem;color:' + x[2] + ';font-weight:700;line-height:1.35">' + x[1] + '</div></div>').join('') + '</div>' +
+    '<div style="' + hurrMono + 'font-size:.5rem;color:#8b949e;margin-bottom:3px">' + s.lat.toFixed(1) + '&deg;N ' + Math.abs(s.lon).toFixed(1) + '&deg;' + (s.lon < 0 ? 'W' : 'E') + (s.movement ? ' &bull; ' + hurrEsc(s.movement) : '') + '</div>' +
+    (adv ? '<div style="' + hurrMono + 'font-size:.46rem;color:#8b949e;margin-bottom:5px">' + hurrEsc(adv) + '</div>' : '') +
+    (rows ? '<div style="border-top:1px solid var(--border);padding-top:4px;margin-bottom:6px"><div style="' + hurrMono + 'font-size:.45rem;color:#8b949e;margin-bottom:2px">FORECAST (EASTERN TIME)</div>' + rows + '</div>' : '') +
+    '<div style="display:flex;gap:5px">' + links + '</div></div>';
+}
+
+function hurrRenderCards() {
+  const cnt = document.getElementById('nhc-storm-count'), list = document.getElementById('nhc-storms-list');
   if (!list) return;
-  if (!storms.length) {
-    list.innerHTML =
-      '<div style="text-align:center;padding:16px 8px;font-family:Courier New,monospace">' +
-      '<div style="color:#3fb950;font-size:1.1rem;margin-bottom:4px">&#10003;</div>' +
-      '<div style="color:#3fb950;font-size:.63rem;font-weight:700">No Active Tropical Cyclones</div>' +
-      '<div style="color:#555;font-size:.55rem;margin-top:3px">Atlantic basin quiet</div></div>';
+  const st = HS.storms;
+  if (cnt) cnt.textContent = HS.src === 'none' && HS.err ? 'Unavailable' : st.length ? st.length + ' Active Storm' + (st.length > 1 ? 's' : '') : 'No active storms';
+  if (!st.length) {
+    list.innerHTML = HS.err
+      ? '<div style="background:#1c2128;border:1px solid #ffa500;border-radius:6px;padding:10px"><div style="color:#ffa500;' + hurrMono + 'font-size:.6rem;font-weight:700;margin-bottom:8px">&#9888; NHC OFFLINE &mdash; storm status unknown</div>' +
+        '<a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener" style="display:block;padding:5px 10px;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);border-radius:5px;color:#00d9ff;text-decoration:none;' + hurrMono + 'font-size:.6rem;text-align:center">NHC Active Advisories &#8594;</a></div>'
+      : '<div style="text-align:center;padding:16px 8px;' + hurrMono + '"><div style="color:#3fb950;font-size:1.1rem;margin-bottom:4px">&#10003;</div><div style="color:#3fb950;font-size:.63rem;font-weight:700">No Active Tropical Cyclones</div><div style="color:#8b949e;font-size:.55rem;margin-top:3px">Atlantic basin quiet</div></div>';
     return;
   }
-  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
-    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-  const catLabel = c => ({'TD':'TROPICAL DEPRESSION','TS':'TROPICAL STORM',
-    '1':'CAT 1','2':'CAT 2','3':'CAT 3','4':'CAT 4','5':'CAT 5'})[String(c)] || String(c);
-  list.innerHTML = storms.map(s => {
-    const col  = catColor(s.classification);
-    const wind = s.windMph ? s.windMph + ' mph (' + (s.windKt||'--') + ' kt)' : '--';
-    const pres = s.pressure ? s.pressure + ' mb' : '--';
-    const lat  = s.lat ? s.lat.toFixed(1) + '&deg;N' : '';
-    const lon  = s.lon ? Math.abs(s.lon).toFixed(1) + '&deg;W' : '';
-    const dist = (s.lat && s.lon) ? Math.round(haversineMiles(CONFIG.lat, CONFIG.lon, s.lat, s.lon)) : null;
-    return '<div style="background:#1c2128;border:1px solid '+col+'44;border-radius:6px;padding:8px;margin-bottom:6px">' +
-      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">' +
-      '<span style="padding:2px 7px;background:'+col+'22;color:'+col+';border:1px solid '+col+'66;' +
-        'border-radius:4px;font-family:Courier New,monospace;font-size:.52rem;font-weight:700">'+catLabel(s.classification)+'</span>' +
-      '<span style="color:#e6edf3;font-weight:700;font-size:.68rem">'+(s.name||'UNNAMED')+'</span></div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:5px">' +
-      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
-        '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">WINDS</div>' +
-        '<div style="font-family:Courier New,monospace;font-size:.55rem;color:'+col+';font-weight:700">'+wind+'</div></div>' +
-      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
-        '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">PRESSURE</div>' +
-        '<div style="font-family:Courier New,monospace;font-size:.55rem;color:#c9d1d9">'+pres+'</div></div>' +
-      '<div style="background:#0d1117;border-radius:4px;padding:4px;text-align:center">' +
-        '<div style="font-family:Courier New,monospace;font-size:.45rem;color:#555">FROM YOU</div>' +
-        '<div style="font-family:Courier New,monospace;font-size:.55rem;color:'+(dist&&dist<500?'#ff4444':dist&&dist<800?'#ffa500':'#c9d1d9')+'">'+(dist?dist+' mi':'--')+'</div></div></div>' +
-      '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#555;margin-bottom:3px">'+lat+' '+lon+(s.movement?' &bull; '+s.movement:'')+'</div>' +
-      (s.lon && s.lon < -80.5 && s.lon > -98 && s.lat > 18 && s.lat < 31
-        ? '<div style="font-family:Courier New,monospace;font-size:.5rem;color:#f0a500;margin-bottom:5px">&#9888; Gulf system &mdash; rain bands may reach FL east coast</div>'
-        : '<div style="margin-bottom:5px"></div>') +
-      '<div style="display:flex;gap:5px">' +
-      '<a href="https://www.nhc.noaa.gov/" target="_blank" style="flex:1;display:block;padding:3px;background:'+col+'22;border:1px solid '+col+'44;border-radius:4px;color:'+col+';text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Advisory &#8594;</a>' +
-      '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="flex:1;display:block;padding:3px;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#8b949e;text-decoration:none;font-family:Courier New,monospace;font-size:.52rem;text-align:center">Track &#8594;</a>' +
-      '</div></div>';
-  }).join('');
-  plotStormsOnMap(storms);
-  storms.forEach(s => { if (s.trackPoints && s.trackPoints.length > 1) drawStormCone(s); });
+  list.innerHTML = (HS.src === 'cache' ? '<div style="color:#ffa500;' + hurrMono + 'font-size:.52rem;margin-bottom:6px">&#9888; Offline &mdash; showing the last advisory received ' + hurrAgo(HS.cacheTs) + '</div>' : '') +
+    st.map(hurrCardHtml).join('');
 }
 
-function renderActiveStormsOffline() {
-  const cnt = document.getElementById('nhc-storm-count');
-  const list = document.getElementById('nhc-storms-list');
-  if (cnt) cnt.textContent = 'Unavailable';
-  if (!list) return;
-  list.innerHTML =
-    '<div style="background:#1c2128;border:1px solid #ffa500;border-radius:6px;padding:10px">' +
-    '<div style="color:#ffa500;font-family:Courier New,monospace;font-size:.6rem;font-weight:700;margin-bottom:8px">&#9888; NHC OFFLINE</div>' +
-    '<a href="https://www.nhc.noaa.gov/" target="_blank" style="display:block;padding:5px 10px;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.3);border-radius:5px;color:#00d9ff;text-decoration:none;font-family:Courier New,monospace;font-size:.6rem;text-align:center">NHC Active Advisories &#8594;</a></div>';
-}
+const hurrRow = (label, html) => '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);' + hurrMono + 'font-size:.58rem;line-height:1.5">' +
+  '<div style="flex:0 0 78px;color:#8b949e;font-size:.5rem;letter-spacing:.04em;padding-top:1px">' + label + '</div><div style="flex:1;min-width:0;color:#c9d1d9">' + html + '</div></div>';
 
-// ── NHC CONE OF UNCERTAINTY ───────────────────────────────────────────────────
-const NHC_CONE_NM = {0:0, 12:36, 24:53, 36:74, 48:99, 72:154, 96:202, 120:254};
-let _coneLayer = null;
-
-function drawStormCone(storm) {
-  const map = window._hurricaneMap;
-  if (!map || !storm.trackPoints || storm.trackPoints.length < 2) return;
-  if (_coneLayer) { try { map.removeLayer(_coneLayer); } catch(e){} }
-  _coneLayer = L.layerGroup().addTo(map);
-  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
-    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-  const col = catColor(storm.classification);
-  const leftEdge = [], rightEdge = [];
-  storm.trackPoints.forEach((pt, i) => {
-    const hwDeg = (NHC_CONE_NM[pt.hr] ?? NHC_CONE_NM[120]) / 60; // ?? not || — NHC_CONE_NM[0] is a legit 0, not "missing"
-    let bearing = 0;
-    if (i < storm.trackPoints.length - 1) {
-      const nx = storm.trackPoints[i+1];
-      bearing = Math.atan2(nx.lon - pt.lon, nx.lat - pt.lat);
-    } else if (i > 0) {
-      const pv = storm.trackPoints[i-1];
-      bearing = Math.atan2(pt.lon - pv.lon, pt.lat - pv.lat);
-    }
-    // Perpendicular to travel direction (cos θ, sin θ) is (-sin θ, cos θ) — a 90° rotation.
-    // The previous (sin θ, cos θ) is only perpendicular at cardinal bearings; at diagonals
-    // like 45° (very common for Atlantic storms tracking NE toward Florida) it's parallel
-    // to the track instead, collapsing the cone into a degenerate sliver.
-    const pLat = -Math.sin(bearing) * hwDeg;
-    const pLon = Math.cos(bearing) * hwDeg / Math.cos(pt.lat * Math.PI / 180);
-    leftEdge.push([pt.lat + pLat, pt.lon - pLon]);
-    rightEdge.push([pt.lat - pLat, pt.lon + pLon]);
-  });
-  L.polygon([...leftEdge, ...[...rightEdge].reverse()], {
-    color:col, fillColor:col, fillOpacity:0.12, weight:1, dashArray:'4,4'
-  }).bindTooltip('NHC 5-Day Cone of Uncertainty', {className:'spc-tip'}).addTo(_coneLayer);
-
-  // Track line \u2014 colored per segment by forecast intensity
-  const catColor2 = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
-    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-  const catLabel = c => ({'TD':'TD','TS':'TS','1':'C1','2':'C2','3':'C3','4':'C4','5':'C5'})[String(c)] || c;
-  for (let i = 0; i < storm.trackPoints.length - 1; i++) {
-    const a = storm.trackPoints[i], b = storm.trackPoints[i+1];
-    L.polyline([[a.lat,a.lon],[b.lat,b.lon]], {
-      color: catColor2(b.classification), weight:3, opacity:0.9
-    }).addTo(_coneLayer);
+function hurrImpactBlock(s) {
+  const a = s.impact, T = a.T || {}, r = a.reach, l = a.level, rows = [];
+  rows.push(hurrRow('RIGHT NOW', Math.round(a.distNow) + ' mi ' + a.compass + ' of ' + HURR_PLACE + ' &middot; ' + s.cat.label.toLowerCase() + ', ' + s.windMph + ' mph'));
+  rows.push(hurrRow('NHC CONE', a.inCone === true ? '<b class="ht-threat" style="border:0">You are INSIDE the cone</b>' : a.inCone === false ? 'You are outside the cone' : 'Cone not available (text feed)') +
+    '<div style="' + hurrMono + 'font-size:.46rem;color:#8b949e;padding:0 0 4px 86px;border-bottom:1px solid var(--border);margin-top:-3px">The cone shows where the CENTER may go (about 2 of 3 times). Rain, surf, surge and tornadoes extend far outside it.</div>');
+  if (a.ca) {
+    const k = hurrCat(a.ca.kt, ''), after = a.landfall && a.ca.t && a.ca.t >= a.landfall.to;
+    rows.push(hurrRow('CLOSEST', '~' + Math.round(a.ca.mi) + ' mi' + (a.ca.t ? ' &middot; ' + hurrEsc(hurrWhen(a.ca.t)) : '') + ' &middot; ' + Math.round(a.ca.kt) + ' kt (' + k.label.toLowerCase() + ')' + (after ? ', after landfall' : '')));
+    if (r && r.r34 != null) {
+      const gap = Math.round(a.ca.mi - r.r34);
+      rows.push(hurrRow('WIND REACH', 'Tropical-storm-force winds (34 kt / 39 mph) forecast to extend ~' + Math.round(r.r34) + ' mi from the center toward you at that time' +
+        (a.ts ? ' &mdash; <b class="ht-threat" style="border:0">that reaches you</b>' : gap > 0 ? ' &mdash; ~' + gap + ' mi short of you' : '') +
+        (r.r64 != null ? '; hurricane-force ~' + Math.round(r.r64) + ' mi' : '')));
+    } else if (s.radii && s.radii.length) rows.push(hurrRow('WIND REACH', 'NHC\'s wind-radii forecast ends before the storm\'s closest approach (the wind field is expected to collapse).'));
   }
-
-  // Nodes with intensity labels
-  storm.trackPoints.forEach((pt, i) => {
-    const ptCol = catColor2(pt.classification);
-    const isCurrent = i === 0;
-    L.circleMarker([pt.lat, pt.lon], {
-      radius: isCurrent ? 9 : 6,
-      color:'#fff', fillColor:ptCol, fillOpacity:0.95, weight: isCurrent ? 2.5 : 1.5
-    }).bindTooltip(
-      '<b style="color:'+ptCol+'">'+(isCurrent ? storm.name+' (now)' : catLabel(pt.classification))+'</b>'+
-      (pt.wind ? '<br>'+pt.wind+' mph' : '')+(pt.inland ? '<br><i>inland</i>' : ''),
-      {className:'spc-tip', direction:'top'}
-    ).addTo(_coneLayer);
-    if (!isCurrent) {
-      L.marker([pt.lat, pt.lon], {
-        icon: L.divIcon({
-          className:'',
-          html:'<div style="font-family:Courier New,monospace;font-size:.55rem;font-weight:700;color:'+ptCol+
-               ';text-shadow:0 0 3px #000,0 0 3px #000;margin-top:10px;margin-left:8px">'+
-               catLabel(pt.classification)+'</div>',
-          iconSize:[24,16], iconAnchor:[0,0]
-        }), interactive:false
-      }).addTo(_coneLayer);
-    }
-  });
-
-  try {
-    map.fitBounds(L.latLngBounds(storm.trackPoints.map(p=>[p.lat,p.lon])).pad(0.25), {maxZoom:6});
-  } catch(e) { map.setView([storm.lat, storm.lon], 5); }
+  if (a.landfall && a.landfall.from && a.landfall.to) rows.push(hurrRow('LANDFALL', 'Forecast to move inland between ' + hurrEsc(hurrWhen(a.landfall.from)) + ' and ' + hurrEsc(hurrWhen(a.landfall.to)) + ' &middot; about ' + hurrMph(a.landfall.kt) + ' mph (' + a.landfall.kt + ' kt) at the start of that window'));
+  const jax = T.pws && Object.keys(T.pws).length ? T.pws : null;
+  if (jax) rows.push(hurrRow('NHC ODDS', Object.keys(jax).map(p => hurrEsc(p) + ': ' + ['34', '50', '64'].filter(k => jax[p][k] != null).map(k => k + ' kt ' + jax[p][k] + '%').join(', ')).join('<br>') + '<div style="color:#8b949e;font-size:.46rem">chance of sustained winds at that strength within 5 days</div>'));
+  else if (T.pwsId) rows.push(hurrRow('NHC ODDS', 'No Jacksonville-area row in NHC\'s wind-probability table, which only lists places with at least a 3% chance of tropical-storm-force winds in 5 days.'));
+  if (a.hits && a.hits.length) rows.push(hurrRow('NHC SAYS', a.hits.slice(0, 4).map(h => '<div style="margin-bottom:3px"><span style="color:#8b949e;font-size:.46rem">' + hurrEsc(h.label) + '</span> ' + hurrEsc(h.text) + '</div>').join('')));
+  else if (T.adv) rows.push(hurrRow('NHC SAYS', 'The current advisory does not mention north Florida or the Southeast coast.'));
+  const L = HS.local;
+  if (L && l !== 'far') rows.push(hurrRow('YOUR FORECAST', 'Rain ~' + L.rain72.toFixed(1) + ' in over 72 h (' + L.rain120.toFixed(1) + ' in over 5 days)' + (L.peakGust ? ' &middot; peak gust ' + L.peakGust.mph + ' mph (' + hurrEsc(hurrWhen(L.peakGust.t * 1000)) + ')' : '') +
+    '<div style="color:#8b949e;font-size:.46rem">NWS National Blend of Models for ' + HURR_PLACE + ' &mdash; a general forecast, not storm-specific</div>'));
+  const mine = (currentAlerts || []).filter(x => /hurricane|tropical|surge/i.test(x.event || ''));
+  rows.push(hurrRow('YOUR ALERTS', mine.length ? mine.map(x => '<b>' + hurrEsc(x.event) + '</b>').join(', ') : 'No tropical watches or warnings for ' + HURR_PLACE + ' right now.'));
+  return '<div style="padding:8px 0 4px"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:4px;' + hurrMono + '">' +
+    '<b style="color:#e6edf3;font-size:.66rem">' + hurrEsc(hurrTitle(s)) + '</b>' +
+    '<span class="ht-' + l + '" style="padding:2px 8px;border:1px solid;border-radius:10px;font-size:.5rem;font-weight:700">' + HURR_LVL[l].label + '</span></div>' +
+    '<div style="' + hurrMono + 'font-size:.58rem;color:#c9d1d9;margin-bottom:4px;line-height:1.5">' + hurrEsc(hurrImpactSentence(s)) + '</div>' + rows.join('') + '</div>';
 }
 
-function plotStormsOnMap(storms) {
+function hurrRenderImpact() {
+  const p = document.getElementById('hurr-impact-panel'), body = document.getElementById('hurr-impact-body');
+  if (!p || !body) return;
+  if (!HS.storms.length) { p.style.display = 'none'; return; }
+  p.style.display = '';
+  const ts = document.getElementById('hurr-impact-ts');
+  if (ts) ts.textContent = HS.src === 'cache' ? 'cached ' + hurrAgo(HS.cacheTs) : nowEDT();
+  body.innerHTML = HS.storms.map(hurrImpactBlock).join('') +
+    '<div style="' + hurrMono + 'font-size:.48rem;color:#8b949e;margin-top:6px;line-height:1.5">Computed from NHC\'s official forecast. It is guidance, not a warning: for watches, warnings and local instructions follow NWS Jacksonville and local emergency management.</div>';
+}
+
+// NHC's coastal watches and warnings for each storm, in plain language (from the Public Advisory)
+const HURR_WWTXT = { 'hurricane warning': '#ff5a5a', 'hurricane watch': '#ff69d9', 'tropical storm warning': '#6aa0ff', 'tropical storm watch': '#ffe14d', 'storm surge warning': '#c46bff', 'storm surge watch': '#e88aa8' };
+function hurrRenderWW() {
+  const el = document.getElementById('hurr-ww-nhc');
+  if (!el) return;
+  const blocks = HS.storms.map(s => {
+    const T = s.impact.T || {};
+    if (!T.adv) return '';
+    const ww = T.adv.ww || [];
+    return '<div style="margin-top:8px"><div style="' + hurrMono + 'font-size:.5rem;color:#8b949e;margin-bottom:3px">' + hurrEsc(hurrTitle(s).toUpperCase()) + ' &mdash; NHC WATCHES &amp; WARNINGS' + (T.adv.number ? ' (' + hurrEsc(T.adv.number.replace(/^Intermediate /, 'Int. ')) + ')' : '') + '</div>' +
+      (ww.length ? ww.map(w => { const col = HURR_WWTXT[w.type.toLowerCase()] || '#8b949e';
+        return '<div style="padding:4px 0;border-bottom:1px solid var(--border)"><span style="display:inline-block;padding:1px 7px;border-radius:4px;font-size:.54rem;font-weight:700;' + hurrMono + 'background:' + col + '22;color:' + col + '">' + hurrEsc(w.type) + '</span>' +
+          '<div style="font-size:.55rem;color:#c9d1d9;margin-top:2px;line-height:1.45">' + w.areas.map(hurrEsc).join('<br>') + '</div></div>'; }).join('')
+        : '<div style="' + hurrMono + 'font-size:.55rem;color:#8b949e">None in effect for this system.</div>') + '</div>';
+  }).join('');
+  el.innerHTML = blocks;
+}
+
+// NHC / WPC official graphics (images load only for the tab being viewed)
+function hurrGfxList(s) {
+  const nn = s && s.num != null ? String(s.num).padStart(2, '0') : null, id = s && s.id;
+  const nhc = f => (nn && id && /^AL/i.test(id)) ? 'https://www.nhc.noaa.gov/storm_graphics/AT' + nn + '/' + id + '_' + f + '.png' : null;
+  return [
+    { k: 'qpf',   label: 'RAIN 5-DAY', url: 'https://www.wpc.ncep.noaa.gov/qpf/p120i.gif',  note: 'WPC 5-day rainfall forecast, inches (all sources, not just this storm)' },
+    { k: 'ero',   label: 'FLOOD RISK', url: 'https://www.wpc.ncep.noaa.gov/qpf/94ewbg.gif', note: 'WPC excessive-rainfall (flash flood) outlook, today' },
+    { k: 'prob',  label: 'WIND ODDS',  url: nhc('wind_probs_34_F120_sm2'), note: 'Chance of tropical-storm-force winds over the next 5 days' },
+    { k: 'toa',   label: 'ARRIVAL',    url: nhc('most_likely_toa_34_sm2'), note: 'Most likely arrival of tropical-storm-force winds' },
+    { k: 'surge', label: 'SURGE',      url: nhc('peak_surge'), note: 'Peak storm surge forecast (only issued when surge is expected)' },
+    { k: 'key',   label: 'KEY MSGS',   url: nhc('key_messages'), note: 'NHC key messages graphic' }
+  ].filter(g => g.url);
+}
+function hurrGfxFail(img) {
+  const box = img.parentNode;
+  if (box) box.innerHTML = '<div style="' + hurrMono + 'font-size:.55rem;color:#8b949e;padding:14px;text-align:center">This graphic is not available right now (NHC only publishes it when it applies).<br><a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener" style="color:#06b6d4">Open nhc.noaa.gov &#8594;</a></div>';
+}
+function hurrRenderGfx() {
+  const panel = document.getElementById('hurr-gfx-panel');
+  if (!panel) return;
+  const s = hurrSel();
+  if (!s) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const list = hurrGfxList(s);
+  if (!HS.gfx || !list.some(g => g.k === HS.gfx)) HS.gfx = (s.impact.level === 'threat' || s.impact.level === 'direct') && list.some(g => g.k === 'prob') ? 'prob' : 'qpf';
+  const cur = list.find(g => g.k === HS.gfx) || list[0];
+  const nm = document.getElementById('hurr-gfx-name'); if (nm) nm.textContent = s.name.toUpperCase();
+  const tabs = document.getElementById('hurr-gfx-tabs');
+  if (tabs) tabs.innerHTML = list.map(g => '<button class="tab-btn' + (g.k === cur.k ? ' active' : '') + '" onclick="hurrGfx(\'' + g.k + '\')" style="font-size:.5rem;padding:2px 6px">' + g.label + '</button>').join('');
+  const box = document.getElementById('hurr-gfx-box');
+  const src = cur.url + '?b=' + Math.floor(Date.now() / 1200000);
+  if (box && box.getAttribute('data-src') !== src) {
+    box.setAttribute('data-src', src);
+    box.innerHTML = '<img alt="' + hurrEsc(cur.label) + '" src="' + src + '" onerror="hurrGfxFail(this)" style="width:100%;border-radius:4px;background:#fff;display:block" />';
+  }
+  const note = document.getElementById('hurr-gfx-note'); if (note) note.textContent = cur.note;
+  const lk = document.getElementById('hurr-gfx-link'); if (lk && s.bin) lk.href = 'https://www.nhc.noaa.gov/graphics_at' + s.bin + '.shtml';
+}
+function hurrGfx(k) { HS.gfx = k; hurrRenderGfx(); }
+
+function hurrRenderSeason() {
+  const el = document.getElementById('hurr-season-body');
+  if (!el) return;
+  const st = HS.storms, top = st.slice().sort((a, b) => b.windKt - a.windKt)[0];
+  const stat = (v, l, c) => '<div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:8px"><div class="data-val text-base" style="' + (c ? 'color:' + c : '') + '">' + v + '</div><div class="text-[.5rem] text-gray-600" style="' + hurrMono + '">' + l + '</div></div>';
+  el.innerHTML = '<div class="grid grid-cols-3 gap-2 text-center">' +
+    stat(HS.src === 'none' && HS.err ? '?' : st.length, 'Active now') + stat(top ? hurrCatShort(top.cat) : '&mdash;', 'Strongest now', top ? top.cat.color : '') +
+    stat(st.length ? 'AL' + String(Math.max.apply(null, st.map(s => s.num || 0))).padStart(2, '0') : '&mdash;', 'Latest active') + '</div>' +
+    '<div class="mt-3 text-[.5rem] text-gray-600" style="' + hurrMono + '">Live from NHC. Season totals: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener" class="text-cyan-500 hover:underline">nhc.noaa.gov</a></div>';
+}
+
+// ── header pill + risk banner ─────────────────────────────────────────────────────────────────────────────────
+function hurrUpdatePill() {
+  const el = document.getElementById('pill-tropical');
+  if (!el) return;
+  let cls = 'nor-quiet', text = 'TROPICAL: QUIET', tip = 'No active Atlantic tropical cyclones';
+  if (HS.err && !HS.storms.length) { cls = 'offline'; text = 'TROPICAL: UNKNOWN'; tip = 'Could not reach NHC'; }
+  else if (HS.storms.length) {
+    const w = hurrWorst(), l = w.impact.level;
+    cls = { far: 'nor-quiet', near: 'nor-watch', threat: 'nor-active', direct: 'nor-strong' }[l];
+    text = 'TROPICAL: ' + w.name.toUpperCase() + ' · ' + Math.round(w.impact.distNow) + ' MI' + (HS.storms.length > 1 ? ' +' + (HS.storms.length - 1) : '');
+    tip = hurrTitle(w) + ' — ' + hurrYouLine(w) + '. ' + hurrImpactSentence(w);
+  }
+  el.className = 'status-pill ' + cls;
+  el.innerHTML = '<span class="status-dot"></span>' + hurrEsc(text);
+  el.title = tip;
+}
+// Text for the banner: null when no storm is active
+function hurrBanner() {
+  const w = hurrWorst();
+  if (!w) return null;
+  const l = w.impact.level, extra = HS.storms.length > 1 ? ' (+' + (HS.storms.length - 1) + ' more)' : '';
+  const nhcSays = w.impact.hits.length ? ' · NHC mentions ' + w.impact.hits.slice(0, 2).map(h => h.label.toLowerCase().replace('key message', 'key message')).join(' and ') + ' for your region' : '';
+  return { level: l === 'direct' ? 'danger' : l === 'threat' ? 'warning' : 'monitor',
+    text: hurrTitle(w).toUpperCase() + ' (' + w.windMph + ' mph) — ' + Math.round(w.impact.distNow) + ' mi ' + w.impact.compass + ' of you; ' +
+      (l === 'far' ? 'no direct threat' : l === 'near' ? 'indirect effects possible' : l === 'threat' ? 'tropical-storm conditions possible here' : 'HURRICANE CONDITIONS POSSIBLE HERE') + nhcSays + extra };
+}
+// Appended to any non-urgent banner message so a storm is never hidden behind an unrelated alert
+function hurrBannerTag(existing) {
+  if (HS.err && !HS.storms.length) return '❔ tropical status unknown (NHC unreachable)';   // never imply "no storms" when we can't tell
+  const w = hurrWorst();
+  if (!w || w.impact.level === 'far' || String(existing || '').toUpperCase().indexOf(w.name.toUpperCase()) >= 0) return '';
+  return '🌀 ' + w.name.toUpperCase() + ' ' + Math.round(w.impact.distNow) + ' mi ' + w.impact.compass + ' (' + w.windMph + ' mph)';
+}
+
+// ── map ───────────────────────────────────────────────────────────────────────────────────────────────────────
+function hurrSyncButtons() {
+  Object.keys(HS.vis).forEach(k => { const b = document.getElementById('btn-' + k); if (b) b.classList.toggle('active', !!HS.vis[k]); });
+}
+function hurrSetVisible(name, on) {
+  const map = window._hurricaneMap, g = HS.layers[name];
+  if (!map || !g) return;
+  if (on && !map.hasLayer(g)) g.addTo(map); else if (!on && map.hasLayer(g)) map.removeLayer(g);
+}
+function hurrToggle(name) {
+  HS.vis[name] = !HS.vis[name];
+  try { localStorage.setItem('sw_hurr_vis', JSON.stringify(HS.vis)); } catch (e) {}
+  hurrSyncButtons();
+  if (name === 'arrival' && HS.vis.arrival) { hurrEnsureArrival().then(hurrDrawMap); return; }
+  hurrSetVisible(name, HS.vis[name]);
+}
+const hurrToggleHurrLayer = hurrToggle;
+async function hurrEnsureArrival() {
+  const L = HS.layerIds;
+  if (!L) return;
+  await Promise.all(HS.storms.map(async s => {
+    if (!s.bin || s.source !== 'gis' || !L[s.bin]) return;
+    const key = hurrId(s) + ':' + (s.advisory && s.advisory.number);
+    if (HS.arrival[hurrId(s)] && HS.arrival[hurrId(s)].key === key) return;
+    try { HS.arrival[hurrId(s)] = { key, fc: await hurrQuery(L[s.bin].arrLikely, '&maxAllowableOffset=0.02') }; }
+    catch (e) { HS.arrival[hurrId(s)] = { key, fc: null }; }
+  }));
+}
+
+const HURR_WINDSTYLE = { 34: { color: '#ffe14d', fill: .13 }, 50: { color: '#ffa500', fill: .18 }, 64: { color: '#ff4444', fill: .24 } };
+function hurrDrawMap() {
   const map = window._hurricaneMap;
-  if (!map || !storms.length) return;
-  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700',
-    '3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-  const catLabel = c => ({'TD':'TROP DEPRESSION','TS':'TROP STORM',
-    '1':'CAT 1','2':'CAT 2','3':'CAT 3','4':'CAT 4','5':'CAT 5'})[String(c)] || c;
-  storms.forEach(s => {
-    if (!s.lat || !s.lon) return;
-    const col = catColor(s.classification);
-    // Filled dot
-    L.circleMarker([s.lat, s.lon], {radius:12, color:'#fff', fillColor:col, fillOpacity:.9, weight:2})
-    .bindTooltip(
-      '<b style="color:'+col+'">'+(s.name||'Storm')+'</b><br>'+catLabel(s.classification)+
-      (s.windMph?' &bull; '+s.windMph+' mph':'')+(s.pressure?'<br>'+s.pressure+' mb':''),
-      {className:'spc-tip', permanent:false}
-    )
-    .bindPopup(
-      '<div style="font-family:Courier New,monospace;font-size:.65rem;min-width:180px">'+
-      '<b style="color:'+col+';font-size:.75rem">'+(s.name||'Storm')+'</b>'+
-      '<div style="color:'+col+';font-size:.55rem;margin-bottom:4px">'+catLabel(s.classification)+'</div>'+
-      (s.windMph?'<div>Winds: <b>'+s.windMph+' mph</b></div>':'')+
-      (s.pressure?'<div>Pressure: '+s.pressure+' mb</div>':'')+
-      '<div style="color:#8b949e;margin-top:2px">'+(s.lat.toFixed(1))+'°N '+(Math.abs(s.lon).toFixed(1))+'°W</div>'+
-      (s.movement?'<div style="color:#8b949e">'+s.movement+'</div>':'')+
-      '<hr style="border-color:#30363d;margin:5px 0">'+
-      '<a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" style="color:#06b6d4">Full Advisory &#8594;</a>'+
-      '</div>'
-    )
-    .addTo(map);
-    // Name label
-    L.marker([s.lat, s.lon], {
-      icon: L.divIcon({
-        className:'',
-        html:'<div style="font-family:Courier New,monospace;font-size:.6rem;font-weight:700;color:'+col+
-             ';text-shadow:0 0 4px #000,0 0 4px #000;white-space:nowrap;margin-top:18px;margin-left:-20px">'+
-             (s.name||'')+'</div>',
-        iconSize:[80,20], iconAnchor:[0,0]
-      }), interactive:false
-    }).addTo(map);
+  if (!map || !window.L) return;
+  Object.keys(HS.layers).forEach(k => { try { map.removeLayer(HS.layers[k]); } catch (e) {} });
+  HS.layers = {};
+  const G = n => (HS.layers[n] = L.layerGroup());
+  const gCone = G('cone'), gWind = G('wind'), gArr = G('arrival'), gPast = G('past'), gWarn = G('warn'), gTrack = G('track');
+  const home = [CONFIG.lat, CONFIG.lon];
+  const pt = (lat, lon) => [lat, lon];
+  HS.storms.forEach(s => {
+    const col = s.cat.color, name = hurrTitle(s);
+    if (s.cone) L.geoJSON({ type: 'Feature', geometry: s.cone }, { style: { color: '#e6edf3', weight: 1.2, dashArray: '5,4', fillColor: col, fillOpacity: .11 } })
+      .bindTooltip('NHC cone of uncertainty — where the center may track (about 2 of 3 times)', { className: 'spc-tip', sticky: true }).addTo(gCone);
+    s.advWind.slice().sort((a, b) => a.kt - b.kt).forEach(w => {
+      const st = HURR_WINDSTYLE[w.kt] || HURR_WINDSTYLE[34];
+      L.geoJSON({ type: 'Feature', geometry: w.geom }, { style: { color: st.color, weight: 1, fillColor: st.color, fillOpacity: st.fill } })
+        .bindTooltip(name + ' — current ' + w.kt + '-kt (' + Math.round(w.kt * 1.15078) + ' mph) wind field', { className: 'spc-tip', sticky: true }).addTo(gWind);
+    });
+    const ar = HS.arrival[hurrId(s)];
+    if (ar && ar.fc && ar.fc.features) ar.fc.features.forEach(f => {
+      const lab = ((f.properties || {}).arrival_time || '').trim();
+      if (!f.geometry || !lab) return;   // an unlabeled isochrone is just a stray line
+      L.geoJSON({ type: 'Feature', geometry: f.geometry }, { style: { color: '#ffe14d', weight: 1.6, dashArray: '2,5', opacity: .9 } })
+        .bindTooltip('Most likely arrival of tropical-storm-force (34-kt) winds: ' + lab + ' (time zone as printed by NHC)', { className: 'spc-tip', sticky: true }).addTo(gArr);
+      const g = f.geometry, line = g.type === 'LineString' ? g.coordinates : g.type === 'MultiLineString' ? g.coordinates[0] : null;
+      if (line && line.length) { const m = line[Math.floor(line.length / 2)];
+        L.marker([m[1], m[0]], { interactive: false, icon: L.divIcon({ className: '', iconSize: [60, 14], iconAnchor: [30, 7],
+          html: '<div style="' + hurrMono + 'font-size:.5rem;font-weight:700;color:#ffe14d;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap;text-align:center">' + hurrEsc(lab) + '</div>' }) }).addTo(gArr); }
+    });
+    s.pastLines.forEach(pl => L.geoJSON({ type: 'Feature', geometry: pl.geom }, { style: { color: '#c9d1d9', weight: 2, opacity: .55 } }).addTo(gPast));
+    s.pastPts.forEach(p => { const c = hurrCat(p.kt, /DB|LO|EX|WV/i.test(p.type) ? 'low' : ''); L.circleMarker(pt(p.lat, p.lon), { radius: 2.5, color: '#0d1117', weight: .5, fillColor: c.color, fillOpacity: .85 })
+      .bindTooltip(name + ' — ' + p.kt + ' kt' + (p.dtg ? ' · ' + String(p.dtg).replace(/^(\d{4})(\d{2})(\d{2})(\d{2})$/, '$2/$3 $4Z') : ''), { className: 'spc-tip' }).addTo(gPast); });
+    s.ww.forEach(w => {
+      const st = HURR.wwStyle[w.code] || { label: 'Watch/Warning', color: '#8b949e' };
+      L.geoJSON({ type: 'Feature', geometry: w.geom }, { style: { color: '#000', weight: 9, opacity: .45, lineCap: 'round' } }).addTo(gWarn);
+      L.geoJSON({ type: 'Feature', geometry: w.geom }, { style: { color: st.color, weight: 5, opacity: .95, lineCap: 'round' } })
+        .bindTooltip(name + ' — ' + st.label, { className: 'spc-tip', sticky: true }).addTo(gWarn);
+    });
+    // forecast track, colored by the intensity it's heading toward
+    const tp = s.trackPoints;
+    for (let i = 0; i < tp.length - 1; i++) L.polyline([pt(tp[i].lat, tp[i].lon), pt(tp[i + 1].lat, tp[i + 1].lon)], { color: tp[i + 1].cat.color, weight: 3, opacity: .95 }).addTo(gTrack);
+    const T = s.impact.T || {}, infl = {};
+    ((T.dis && T.dis.positions) || []).forEach(p => { infl[p.tau] = p.flags; });
+    tp.forEach((p, i) => {
+      const now = i === 0, fl = s.source === 'tcm' ? (p.inland ? 'INLAND' : '') : (infl[p.tau] || '');
+      L.circleMarker(pt(p.lat, p.lon), { radius: now ? 10 : 6, color: '#fff', weight: now ? 2.5 : 1.5, fillColor: p.cat.color, fillOpacity: .95 })
+        .bindTooltip('<b style="color:' + p.cat.color + '">' + (now ? hurrEsc(name) + ' (now)' : hurrEsc(p.cat.label)) + '</b><br>' + p.mph + ' mph (' + Math.round(p.kt) + ' kt)' + (p.mslp ? ' · ' + p.mslp + ' mb' : '') +
+          (!now && p.t ? '<br>' + hurrEsc(hurrWhen(p.t)) + ' ET' : '') + (fl ? '<br><i>' + hurrEsc(fl.toLowerCase()) + '</i>' : ''), { className: 'spc-tip', direction: 'top' }).addTo(gTrack);
+      L.marker(pt(p.lat, p.lon), { interactive: false, icon: L.divIcon({ className: '', iconSize: [70, 22], iconAnchor: [-9, now ? -11 : -6],
+        html: '<div style="' + hurrMono + 'font-size:.52rem;font-weight:700;line-height:1.15;color:' + p.cat.color + ';text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap">' +
+          (now ? hurrEsc(s.name.toUpperCase()) + '<br>' + hurrCatShort(p.cat) + ' ' + p.mph : hurrEsc(hurrWhen(p.t).replace(/ (\d+) ([AP])M/, ' $1$2')) + '<br>' + hurrCatShort(p.cat) + ' ' + p.mph) + '</div>' }) }).addTo(gTrack);
+    });
   });
+  // dashed line from you to the storm you're looking at, with the distance
+  const sel = hurrSel();
+  if (sel) {
+    const gl = G('link');
+    L.polyline([home, pt(sel.lat, sel.lon)], { color: '#8b949e', weight: 1.2, dashArray: '2,6', opacity: .8 }).addTo(gl);
+    // label sits nearer to you than to the storm so it doesn't collide with the track's time labels
+    const mid = [home[0] + (sel.lat - home[0]) * .3, home[1] + (sel.lon - home[1]) * .3];
+    L.marker(mid, { interactive: false, icon: L.divIcon({ className: '', iconSize: [90, 14], iconAnchor: [45, 7],
+      html: '<div style="' + hurrMono + 'font-size:.5rem;color:#c9d1d9;text-shadow:0 0 3px #000,0 0 3px #000;text-align:center;white-space:nowrap">' + Math.round(sel.impact.distNow) + ' mi</div>' }) }).addTo(gl);
+  }
+  ['cone', 'wind', 'arrival', 'past', 'warn', 'track', 'link'].forEach(k => { if (HS.layers[k] && (k === 'link' || HS.vis[k])) HS.layers[k].addTo(map); });
+  const lbl = document.getElementById('hurr-map-label');
+  if (lbl) lbl.textContent = HS.storms.length ? hurrTitle(hurrSel() || HS.storms[0]) + (hurrSel() && hurrSel().advisory && hurrSel().advisory.number ? ' · Advisory ' + hurrSel().advisory.number : '') + ' · updated ' + (HS.src === 'cache' ? hurrAgo(HS.cacheTs) : nowEDT())
+    : (HS.err ? 'NHC unreachable — storm status unknown' : 'Atlantic basin quiet — no active storms');
+  hurrSyncButtons();
+}
+function hurrFit(force) {
+  const map = window._hurricaneMap;
+  if (!map) return;
+  const sz = map.getSize();
+  if (!sz.x || !sz.y) return;   // tab is hidden: sizing would be meaningless
+  const s = hurrSel();
+  const sig = s ? hurrId(s) + '|' + (s.advisory && s.advisory.number) : 'none';
+  if (!force && HS.fitFor === sig) return;
+  HS.fitFor = sig;
+  if (!s) { map.setView([25, -65], 4); return; }
+  let b = L.latLngBounds([[CONFIG.lat, CONFIG.lon], [s.lat, s.lon]]);
+  try { if (s.cone) b = b.extend(L.geoJSON({ type: 'Feature', geometry: s.cone }).getBounds()); } catch (e) {}
+  s.trackPoints.forEach(p => b.extend([p.lat, p.lon]));
+  map.fitBounds(b.pad(0.08), { maxZoom: 7, animate: false });
+}
+function hurrSelect(id) {
+  HS.sel = id; HS.gfx = null;
+  hurrRenderCards(); hurrRenderGfx(); hurrDrawMap(); hurrFit(true);
 }
 
-
+function hurrApply() {
+  currentStorms = HS.storms;
+  if (!HS.sel || !HS.storms.some(s => hurrId(s) === HS.sel)) HS.sel = HS.storms.length ? hurrId(hurrWorst()) : null;
+  [hurrRenderStrip, hurrRenderCards, hurrRenderImpact, hurrRenderWW, hurrRenderGfx, hurrRenderSeason, hurrDrawMap, hurrUpdatePill].forEach(fn => {
+    try { fn(); } catch (e) { console.warn(fn.name + ' failed:', e); }
+  });
+  try { hurrFit(false); } catch (e) {}
+  setPill('pill-nhc', HS.src === 'none' && HS.err ? 'error' : HS.src === 'cache' ? 'offline' : 'live', 'NHC');
+  if (HS.vis.arrival) hurrEnsureArrival().then(hurrDrawMap).catch(() => {});
+  try { renderNoreaster(); } catch (e) {}   // its "tropical system nearby" note reads currentStorms
+  updateRiskBanner();
+}
 
 // ─── FETCH: TWO via NWS API (CORS-friendly) ──────────────────────────────────
 async function fetchTWO() {
@@ -2178,7 +2883,7 @@ function renderWatchesWarnings(alerts) {
     return ev.includes('hurricane')||ev.includes('tropical')||ev.includes('surge');
   });
   if (!tropical.length) {
-    el.innerHTML = '<div style="font-family:Courier New,monospace;font-size:.62rem;color:#3fb950;text-align:center;padding:10px">✓ No active tropical watches or warnings</div>';
+    el.innerHTML = '<div style="font-family:Courier New,monospace;font-size:.62rem;color:#3fb950;text-align:center;padding:10px">✓ No tropical watches or warnings for Atlantic Beach</div>';
     return;
   }
   const wc = {'Hurricane Warning':'#ff0000','Hurricane Watch':'#ff8000','Tropical Storm Warning':'#ffd700','Tropical Storm Watch':'#00ced1','Storm Surge Warning':'#b524f9','Storm Surge Watch':'#db7093'};
@@ -2434,7 +3139,10 @@ function setRiskBanner(level, icon, text) {
   const iconEl = document.getElementById('risk-banner-icon');
   const textEl = document.getElementById('risk-banner-text');
   if (iconEl) iconEl.textContent = icon;
-  if (textEl) textEl.textContent = text;
+  // A nearby tropical system must never be hidden behind an unrelated alert: tag any non-urgent banner
+  let tag = '';
+  if (level !== 'danger' && level !== 'unknown') { try { tag = hurrBannerTag(text); } catch (e) {} }
+  if (textEl) textEl.textContent = tag ? text + ' · ' + tag : text;
 }
 
 function updateRiskBanner() {
@@ -2454,6 +3162,15 @@ function updateRiskBanner() {
   const activeWarning = currentAlerts.find(a => (a.priority || 0) >= 9);
   if (activeWarning) {
     setRiskBanner('danger', '🚨', activeWarning.event.toUpperCase() + (activeWarning.headline ? ' — ' + activeWarning.headline : '') + cacheSuffix);
+    return;
+  }
+
+  // A tropical system that could bring tropical-storm or hurricane conditions here outranks everything
+  // below. (One that is merely nearby, or far off, is handled further down / appended as a tag.)
+  let trop = null;
+  try { trop = hurrBanner(); } catch (e) { console.warn('hurricane banner failed:', e); }
+  if (trop && (trop.level === 'danger' || trop.level === 'warning')) {
+    setRiskBanner(trop.level, '🌀', trop.text + cacheSuffix);
     return;
   }
 
@@ -2494,8 +3211,14 @@ function updateRiskBanner() {
     return;
   }
 
-  if (currentStorms.length) {
-    setRiskBanner('monitor', '🌀', currentStorms.length + ' active tropical system' + (currentStorms.length > 1 ? 's' : '') + ' in the Atlantic basin — not necessarily near you, check Hurricane tab');
+  if (trop) {
+    setRiskBanner('monitor', '🌀', trop.text + cacheSuffix);
+    return;
+  }
+
+  // If NHC couldn't be reached we don't know there are no tropical threats, so don't claim it.
+  if (HS.err && !HS.storms.length) {
+    setRiskBanner('monitor', '❔', 'No active alerts or elevated severe risk — but tropical status could not be verified (NHC unreachable).' + cacheSuffix);
     return;
   }
 
@@ -2689,19 +3412,12 @@ function initHurricaneMap() {
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16}).addTo(map);
   L.circleMarker([CONFIG.lat,CONFIG.lon],{radius:7,color:'#00d9ff',fillColor:'#00d9ff',fillOpacity:.9,weight:2})
     .bindPopup('Atlantic Beach, FL').addTo(map);
-  const lbl = document.getElementById('hurr-map-label');
-  if (lbl) lbl.textContent = 'Atlantic Basin — open NHC.NOAA.GOV for live storms';
-  // Plot any storms already fetched before the map was opened
-  if (currentStorms && currentStorms.length) {
-    plotStormsOnMap(currentStorms);
-    currentStorms.forEach(s => { if (s.trackPoints && s.trackPoints.length > 1) drawStormCone(s); });
-  }
+  L.marker([CONFIG.lat,CONFIG.lon],{interactive:false,icon:L.divIcon({className:'',iconSize:[90,14],iconAnchor:[-8,-4],
+    html:'<div style="font-family:\'Courier New\',monospace;font-size:.5rem;font-weight:700;color:#00d9ff;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap">ATL BEACH</div>'})}).addTo(map);
+  // Draw whatever storms were fetched before the map existed (also sets the label + button states)
+  hurrDrawMap();
   // Same for tropical disturbance / genesis outlook areas
   if (currentOutlookAreas && currentOutlookAreas.length) plotOutlookAreas();
-}
-function toggleHurrLayer(layer) {
-  const btn = document.getElementById('btn-'+layer);
-  if (btn) btn.classList.toggle('active');
 }
 
 // ─── SEVERE PARAMS (static display) ──────────────────────────────────────────
@@ -4319,45 +5035,6 @@ const EVAC_COLORS = {
   'E': { fill:'#0088ff', opacity:0.15, stroke:'#0055cc' },
 };
 
-function toggleWindRadii() {
-  const btn = document.getElementById('btn-radii');
-  const map = window._hurricaneMap;
-  if (!map) return;
-  if (window._radiiLayer) {
-    map.removeLayer(window._radiiLayer);
-    window._radiiLayer = null;
-    if (btn) { btn.classList.remove('active'); btn.textContent = '\uD83D\uDCA8 RADII'; }
-    return;
-  }
-  window._radiiLayer = L.layerGroup().addTo(map);
-  if (btn) { btn.classList.add('active'); btn.textContent = '\uD83D\uDCA8 RADII ON'; }
-
-  const storms = window._lastStormData || [];
-  const catColor = c => ({'TD':'#00ced1','TS':'#00d9ff','1':'#aabbff','2':'#ffd700','3':'#ff8800','4':'#ff4444','5':'#ff00ff'})[String(c)] || '#8b949e';
-
-  if (!storms.length) {
-    // No active storms — show reference rings from Atlantic Beach
-    [[34,'#ffd700','34kt (TS force)'],[50,'#ffa500','50kt'],[64,'#ff4444','64kt (hurricane force)']].forEach(([kt,col,lbl]) => {
-      L.circle([CONFIG.lat, CONFIG.lon], {radius: kt * 30 * 1852 / 64, color:col, fill:false, weight:1.5, dashArray:'5,5', opacity:0.5})
-        .bindTooltip('Reference: '+lbl+' radius', {className:'spc-tip'}).addTo(window._radiiLayer);
-    });
-    return;
-  }
-
-  storms.forEach(s => {
-    if (!s.lat || !s.lon) return;
-    const col = catColor(s.classification);
-    const catRadii = {'TD':[150,0,0],'TS':[200,100,0],'1':[250,125,50],'2':[280,150,75],'3':[320,175,100],'4':[350,200,125],'5':[390,230,150]};
-    const radii = catRadii[s.classification] || [200,100,0];
-    [['34kt','#ffd700',radii[0]],['50kt','#ffa500',radii[1]],['64kt','#ff4444',radii[2]]].forEach(([lbl,col2,nm]) => {
-      if (!nm) return;
-      L.circle([s.lat, s.lon], {radius: nm * 1852, color:col2, fill:false, weight:1.5, dashArray:'6,4', opacity:0.7})
-        .bindTooltip(s.name + ' \u2022 ' + lbl + ' wind radius (~' + nm + 'nm / ' + Math.round(nm*1.15) + 'mi)', {className:'spc-tip'})
-        .addTo(window._radiiLayer);
-    });
-  });
-}
-
 async function toggleEvacZones() {
   const btn = document.getElementById('btn-evac');
   evacActive = !evacActive;
@@ -5122,7 +5799,7 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchForecast();
   fetchSPCOutlook();
   fetchLSRs();
-  fetchActiveStorms();
+  refreshStorms();
   fetchTWO();
   fetchTropicalOutlookAreas();
   fetchTide();
@@ -5160,6 +5837,9 @@ document.addEventListener('DOMContentLoaded', function() {
   fetchRadarNowcast();
   setInterval(fetchRadarNowcast, 10 * 60 * 1000);
   setInterval(fetchNoreaster,    15 * 60 * 1000);
+  // NHC issues an advisory every 3-6 h, plus hourly intermediates while watches/warnings are up
+  setInterval(refreshStorms,     10 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - HS.ts > 5 * 60 * 1000) refreshStorms(); });
 
   // Restore display preferences (theme already set by early-init script; just sync buttons)
   updateDisplayToggles();
