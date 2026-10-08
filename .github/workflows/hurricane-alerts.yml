@@ -1,0 +1,67 @@
+name: Hurricane alerts
+
+# Hourly, around the clock (a warning can be issued at 3 AM). Runs the dashboard's own hurricane logic and pushes to
+# ntfy only when a tropical watch/warning is in effect for the location, or NHC's forecast puts tropical-storm-force
+# wind (or the cone) on it. Merely-nearby storms stay panel-only. De-duplication is stateless: the script reads the
+# topic's last 12 h back from ntfy and skips a situation it already sent, so this is quiet unless something changes.
+#
+# Manual run: pick "simulate" to send a clearly-labelled TEST message from synthetic data (no storm needed), or tick
+# "dry_run" to see what would be sent without sending.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      simulate:
+        description: 'Send a synthetic TEST alert instead of checking real storms'
+        type: choice
+        default: none
+        options: [none, warning, threat, direct]
+      location:
+        description: 'Which location(s) a manual run covers'
+        type: choice
+        default: both
+        options: [both, Atlantic Beach, Neptune Beach]
+      dry_run:
+        description: 'Print instead of sending'
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Same two spots (and ntfy topics) as the DogWalk rain alerts.
+          - name: Atlantic Beach
+            lat: "30.34"
+            lon: "-81.40"
+            topic: dogwalk-atlbeach-rain-4187
+          - name: Neptune Beach
+            lat: "30.312"
+            lon: "-81.396"
+            topic: dogwalk-neptunebeach-rain-5914
+    env:
+      TZ: America/New_York
+      LAT: ${{ matrix.lat }}
+      LON: ${{ matrix.lon }}
+      TOPIC: ${{ matrix.topic }}
+      PLACE: ${{ matrix.name }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      SIMULATE: ${{ inputs.simulate }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name != 'workflow_dispatch' || inputs.location == 'both' || inputs.location == matrix.name
+        with:
+          sparse-checkout: |
+            index.html
+            .github/scripts
+          sparse-checkout-cone-mode: false
+
+      # The script never fails the job (every error path logs and exits 0), so a flaky feed can't paint the run red.
+      - name: Hurricane check (${{ matrix.name }})
+        if: github.event_name != 'workflow_dispatch' || inputs.location == 'both' || inputs.location == matrix.name
+        run: node .github/scripts/hurricane-alert.js
