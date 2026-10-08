@@ -1744,11 +1744,13 @@ function parseTCMText(text) {
   const lines = text.split('\n');
 
   // Storm name from "TROPICAL DEPRESSION TWO FORECAST/ADVISORY NUMBER   2"
+  // A hurricane's header is "HURRICANE ISAIAS FORECAST/ADVISORY NUMBER 7" — it has no "TROPICAL"
+  // in it, so requiring that word silently dropped every storm the moment it became a hurricane.
   let name = '', type = 'TD';
   const headerLine = lines.find(l =>
-    /TROPICAL|SUBTROPICAL/i.test(l) && /FORECAST\/ADVISORY/i.test(l));
+    /(HURRICANE|TROPICAL|SUBTROPICAL)/i.test(l) && /FORECAST\/ADVISORY/i.test(l));
   if (headerLine) {
-    const m = headerLine.match(/(TROPICAL STORM|HURRICANE|TROPICAL DEPRESSION|SUBTROPICAL STORM)\s+(\w+)/i);
+    const m = headerLine.match(/(POST-TROPICAL CYCLONE|POTENTIAL TROPICAL CYCLONE|SUBTROPICAL DEPRESSION|SUBTROPICAL STORM|TROPICAL STORM|TROPICAL DEPRESSION|HURRICANE)\s+(\w+)/i);
     if (m) { type = m[1]; name = m[2]; }
   }
   if (!name) return null;
